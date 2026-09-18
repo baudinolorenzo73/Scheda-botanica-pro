@@ -353,6 +353,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   <h1>Scheda Botanica <small id="conteggio">—</small><span class="marchio">by Lollo ®2026</span></h1>
   <button class="btn-icona" id="btn-tema" title="Tema chiaro/scuro" aria-label="Tema chiaro o scuro">◐</button>
   <button class="btn-icona" id="btn-aiuto" title="Guida" aria-label="Guida">❓</button>
+  <button class="btn-icona" id="btn-cestino" title="Cestino" aria-label="Cestino">🗑</button>
   <button class="btn-icona" id="btn-menu" title="Backup ed esportazioni" aria-label="Menu">⋮</button>
 </header>
 
@@ -366,7 +367,10 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   <div class="tab-gruppo">
     <button type="button" id="tab-schede" class="attiva">📋 Schede</button>
     <button type="button" id="tab-mappa">🗺 Mappa</button>
-    <button type="button" id="tab-timeline">⏱ Timeline</button>
+    <button type="button" id="tab-timeline" class="nascosto">⏱ Timeline</button>
+    <!-- Timeline in pausa: raggruppava le schede per "N° medesimo esemplare",
+         ma ora quel campo ha un altro significato (vedi sotto). Da riprogettare
+         con un campo dedicato quando si deciderà come collegare le visite ripetute. -->
   </div>
 </div>
 <div class="stato-salv" id="stato" role="status" aria-live="polite"></div>
@@ -376,14 +380,21 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <div class="elenco" id="elenco"></div>
   </div>
   <div id="vista-mappa" class="nascosto" style="max-width:var(--largo);margin:0 auto;padding:0 12px">
+    <div class="traccia-barra" id="traccia-barra" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 2px 10px">
+      <button type="button" class="btn primario" id="btn-traccia-avvia">▶ Inizia traccia</button>
+      <button type="button" class="btn pericolo nascosto" id="btn-traccia-ferma">⏹ Ferma traccia</button>
+      <span id="traccia-info" style="color:var(--tenue);font-size:13px"></span>
+      <button type="button" class="btn nascosto" id="btn-traccia-gpx">⭳ Esporta traccia GPX</button>
+      <button type="button" class="btn pericolo nascosto" id="btn-traccia-cancella">🗑 Cancella traccia</button>
+    </div>
     <div id="mappa"></div>
     <p style="font-size:12px;color:var(--tenue);margin:8px 2px">
-      Lo sfondo della mappa (OpenStreetMap) richiede una connessione a internet; le schede e le coordinate restano comunque salvate offline.
+      Lo sfondo della mappa (OpenStreetMap) richiede una connessione a internet; le schede, le coordinate e la traccia restano comunque salvate offline.
     </p>
   </div>
   <div id="vista-timeline" class="nascosto" style="max-width:var(--largo);margin:0 auto;padding:0 12px">
     <p style="font-size:12px;color:var(--tenue);margin:8px 2px 14px">
-      Raggruppa le schede con lo stesso "N° medesimo esemplare": utile per vedere come cambia lo stesso albero visita dopo visita.
+      Funzione in pausa, da riprogettare: vedi guida rapida per i dettagli.
     </p>
     <div id="timeline-lista"></div>
   </div>
@@ -460,6 +471,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   <h2>Backup ed esportazioni</h2>
   <div class="menu-lista">
     <button class="btn primario" data-az="zip">💾 Backup completo (.zip con foto e audio)</button>
+    <button class="btn" data-az="zip-condividi">📤 Condividi backup (Drive, Dropbox, WhatsApp…)</button>
     <button class="btn" data-az="ripristina">📂 Ripristina backup (.zip o .json)…</button>
     <button class="btn" data-az="excel">📥 Importa da Excel o CSV</button>
     <button class="btn" data-az="plantnet">🔎 Chiave PlantNet (identificazione foto)</button>
@@ -473,6 +485,31 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   <div class="azioni"><button class="btn" data-az="chiudi">Chiudi</button></div>
   <input type="file" id="in-backup" accept=".zip,.json,application/zip,application/json" class="nascosto">
   <input type="file" id="in-excel" accept=".xlsx,.xls,.csv" class="nascosto">
+</dialog>
+
+<dialog id="dlg-cestino">
+  <h2>Cestino</h2>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:13.5px">
+    <label for="cestino-giorni">Conserva le schede cancellate per</label>
+    <input type="number" id="cestino-giorni" min="1" max="365" class="campo-base" style="width:64px">
+    <span>giorni, poi eliminale da sole</span>
+  </div>
+  <div id="cestino-lista"></div>
+  <div class="azioni">
+    <button type="button" class="btn pericolo" id="btn-cestino-svuota">🗑 Svuota cestino</button>
+    <button type="button" class="btn" id="btn-cestino-chiudi">Chiudi</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-mappa-scegli">
+  <h2>Scegli un punto dalla mappa</h2>
+  <p style="font-size:13px;color:var(--tenue);margin:0 0 10px">Tocca la mappa nel punto giusto: il segnaposto si sposta lì. Puoi anche trascinarlo per aggiustarlo.</p>
+  <div id="mappa-scegli" style="height:50vh;min-height:280px;border-radius:var(--r-grande);overflow:hidden;border:1px solid var(--linea)"></div>
+  <p id="mappa-scegli-coord" style="font-size:13px;margin:8px 2px 0"></p>
+  <div class="azioni">
+    <button type="button" class="btn" id="btn-mappa-scegli-annulla" value="annulla">Annulla</button>
+    <button type="button" class="btn primario" id="btn-mappa-scegli-usa" value="usa">Usa questa posizione</button>
+  </div>
 </dialog>
 
 <dialog id="dlg-import">
@@ -558,6 +595,9 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <li><b>+ Nuova scheda</b> crea una rilevazione con il numero progressivo successivo.</li>
     <li>In fondo alla scheda ci sono sempre tre pulsanti grandi: <b>📷 Foto</b>, <b>📍 GPS</b> e <b>🎙 Nota vocale</b>, raggiungibili col pollice senza scorrere tutta la scheda.</li>
     <li><b>GPS preciso</b>: sotto gli alberi il segnale è debole, quindi l'app ascolta i satelliti per qualche secondo e tiene la posizione migliore, mostrando la precisione mentre migliora. Puoi fermarla prima toccando di nuovo 📍.</li>
+    <li><b>Scegli dalla mappa</b>: se non riesci a rilevare il GPS (o vuoi correggerlo dopo), nella sezione Posizione GPS c'è anche "Scegli dalla mappa": tocchi il punto giusto sulla cartina invece di aspettare il satellite.</li>
+    <li><b>Traccia (percorso)</b>: nella vista Mappa, "Inizia traccia" registra il percorso fatto a piedi (come una traccia GPS) finché non tocchi "Ferma traccia"; si vede come linea sulla mappa e si esporta come GPX. Resta salvata sul dispositivo anche chiudendo l'app, finché non la cancelli.</li>
+    <li><b>Cestino</b>: eliminando una scheda (dall'elenco o dall'editor) non sparisce subito, va nel cestino (icona 🗑 in alto): da lì puoi ripristinarla o eliminarla per sempre. Dopo il numero di giorni che scegli tu (di default 30), le schede nel cestino vengono eliminate da sole.</li>
     <li>I campi con icona (persistenza, forma della chioma, rami, crescita, tipologia di estensione, tipo di foglia, lamina, margine) si scelgono toccando il riquadro: si apre una schermata con un disegno e una spiegazione per ogni valore, così anche chi è alle prime armi riconosce cosa sta osservando. Se nessuna voce corrisponde, si può scrivere un valore libero in "Altro".</li>
     <li><b>Foto</b>: "Scatta" apre subito la fotocamera, "Dalla galleria" ne permette di scegliere più di una insieme. Le foto vengono ridotte automaticamente per occupare meno spazio.</li>
     <li><b>Note vocali</b>: utile per dettare a voce le osservazioni mentre si è impegnati con metro o fotocamera. Si registra, si ferma, e la nota compare con la sua durata: si può riascoltarla e darle un titolo.</li>
@@ -579,6 +619,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   <h3>Backup, Excel e ZIP</h3>
   <ul>
     <li><b>Backup completo (.zip)</b>: un unico archivio con tutti i dati, le foto e gli audio. Serve a due cose: si reimporta nell'app con "Ripristina backup" (anche su un altro telefono), e dentro ha CSV, GeoJSON, KML e GPX leggibili con Excel e QGIS. È il modo più sicuro per non perdere nulla: fallo a fine giornata.</li>
+    <li><b>Condividi backup</b>: come sopra, ma invece di scaricare il file apre il pannello "Condividi" del telefono, per mandarlo con un tocco in più a Drive, Dropbox o WhatsApp. Se il browser non lo supporta, scarica il file normalmente.</li>
     <li><b>Ripristina backup</b>: accetta lo .zip e anche i vecchi backup .json.</li>
     <li><b>Importa da Excel o CSV</b>: le colonne vengono riconosciute dal nome dell'intestazione (N° progressivo, Viale, Nome…), utile per correggere molti dati insieme al PC.</li>
   </ul>
@@ -1534,7 +1575,7 @@ const CAMPI = [
   { k: 'viale',         sez: 'oss', label: 'Viale / zona',                tipo: 'lista' },
   { k: 'nome',          sez: 'oss', label: 'Nome esemplare (genere, specie, varietà)', tipo: 'testo', largo: true },
   { k: 'numero',        sez: 'oss', label: 'N° medesimo esemplare',         tipo: 'numero', passo: 1,
-    aiuto: 'Uguale al N° progressivo per un albero nuovo. In una visita successiva allo STESSO albero, scrivi qui il N° progressivo della prima scheda: così la Timeline li raggruppa.' },
+    aiuto: 'Quanti alberi uguali a questo si trovano nelle vicinanze (per esempio un filare). Di default è 1, cioè "esemplare isolato, nessun altro uguale intorno".' },
   { k: 'grandezza',     sez: 'oss', label: 'Classe di grandezza',         tipo: 'scelta',
     valori: [['', '—'], ['1', '1ª grandezza (maggiore)'], ['2', '2ª grandezza'], ['3', '3ª grandezza'], ['4', '4ª grandezza (minore)']] },
   { k: 'altezza',       sez: 'oss', label: 'Altezza (m)',                 tipo: 'numero', passo: 0.5 },
@@ -1560,8 +1601,8 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.1.0';
-const DB_VERSIONE = 2;        // v2: aggiunto lo store "audio" per le note vocali
+const APP_VERSIONE = '3.2.0';
+const DB_VERSIONE = 3;        // v3: aggiunto lo store "traccia" per il percorso GPS
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
 
@@ -1670,6 +1711,7 @@ const DB = {
         if (!d.objectStoreNames.contains('schede')) d.createObjectStore('schede', { keyPath: 'uid' });
         if (!d.objectStoreNames.contains('foto')) d.createObjectStore('foto');
         if (!d.objectStoreNames.contains('audio')) d.createObjectStore('audio');
+        if (!d.objectStoreNames.contains('traccia')) d.createObjectStore('traccia', { autoIncrement: true });
       };
       r.onsuccess = () => { this.db = r.result; ok(); };
       r.onerror = () => ko(r.error);
@@ -1704,15 +1746,17 @@ const S = {
   urlFoto: new Map(),       // id foto -> objectURL (cache)
   urlAudio: new Map(),      // id audio -> objectURL (cache)
   vista: 'schede',          // 'schede' | 'mappa'
+  traccia: [],              // punti del percorso registrato: {lat,lng,alt,acc,quando}
+  cestino: [],              // schede spostate nel cestino (cancellata valorizzato)
 };
 
 function schedaVuota() {
   const r = { uid: nuovoId('s'), creato: oraISO(), modificato: oraISO(), gps: null, foto: [], audio: [] };
   for (const c of CAMPI) r[c.k] = '';
   r.prog = String(S.schede.reduce((m, s) => Math.max(m, Number(s.prog) || 0), 0) + 1);
-  // Di norma un nuovo N° progressivo è un albero nuovo: il "medesimo esemplare" è se stesso.
-  // Per registrare una VISITA SUCCESSIVA allo stesso albero, l'utente lo cambia col N° di quella prima scheda.
-  r.numero = r.prog;
+  // "N° medesimo esemplare" conta quanti alberi uguali ci sono vicino: di default 1
+  // (nessun altro uguale intorno, esemplare isolato). L'utente lo cambia solo se serve.
+  r.numero = 1;
   return r;
 }
 
@@ -1720,6 +1764,7 @@ function schedaVuota() {
 // Restituisce { record, fotoDaSalvare: [{id, dataUrl}], audioDaSalvare: [{id, dataUrl}] }
 function normalizza(v) {
   const r = { uid: v.uid || nuovoId('s'), creato: v.creato || oraISO(), modificato: v.modificato || oraISO() };
+  r.cancellata = v.cancellata || null;   // null = attiva; altrimenti data ISO di spostamento nel cestino
   for (const c of CAMPI) {
     let val = v[c.k] === undefined || v[c.k] === null ? '' : String(v[c.k]).trim();
     if (c.tipo === 'numero') {
@@ -2237,7 +2282,6 @@ function costruisciModulo() {
     const r = S.aperta;
     const k = e.target.name;
     if (!r || !k || !CAMPI.some((c) => c.k === k)) return;
-    const prima = r[k];
     let valore = e.target.value;
     if (k === 'nome' && valore && /^[a-zà-ù]/.test(valore)) {
       const pos = e.target.selectionStart;
@@ -2247,7 +2291,6 @@ function costruisciModulo() {
     }
     r[k] = valore;
     if (k === 'prog') {
-      if (r.numero === prima) { r.numero = r.prog; $('#f-numero').value = r.prog; }
       controllaProg();
     }
     if (k === 'prog' || k === 'nome') aggiornaTitoloEditor();
@@ -2411,43 +2454,117 @@ async function nuovaScheda() {
   $('#f-nome').focus();
 }
 
-// Elimina un record (DB + stato), con "Annulla" via toast. Riusata dall'editor e dall'elenco.
-async function eliminaRecord(r) {
+/* =====================================================================
+   6b. CESTINO — le schede eliminate non spariscono subito: restano
+   recuperabili per un numero di giorni configurabile, poi vengono
+   tolte per sempre (o subito, con "Svuota cestino").
+   ===================================================================== */
+function giorniConservazioneCestino() {
+  return Number(localStorage.getItem('sb-cestino-giorni')) || 30;
+}
+
+// Sposta nel cestino (cancellazione reversibile). Riusata dall'editor e dall'elenco.
+async function spostaNelCestino(r) {
   if (REG.attiva && REG.riga === r) annullaRegistrazione();
   if (GPSR.watch !== null && GPSR.riga === r) fermaGPS(false);
   clearTimeout(timerSalva.get(r.uid));
   timerSalva.delete(r.uid);
-  const copia = structuredClone(r);
-  const blobFoto = await Promise.all(r.foto.map((p) => DB.leggi('foto', p.id)));
-  const blobAudio = await Promise.all(r.audio.map((a) => DB.leggi('audio', a.id)));
+  r.cancellata = oraISO();
+  r.modificato = oraISO();
+  await DB.scrivi('schede', r);
+  S.schede = S.schede.filter((s) => s.uid !== r.uid);
+  S.selezionate.delete(r.uid);
+  S.cestino.push(r);
+  disegnaElenco();
+  aggiornaBadgeCestino();
+  toast(`Scheda N° ${r.prog} spostata nel cestino`, 'Annulla', () => ripristinaDalCestino(r));
+}
+
+async function ripristinaDalCestino(r) {
+  r.cancellata = null;
+  r.modificato = oraISO();
+  await DB.scrivi('schede', r);
+  S.cestino = S.cestino.filter((s) => s.uid !== r.uid);
+  S.schede.push(r);
+  disegnaElenco();
+  disegnaCestino();
+  aggiornaBadgeCestino();
+  stato(`Scheda N° ${r.prog} ripristinata`);
+}
+
+// Elimina per sempre: qui spariscono anche foto e audio. Niente più "Annulla".
+async function eliminaDefinitivo(r) {
+  clearTimeout(timerSalva.get(r.uid));
+  timerSalva.delete(r.uid);
   await DB.cancella('schede', r.uid);
   for (const p of r.foto) { await DB.cancella('foto', p.id); liberaUrlFoto(p.id); }
   for (const a of r.audio) { await DB.cancella('audio', a.id); liberaUrlAudio(a.id); }
-  S.schede = S.schede.filter((s) => s.uid !== r.uid);
-  S.selezionate.delete(r.uid);
-  toast(`Scheda N° ${copia.prog} eliminata`, 'Annulla', async () => {
-    for (let i = 0; i < copia.foto.length; i++) if (blobFoto[i]) await DB.scrivi('foto', blobFoto[i], copia.foto[i].id);
-    for (let i = 0; i < copia.audio.length; i++) if (blobAudio[i]) await DB.scrivi('audio', blobAudio[i], copia.audio[i].id);
-    await DB.scrivi('schede', copia);
-    S.schede.push(copia);
-    disegnaElenco();
-    stato(`Scheda N° ${copia.prog} ripristinata`);
-  });
+  S.cestino = S.cestino.filter((s) => s.uid !== r.uid);
+  S.schede = S.schede.filter((s) => s.uid !== r.uid); // per sicurezza
 }
+
+async function svuotaCestino() {
+  if (!S.cestino.length) return;
+  if (!confirm(`Eliminare per sempre ${S.cestino.length} schede dal cestino? Non si può annullare.`)) return;
+  for (const r of [...S.cestino]) await eliminaDefinitivo(r);
+  disegnaCestino();
+  aggiornaBadgeCestino();
+  stato('Cestino svuotato');
+}
+
+// Alla partenza dell'app: elimina per sempre chi ha superato i giorni impostati.
+async function purgaCestinoScaduto() {
+  const soglia = Date.now() - giorniConservazioneCestino() * 864e5;
+  const scaduti = S.cestino.filter((r) => Date.parse(r.cancellata) < soglia);
+  for (const r of scaduti) await eliminaDefinitivo(r);
+  if (scaduti.length) aggiornaBadgeCestino();
+}
+
+function aggiornaBadgeCestino() {
+  const n = S.cestino.length;
+  const b = $('#btn-cestino');
+  b.textContent = n ? `🗑 ${n}` : '🗑';
+  b.title = n ? `Cestino (${n})` : 'Cestino';
+}
+
+function disegnaCestino() {
+  const cont = $('#cestino-lista');
+  if (!S.cestino.length) {
+    cont.replaceChildren(el('div', { class: 'vuoto' }, 'Il cestino è vuoto.'));
+    return;
+  }
+  const righe = S.cestino.slice().sort((a, b) => (b.cancellata || '').localeCompare(a.cancellata || '')).map((r) =>
+    el('div', { class: 'voce' },
+      el('div', { style: 'min-width:0' },
+        el('div', { class: 'titolo', testo: `N° ${r.prog} — ${r.nome || 'senza nome'}` }),
+        el('div', { class: 'sotto', testo: `Cancellata il ${dataIT(r.cancellata)}` })),
+      el('div', { class: 'voce-azioni', style: 'display:flex;gap:6px' },
+        el('button', { type: 'button', class: 'btn', onclick: () => ripristinaDalCestino(r) }, '↺ Ripristina'),
+        el('button', {
+          type: 'button', class: 'btn pericolo',
+          onclick: async () => {
+            if (!confirm(`Eliminare per sempre la scheda N° ${r.prog}? Non si può annullare.`)) return;
+            await eliminaDefinitivo(r);
+            disegnaCestino();
+            aggiornaBadgeCestino();
+          },
+        }, 'Elimina per sempre'))));
+  cont.replaceChildren(...righe);
+}
+
 
 async function eliminaScheda() {
   const r = S.aperta;
-  if (!r || !confirm(`Eliminare la scheda N° ${r.prog} ${r.nome}?`)) return;
-  await eliminaRecord(r);
+  if (!r) return;
+  await spostaNelCestino(r);
   nascondiEditor();
   if (history.state?.editor) history.back();
 }
 
 async function eliminaSchedaDaElenco(uid) {
   const r = S.schede.find((s) => s.uid === uid);
-  if (!r || !confirm(`Eliminare la scheda N° ${r.prog} ${r.nome || 'senza nome'}?`)) return;
-  await eliminaRecord(r);
-  disegnaElenco();
+  if (!r) return;
+  await spostaNelCestino(r);
 }
 
 /* ---------- GPS ---------- */
@@ -2457,17 +2574,19 @@ function disegnaGPS() {
   if (!r.gps) {
     box.replaceChildren(
       el('span', { style: 'color:var(--tenue)' }, 'Nessuna coordinata'),
-      el('button', { type: 'button', class: 'btn primario', onclick: rilevaGPS }, '📍 Rileva posizione'));
+      el('button', { type: 'button', class: 'btn primario', onclick: rilevaGPS }, '📍 Rileva posizione'),
+      el('button', { type: 'button', class: 'btn', onclick: () => sceglierePosizioneDaMappa(r) }, '🗺 Scegli dalla mappa'));
     return;
   }
   const g = r.gps;
   box.replaceChildren(...[
     el('strong', { testo: `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}` }),
-    g.acc != null ? el('span', { testo: `±${Math.round(g.acc)} m` }) : null,
+    g.manuale ? el('span', { style: 'color:var(--tenue)' }, 'posizione scelta a mano') : (g.acc != null ? el('span', { testo: `±${Math.round(g.acc)} m` }) : null),
     g.alt != null ? el('span', { testo: `${Math.round(g.alt)} m s.l.m.` }) : null,
     el('span', { style: 'color:var(--tenue);font-size:13px', testo: dataIT(g.quando) }),
     el('a', { href: `https://www.openstreetmap.org/?mlat=${g.lat}&mlon=${g.lng}#map=19/${g.lat}/${g.lng}`, target: '_blank', rel: 'noopener' }, 'Apri mappa'),
     el('button', { type: 'button', class: 'btn', onclick: rilevaGPS }, '↻ Rileva di nuovo'),
+    el('button', { type: 'button', class: 'btn', onclick: () => sceglierePosizioneDaMappa(r) }, '🗺 Scegli dalla mappa'),
     el('button', {
       type: 'button', class: 'btn pericolo', onclick: () => {
         if (!confirm('Rimuovere le coordinate?')) return;
@@ -2527,6 +2646,60 @@ function fermaGPS(salva) {
   }
   if (r && S.aperta === r) disegnaGPS();
   aggiornaBarraRapida();
+}
+
+/* ---------- scegliere un punto GPS toccando la mappa ---------- */
+let mappaScegli = null;
+let markerScegliPos = null;
+let sceltaGPSPer = null; // scheda a cui assegnare il punto scelto
+
+function posizionaMarkerScelta(lat, lng) {
+  if (!markerScegliPos) {
+    markerScegliPos = L.marker([lat, lng], { draggable: true }).addTo(mappaScegli);
+    markerScegliPos.on('dragend', () => {
+      const p = markerScegliPos.getLatLng();
+      mostraCoordScelta(p.lat, p.lng);
+    });
+  } else {
+    markerScegliPos.setLatLng([lat, lng]);
+  }
+  mostraCoordScelta(lat, lng);
+}
+function mostraCoordScelta(lat, lng) {
+  $('#mappa-scegli-coord').textContent = `Punto scelto: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}
+
+function sceglierePosizioneDaMappa(r) {
+  sceltaGPSPer = r;
+  const dlg = $('#dlg-mappa-scegli');
+  dlg.showModal();
+  setTimeout(() => {
+    if (!mappaScegli) {
+      mappaScegli = L.map('mappa-scegli', { zoomControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mappaScegli);
+      mappaScegli.on('click', (e) => posizionaMarkerScelta(e.latlng.lat, e.latlng.lng));
+    }
+    // centra sul punto già presente sulla scheda, sull'ultimo punto della traccia, o sull'Italia
+    const centro = r.gps ? [r.gps.lat, r.gps.lng]
+      : (S.traccia.length ? [S.traccia[S.traccia.length - 1].lat, S.traccia[S.traccia.length - 1].lng] : [45.5, 10]);
+    mappaScegli.setView(centro, r.gps || S.traccia.length ? 18 : 6);
+    if (markerScegliPos) { mappaScegli.removeLayer(markerScegliPos); markerScegliPos = null; }
+    $('#mappa-scegli-coord').textContent = r.gps ? '' : 'Tocca la mappa per scegliere un punto.';
+    if (r.gps) posizionaMarkerScelta(r.gps.lat, r.gps.lng);
+    mappaScegli.invalidateSize();
+  }, 80);
+}
+
+function confermaPosizioneScelta() {
+  if (!markerScegliPos || !sceltaGPSPer) { $('#dlg-mappa-scegli').close(); return; }
+  const p = markerScegliPos.getLatLng();
+  const r = sceltaGPSPer;
+  r.gps = { lat: p.lat, lng: p.lng, acc: null, alt: null, quando: oraISO(), manuale: true };
+  r.modificato = oraISO();
+  salvaOra(r);
+  $('#dlg-mappa-scegli').close();
+  if (S.aperta === r) disegnaGPS();
+  stato('Posizione impostata dalla mappa');
 }
 
 /* ---------- foto nell'editor ---------- */
@@ -2875,8 +3048,104 @@ function cambiaVista(tab) {
   $('#vista-mappa').classList.toggle('nascosto', tab !== 'mappa');
   $('#vista-timeline').classList.toggle('nascosto', tab !== 'timeline');
   $('#btn-nuova').classList.toggle('nascosto', tab !== 'schede');
-  if (tab === 'mappa') { assicuraMappa(); disegnaMappa(); }
+  if (tab === 'mappa') { assicuraMappa(); disegnaMappa(); disegnaLineaTraccia(); aggiornaInfoTraccia(); }
   if (tab === 'timeline') disegnaTimeline();
+}
+
+/* =====================================================================
+   9d. TRACCIA — registra il percorso fatto a piedi (breadcrumb GPS),
+   indipendente dai punti delle singole schede. Resta salvata offline
+   nello store IndexedDB "traccia" finché non la cancelli.
+   ===================================================================== */
+const TRK = { watch: null };
+let lineaTraccia = null;
+
+// distanza in metri tra due coordinate (formula dell'emisenoverso)
+function distanzaMetri(a, b) {
+  const R = 6371000;
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+function distanzaTotaleTraccia() {
+  let tot = 0;
+  for (let i = 1; i < S.traccia.length; i++) tot += distanzaMetri(S.traccia[i - 1], S.traccia[i]);
+  return tot;
+}
+const formattaDistanza = (m) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2).replace('.', ',')} km`;
+
+function aggiornaInfoTraccia() {
+  const n = S.traccia.length;
+  const info = $('#traccia-info');
+  if (!n) { info.textContent = TRK.watch !== null ? 'Registrazione avviata… in attesa del primo punto' : ''; }
+  else {
+    const durataMin = Math.round((Date.parse(S.traccia[n - 1].quando) - Date.parse(S.traccia[0].quando)) / 60000);
+    info.textContent = `${n} punti · ${formattaDistanza(distanzaTotaleTraccia())} · ${durataMin} min`;
+  }
+  $('#btn-traccia-avvia').classList.toggle('nascosto', TRK.watch !== null);
+  $('#btn-traccia-ferma').classList.toggle('nascosto', TRK.watch === null);
+  $('#btn-traccia-gpx').classList.toggle('nascosto', n === 0);
+  $('#btn-traccia-cancella').classList.toggle('nascosto', n === 0);
+}
+
+function disegnaLineaTraccia() {
+  if (!mappa) return;
+  if (lineaTraccia) { mappa.removeLayer(lineaTraccia); lineaTraccia = null; }
+  if (S.traccia.length < 2) return;
+  lineaTraccia = L.polyline(S.traccia.map((p) => [p.lat, p.lng]), { color: '#2f5d3a', weight: 4, opacity: .8 }).addTo(mappa);
+}
+
+function avviaTraccia() {
+  if (!navigator.geolocation) return alert('Geolocalizzazione non disponibile su questo dispositivo.');
+  if (TRK.watch !== null) return;
+  localStorage.setItem('sb-traccia-attiva', '1');
+  TRK.watch = navigator.geolocation.watchPosition(
+    async (p) => {
+      const c = p.coords;
+      const punto = { lat: c.latitude, lng: c.longitude, alt: c.altitude, acc: c.accuracy, quando: oraISO() };
+      S.traccia.push(punto);
+      await DB.scrivi('traccia', punto);
+      disegnaLineaTraccia();
+      aggiornaInfoTraccia();
+    },
+    (err) => {
+      const motivi = { 1: 'permesso negato (abilita la posizione per il browser)', 2: 'posizione non disponibile', 3: 'tempo scaduto' };
+      stato('Traccia: ' + (motivi[err.code] || err.message), true);
+    },
+    { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+  aggiornaInfoTraccia();
+  stato('Traccia avviata');
+}
+
+function fermaTraccia() {
+  if (TRK.watch !== null) navigator.geolocation.clearWatch(TRK.watch);
+  TRK.watch = null;
+  localStorage.removeItem('sb-traccia-attiva');
+  aggiornaInfoTraccia();
+  stato('Traccia fermata');
+}
+
+async function cancellaTraccia() {
+  if (!confirm(`Cancellare la traccia registrata (${S.traccia.length} punti)? Non si può annullare.`)) return;
+  fermaTraccia();
+  S.traccia = [];
+  await DB.svuota('traccia');
+  disegnaLineaTraccia();
+  aggiornaInfoTraccia();
+}
+
+function testoTracciaGPX() {
+  if (S.traccia.length < 2) return null;
+  const pt = S.traccia.map((p) => `    <trkpt lat="${p.lat}" lon="${p.lng}">` +
+    (p.alt != null ? `<ele>${p.alt}</ele>` : '') + `<time>${escHtml(p.quando)}</time></trkpt>`).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Scheda Botanica" xmlns="http://www.topografix.com/GPX/1/1">\n` +
+    `  <trk><name>Percorso ${oggi()}</name><trkseg>\n${pt}\n  </trkseg></trk>\n</gpx>\n`;
+}
+function esportaTracciaGPX() {
+  const gpx = testoTracciaGPX();
+  if (!gpx) return alert('Servono almeno due punti per esportare un percorso.');
+  scarica(new Blob([gpx], { type: 'application/gpx+xml' }), `scheda-botanica-percorso-${oggi()}.gpx`);
 }
 
 /* =====================================================================
@@ -3089,11 +3358,12 @@ async function importaDati(voci, modo) {
     S.urlAudio.forEach((u) => URL.revokeObjectURL(u));
     S.urlAudio.clear();
     S.schede = [];
+    S.cestino = [];
     S.selezionate.clear();
   }
   let nuove = 0, aggiornate = 0, invariate = 0, mediaErr = 0;
   for (const { record, fotoDaSalvare, audioDaSalvare } of voci) {
-    const esistente = S.schede.find((s) => s.uid === record.uid);
+    const esistente = S.schede.find((s) => s.uid === record.uid) || S.cestino.find((s) => s.uid === record.uid);
     if (esistente && esistente.modificato >= record.modificato) { invariate++; continue; }
     for (const f of fotoDaSalvare || []) {
       try {
@@ -3106,14 +3376,34 @@ async function importaDati(voci, modo) {
       try { await DB.scrivi('audio', a.blob || await dataURLInBlob(a.dataUrl), a.id); } catch { mediaErr++; }
     }
     await DB.scrivi('schede', record);
-    if (esistente) { S.schede[S.schede.indexOf(esistente)] = record; liberaMediaRecord(esistente); aggiornate++; }
-    else { S.schede.push(record); nuove++; }
+    if (esistente) {
+      liberaMediaRecord(esistente);
+      S.schede = S.schede.filter((s) => s.uid !== record.uid);
+      S.cestino = S.cestino.filter((s) => s.uid !== record.uid);
+      (record.cancellata ? S.cestino : S.schede).push(record);
+      aggiornate++;
+    } else {
+      (record.cancellata ? S.cestino : S.schede).push(record);
+      nuove++;
+    }
   }
   disegnaElenco();
+  aggiornaBadgeCestino();
   const dup = progDuplicati().size;
-  alert(`Importazione completata.\nNuove: ${nuove}\nAggiornate: ${aggiornate}\nGià aggiornate: ${invariate}` +
-    (mediaErr ? `\nFile non importati: ${mediaErr}` : '') +
-    (dup ? `\n\nAttenzione: ${dup} numeri progressivi risultano duplicati (segnalati nell’elenco).` : ''));
+
+  const dlg = el('dialog', {},
+    el('h2', { testo: 'Importazione completata' }),
+    el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;padding:12px;background:var(--focus);border-left:4px solid var(--lichene);border-radius:6px' },
+      el('div', {}, el('div', { style: 'font:700 18px system-ui;color:var(--bosco)', testo: String(nuove) }), el('div', { style: 'font-size:12px;color:var(--tenue)', testo: 'Nuove schede' })),
+      el('div', {}, el('div', { style: 'font:700 18px system-ui;color:var(--bosco)', testo: String(aggiornate) }), el('div', { style: 'font-size:12px;color:var(--tenue)', testo: 'Aggiornate' })),
+      el('div', {}, el('div', { style: 'font:700 18px system-ui;color:var(--tenue)', testo: String(invariate) }), el('div', { style: 'font-size:12px;color:var(--tenue)', testo: 'Già attuali' })),
+      el('div', {}, el('div', { style: 'font:700 18px system-ui;color:var(--bosco)', testo: String(S.schede.length) }), el('div', { style: 'font-size:12px;color:var(--tenue)', testo: 'Totale attive ora' }))),
+    mediaErr ? el('p', { style: 'color:var(--ruggine);font-weight:600;font-size:13px', testo: `⚠ ${mediaErr} file media non importati` }) : null,
+    dup ? el('p', { style: 'color:var(--ruggine);font-weight:600;font-size:13px', testo: `⚠ ${dup} numeri progressivi duplicati (segnalati nell'elenco)` }) : null,
+    el('div', { class: 'azioni' }, el('button', { type: 'button', class: 'btn primario', onclick: () => dlg.close() }, 'OK')));
+  document.body.append(dlg);
+  dlg.addEventListener('close', () => dlg.remove());
+  dlg.showModal();
 }
 
 function liberaMediaRecord(r) {
@@ -3259,8 +3549,12 @@ function esportaKML() {
 }
 
 /* ---------- ZIP completo: dati in formati aperti + foto e audio reali ---------- */
-async function esportaZIP() {
-  if (!S.schede.length) return alert('Nessuna scheda da esportare.');
+// modo 'scarica' (predefinito): salva il file nella cartella Download come sempre.
+// modo 'condividi': apre il pannello "Condividi" del telefono (Drive, Dropbox, WhatsApp…),
+//                    così l'utente sceglie la destinazione in un tocco in più, senza uscire dall'app.
+async function esportaZIP(modo = 'scarica') {
+  const tutteLeSchede = [...S.schede, ...S.cestino];
+  if (!tutteLeSchede.length) return alert('Nessuna scheda da esportare.');
   await salvaTuttiInSospeso();
   stato('Preparo lo ZIP…');
   try {
@@ -3269,8 +3563,8 @@ async function esportaZIP() {
     const cartAudio = zip.folder('audio');
     const indice = {};   // id file -> percorso nello ZIP, serve al ripristino
     let n = 0;
-    for (const r of S.schede) {
-      stato(`Preparo il backup… ${++n}/${S.schede.length}`);
+    for (const r of tutteLeSchede) {
+      stato(`Preparo il backup… ${++n}/${tutteLeSchede.length}`);
       const base = `${r.prog}_${nomeFile(r.nome)}`;
       for (const p of r.foto) {
         const b = await DB.leggi('foto', p.id);
@@ -3281,24 +3575,52 @@ async function esportaZIP() {
         if (b) { const f = `audio/${base}_${a.id}.${estensioneAudio(b.type || '')}`; cartAudio.file(f.slice(6), b); indice[a.id] = { percorso: f, tipo: b.type || '' }; }
       }
     }
-    zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 3, esportato: oraISO(), schede: S.schede, file: indice }));
+    zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 3, esportato: oraISO(), schede: tutteLeSchede, file: indice }));
     zip.file('rilevazioni.csv', testoCSV());
     const gj = testoGeoJSON(); if (gj) zip.file('rilevazioni.geojson', gj);
     const gpx = testoGPX(); if (gpx) zip.file('rilevazioni.gpx', gpx);
     const kml = testoKML(); if (kml) zip.file('rilevazioni.kml', kml);
+    const percorso = testoTracciaGPX(); if (percorso) zip.file('percorso.gpx', percorso);
     zip.file('leggimi.txt',
       `Scheda Botanica by Lollo ®2026 — esportazione completa del ${dataIT(oraISO())}\n` +
-      `${S.schede.length} schede, foto nella cartella /foto, audio nella cartella /audio.\n\n` +
+      `${tutteLeSchede.length} schede, foto nella cartella /foto, audio nella cartella /audio.\n\n` +
       `CSV, GeoJSON, KML e GPX si aprono con Excel, QGIS e Google Earth.\n` +
       `Per ripristinare tutto nell'app: menu ⋮ → "Ripristina backup" e scegli questo ZIP (non scompattarlo).`);
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-    scarica(blob, `scheda-botanica-backup-${oggi()}.zip`);
+    const nomeFileZip = `scheda-botanica-backup-${oggi()}.zip`;
+
+    if (modo === 'condividi') {
+      const condiviso = await condividiFile(blob, nomeFileZip, 'application/zip',
+        'Backup Scheda Botanica', `${tutteLeSchede.length} schede — ${dataIT(oraISO())}`);
+      if (!condiviso) {
+        // Il dispositivo/browser non supporta la condivisione di file: scarichiamo come sempre.
+        scarica(blob, nomeFileZip);
+        stato('Il tuo browser non supporta "Condividi": ho scaricato il file, caricalo a mano nella cartella condivisa.');
+      } else {
+        stato(`Backup pronto per la condivisione: ${tutteLeSchede.length} schede`);
+      }
+    } else {
+      scarica(blob, nomeFileZip);
+      stato(`Backup esportato: ${tutteLeSchede.length} schede`);
+    }
     localStorage.setItem('sb-ultimo-backup', oraISO());
-    stato(`Backup esportato: ${S.schede.length} schede`);
   } catch (e) {
+    // L'utente che annulla la finestra di condivisione genera un errore "AbortError": non è un vero errore.
+    if (e.name === 'AbortError') { stato(''); return; }
     alert('Esportazione ZIP non riuscita: ' + e.message);
     stato('');
   }
+}
+
+// Prova ad aprire il pannello "Condividi" nativo del telefono con il file allegato.
+// Restituisce true se ci è riuscito, false se il dispositivo/browser non lo supporta
+// (in quel caso chi chiama questa funzione ripiega sul download normale).
+async function condividiFile(blob, nomeFile, tipo, titolo, testo) {
+  if (!navigator.share || !navigator.canShare) return false;
+  const file = new File([blob], nomeFile, { type: tipo });
+  if (!navigator.canShare({ files: [file] })) return false;
+  await navigator.share({ files: [file], title: titolo, text: testo });
+  return true;
 }
 
 /* ---------- importazione da Excel (.xlsx): colonne riconosciute per nome ---------- */
@@ -3450,6 +3772,7 @@ function collegaEventi() {
     if (az === 'ripristina') $('#in-backup').click();
     if (az === 'excel') $('#in-excel').click();
     if (az === 'zip') esportaZIP();
+    if (az === 'zip-condividi') esportaZIP('condividi');
     if (az === 'plantnet') apriImpostazioniPlantNet();
     if (az === 'csv') esportaCSV();
     if (az === 'geojson') esportaGeoJSON();
@@ -3475,10 +3798,34 @@ function collegaEventi() {
   // aiuto
   $('#btn-aiuto').onclick = () => { $('#aiuto-versione').textContent = `Versione dell'app: ${APP_VERSIONE}`; $('#dlg-aiuto').showModal(); };
 
+  // cestino
+  $('#btn-cestino').onclick = () => {
+    $('#cestino-giorni').value = giorniConservazioneCestino();
+    disegnaCestino();
+    $('#dlg-cestino').showModal();
+  };
+  $('#cestino-giorni').onchange = (e) => {
+    const v = Math.max(1, Math.min(365, Math.round(Number(e.target.value) || 30)));
+    e.target.value = v;
+    localStorage.setItem('sb-cestino-giorni', v);
+  };
+  $('#btn-cestino-svuota').onclick = svuotaCestino;
+  $('#btn-cestino-chiudi').onclick = () => $('#dlg-cestino').close();
+
   // tab schede / mappa
   $('#tab-schede').onclick = () => cambiaVista('schede');
   $('#tab-mappa').onclick = () => cambiaVista('mappa');
   $('#tab-timeline').onclick = () => cambiaVista('timeline');
+
+  // traccia GPS (percorso)
+  $('#btn-traccia-avvia').onclick = avviaTraccia;
+  $('#btn-traccia-ferma').onclick = fermaTraccia;
+  $('#btn-traccia-gpx').onclick = esportaTracciaGPX;
+  $('#btn-traccia-cancella').onclick = cancellaTraccia;
+
+  // scegliere un punto GPS dalla mappa
+  $('#btn-mappa-scegli-usa').onclick = confermaPosizioneScelta;
+  $('#btn-mappa-scegli-annulla').onclick = () => $('#dlg-mappa-scegli').close();
 
   // scansione QR
   $('#btn-scansiona').onclick = apriScanner;
@@ -3575,9 +3922,16 @@ async function avvio() {
   }
   navigator.storage?.persist?.().catch(() => {});
 
-  S.schede = (await DB.tutte('schede')).map((r) => normalizza(r).record);
+  const tutte = (await DB.tutte('schede')).map((r) => normalizza(r).record);
+  S.schede = tutte.filter((r) => !r.cancellata);
+  S.cestino = tutte.filter((r) => r.cancellata);
   disegnaElenco();
+  aggiornaBadgeCestino();
   await migraVecchiaVersione();
+  await purgaCestinoScaduto();
+
+  S.traccia = await DB.tutte('traccia');
+  if (localStorage.getItem('sb-traccia-attiva')) avviaTraccia(); // riprende la registrazione se era rimasta attiva
 
   const ultimo = localStorage.getItem('sb-ultimo-backup');
   if (S.schede.length && (!ultimo || Date.now() - Date.parse(ultimo) > 7 * 864e5)) {
