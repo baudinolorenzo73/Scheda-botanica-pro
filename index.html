@@ -328,7 +328,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 .p-dati{display:grid;grid-template-columns:1fr 1fr;gap:0 6mm}
 .p-dati div{display:flex;gap:2mm;border-bottom:.4pt solid #ccc;padding:1mm 0}
 .p-dati dt{color:#555;min-width:32mm}
-.p-dati dd{margin:0;font-weight:600}
+.p-dati dd{margin:0;font-weight:600;text-align:justify;text-justify:inter-word}
 .p-dati .largo{grid-column:1/-1}
 .p-foto{display:grid;gap:3mm;margin-top:2mm}
 .p-foto figure{margin:0;break-inside:avoid}
@@ -350,7 +350,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 <body>
 
 <header class="testata">
-  <h1>Scheda Botanica <small id="conteggio">—</small><span class="marchio">by Lollo ®2026</span></h1>
+  <h1>Scheda Botanica <small id="conteggio">—</small><small id="stato-rete" title="Stato della connessione"></small><span class="marchio">by Lollo ®2026</span></h1>
   <button class="btn-icona" id="btn-tema" title="Tema chiaro/scuro" aria-label="Tema chiaro o scuro">◐</button>
   <button class="btn-icona" id="btn-aiuto" title="Guida" aria-label="Guida">❓</button>
   <button class="btn-icona" id="btn-cestino" title="Cestino" aria-label="Cestino">🗑</button>
@@ -453,6 +453,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
         <div style="display:flex;flex-direction:column;gap:8px">
           <button type="button" class="btn" id="btn-qr-scarica">⭳ Scarica QR (etichetta PNG)</button>
           <button type="button" class="btn primario" id="btn-report">📄 Scarica report per il cliente</button>
+          <div id="gbif-link"></div>
         </div>
       </div>
     </fieldset>
@@ -594,7 +595,8 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   <ul>
     <li><b>+ Nuova scheda</b> crea una rilevazione con il numero progressivo successivo.</li>
     <li>In fondo alla scheda ci sono sempre tre pulsanti grandi: <b>📷 Foto</b>, <b>📍 GPS</b> e <b>🎙 Nota vocale</b>, raggiungibili col pollice senza scorrere tutta la scheda.</li>
-    <li><b>GPS preciso</b>: sotto gli alberi il segnale è debole, quindi l'app ascolta i satelliti per qualche secondo e tiene la posizione migliore, mostrando la precisione mentre migliora. Puoi fermarla prima toccando di nuovo 📍.</li>
+    <li><b>GPS preciso</b>: sotto gli alberi il segnale è debole, quindi l'app ascolta i satelliti per qualche secondo e tiene la posizione migliore, mostrando la precisione mentre migliora. Puoi fermarla prima toccando di nuovo 📍. Accanto alle coordinate vedi anche una valutazione (ottimo/buono/scarso) e se al momento del rilievo eri online o offline.</li>
+    <li><b>Due numerazioni diverse</b>: "N° progressivo" cresce sempre e non si ripete mai su tutto l'archivio (è quello usato dal QR per ritrovare la scheda giusta); "N° nel viale/zona" invece riparte da 1 ogni volta che scrivi un nuovo Viale/zona, e si calcola da solo quando lasci quel campo — comodo per contare gli alberi zona per zona.</li>
     <li><b>Scegli dalla mappa</b>: se non riesci a rilevare il GPS (o vuoi correggerlo dopo), nella sezione Posizione GPS c'è anche "Scegli dalla mappa": tocchi il punto giusto sulla cartina invece di aspettare il satellite.</li>
     <li><b>Traccia (percorso)</b>: nella vista Mappa, "Inizia traccia" registra il percorso fatto a piedi (come una traccia GPS) finché non tocchi "Ferma traccia"; si vede come linea sulla mappa e si esporta come GPX. Resta salvata sul dispositivo anche chiudendo l'app, finché non la cancelli.</li>
     <li><b>Cestino</b>: eliminando una scheda (dall'elenco o dall'editor) non sparisce subito, va nel cestino (icona 🗑 in alto): da lì puoi ripristinarla o eliminarla per sempre. Dopo il numero di giorni che scegli tu (di default 30), le schede nel cestino vengono eliminate da sole.</li>
@@ -606,6 +608,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 
   <h3>Identificazione specie (PlantNet)</h3>
   <p>Su ogni foto c'è un pulsante "🔎 Identifica" che manda quella foto a PlantNet, un servizio online gratuito, e propone le specie più probabili con una percentuale di confidenza: tu scegli se usarla come nome dell'esemplare. Serve una chiave gratuita (una tantum, si ottiene in due minuti da ⋮ → "Chiave PlantNet", con le istruzioni dentro). Senza chiave configurata l'app non manda mai foto in rete da sola. Anche con un risultato ad alta percentuale, trattalo come un suggerimento da confermare a occhio, non come una certezza.</p>
+  <p>Ogni specie confermata resta anche in un piccolo <b>catalogo sul dispositivo</b>, che cresce da solo: da quel momento il campo "Nome esemplare" la propone tra i suggerimenti anche <b>senza connessione</b>, senza dover richiamare PlantNet. Il catalogo viaggia anche dentro il backup completo, così si arricchisce con il lavoro di tutto il gruppo. Ogni specie porta con sé anche l'<b>ID GBIF</b> (il database naturalistico più usato al mondo): compare nella scheda come link "Apri la specie su GBIF", nel report per il cliente e nelle esportazioni CSV/GeoJSON/KML — utile per collegare i tuoi dati a un riferimento tassonomico riconosciuto ovunque.</p>
 
   <h3>QR e ricerca rapida</h3>
   <p>Ogni scheda ha un codice QR univoco (in fondo alla scheda). Si può scaricare come immagine e stamparlo su un'etichetta da applicare vicino alla pianta. Il pulsante "Trova con QR" nella barra in alto apre la fotocamera: inquadrando l'etichetta si arriva subito alla scheda corrispondente, anche con centinaia di rilevazioni.</p>
@@ -651,6 +654,13 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
           <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>
         </select>
       </label>
+      <div style="margin-top:8px">
+        <strong>Campi da includere</strong>
+        <span style="font-size:12px;color:var(--tenue)">
+          (<a href="#" id="st-campi-tutti">tutti</a> · <a href="#" id="st-campi-nessuno">nessuno</a>)
+        </span>
+        <div id="st-campi" style="max-height:180px;overflow-y:auto;border:1px solid var(--linea);border-radius:8px;padding:8px;margin-top:4px"></div>
+      </div>
     </div>
   </div>
   <p style="font-size:13px;color:var(--tenue)">Su Android scegli “Salva come PDF” come stampante per ottenere il file.</p>
@@ -1571,26 +1581,29 @@ const SEZIONI = [
 // tipo: testo | numero | scelta (select chiusa) | lista (testo libero con suggerimenti)
 //       | illustrata (scelta guidata con icona + spiegazione, vedi ICONE/DEFINIZIONI) | area
 const CAMPI = [
-  { k: 'prog',          sez: 'oss', label: 'N° progressivo',              tipo: 'numero', passo: 1 },
+  { k: 'prog',          sez: 'oss', label: 'N° progressivo',              tipo: 'numero', passo: 1,
+    aiuto: 'Numero identificativo unico di questa scheda su tutto l\'archivio: non si ripete mai, nemmeno tra viali diversi. Usato dal codice QR per ritrovarla sempre in modo sicuro.' },
   { k: 'viale',         sez: 'oss', label: 'Viale / zona',                tipo: 'lista' },
-  { k: 'nome',          sez: 'oss', label: 'Nome esemplare (genere, specie, varietà)', tipo: 'testo', largo: true },
-  { k: 'numero',        sez: 'oss', label: 'N° medesimo esemplare',         tipo: 'numero', passo: 1,
+  { k: 'numeroZona',    sez: 'oss', label: 'N° nel viale/zona',           tipo: 'numero', passo: 1, etichettaStampa: 'N° in zona',
+    aiuto: 'Numerazione che riparte da 1 a ogni nuovo viale/zona: si calcola da sola quando scrivi o scegli il Viale/zona qui sopra. Utile per contare gli alberi zona per zona.' },
+  { k: 'nome',          sez: 'oss', label: 'Nome esemplare (genere, specie, varietà)', tipo: 'lista', largo: true },
+  { k: 'numero',        sez: 'oss', label: 'N° medesimo esemplare',         tipo: 'numero', passo: 1, etichettaStampa: 'Esemplari vicini',
     aiuto: 'Quanti alberi uguali a questo si trovano nelle vicinanze (per esempio un filare). Di default è 1, cioè "esemplare isolato, nessun altro uguale intorno".' },
-  { k: 'grandezza',     sez: 'oss', label: 'Classe di grandezza',         tipo: 'scelta',
+  { k: 'grandezza',     sez: 'oss', label: 'Classe di grandezza',         tipo: 'scelta', etichettaStampa: 'Grandezza',
     valori: [['', '—'], ['1', '1ª grandezza (maggiore)'], ['2', '2ª grandezza'], ['3', '3ª grandezza'], ['4', '4ª grandezza (minore)']] },
   { k: 'altezza',       sez: 'oss', label: 'Altezza (m)',                 tipo: 'numero', passo: 0.5 },
-  { k: 'circonferenza', sez: 'oss', label: 'Circonferenza a 1,30 m (cm)', tipo: 'numero', passo: 1 },
+  { k: 'circonferenza', sez: 'oss', label: 'Circonferenza a 1,30 m (cm)', tipo: 'numero', passo: 1, etichettaStampa: 'Circonferenza (cm)' },
   { k: 'persistenza',   sez: 'oss', label: 'Persistenza foglie',          tipo: 'illustrata', valori: ['sempreverde', 'caduca', 'semisempreverde', 'semicaduca'] },
-  { k: 'formaChioma',   sez: 'oss', label: 'Forma della chioma',          tipo: 'illustrata', valori: ['piramidale', 'a cono', 'espansa', 'globosa', 'colonnare', 'a ombrello', 'piangente'] },
+  { k: 'formaChioma',   sez: 'oss', label: 'Forma della chioma',          tipo: 'illustrata', etichettaStampa: 'Forma chioma', valori: ['piramidale', 'a cono', 'espansa', 'globosa', 'colonnare', 'a ombrello', 'piangente'] },
   { k: 'rami',          sez: 'oss', label: 'Rami secondari',              tipo: 'illustrata', valori: ['opposti', 'alterni', 'verticillati'] },
   { k: 'crescita',      sez: 'oss', label: 'Tipo di crescita',            tipo: 'illustrata', valori: ['monopodiale', 'simpodiale'] },
-  { k: 'estensione',    sez: 'oss', label: 'Tipologia di estensione (gemme)', tipo: 'illustrata', valori: ['1 – monociclica', '2 – policiclica (olmo)', '3 – continua'] },
+  { k: 'estensione',    sez: 'oss', label: 'Tipologia di estensione (gemme)', tipo: 'illustrata', etichettaStampa: 'Estensione (gemme)', valori: ['1 – monociclica', '2 – policiclica (olmo)', '3 – continua'] },
   { k: 'tipoFoglia',    sez: 'veg', label: 'Tipo di foglia',              tipo: 'illustrata', valori: ['aghiforme', 'semplice', 'composta', 'squamiforme'] },
-  { k: 'lamina',        sez: 'veg', label: 'Forma della lamina',          tipo: 'illustrata', valori: ['ovata', 'lanceolata', 'ellittica', 'aghiforme', 'squamiforme', 'palmata'] },
+  { k: 'lamina',        sez: 'veg', label: 'Forma della lamina',          tipo: 'illustrata', etichettaStampa: 'Forma lamina', valori: ['ovata', 'lanceolata', 'ellittica', 'aghiforme', 'squamiforme', 'palmata'] },
   { k: 'margine',       sez: 'veg', label: 'Margine fogliare',            tipo: 'illustrata', valori: ['intero', 'seghettato', 'dentato', 'lobato', 'ondulato'] },
-  { k: 'terreno',       sez: 'ped', label: 'Condizioni del terreno',      tipo: 'lista', largo: true, valori: ['prato coltivato', 'prato non concimato', 'aiuola', 'terreno compatto', 'terreno drenato', 'pacciamato'] },
-  { k: 'problemi',      sez: 'fit', label: 'Problemi tronco / foglie',    tipo: 'area', largo: true },
-  { k: 'note',          sez: 'not', label: 'Altro notato',                tipo: 'area', largo: true },
+  { k: 'terreno',       sez: 'ped', label: 'Condizioni del terreno',      tipo: 'lista', largo: true, etichettaStampa: 'Terreno', valori: ['prato coltivato', 'prato non concimato', 'aiuola', 'terreno compatto', 'terreno drenato', 'pacciamato'] },
+  { k: 'problemi',      sez: 'fit', label: 'Problemi tronco / foglie',    tipo: 'area', largo: true, etichettaStampa: 'Problemi' },
+  { k: 'note',          sez: 'not', label: 'Altro notato',                tipo: 'area', largo: true, etichettaStampa: 'Note' },
 ];
 
 // Dipendenze tra campi: se il campo "se" ha valore "valore", i campi
@@ -1601,8 +1614,8 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.2.0';
-const DB_VERSIONE = 3;        // v3: aggiunto lo store "traccia" per il percorso GPS
+const APP_VERSIONE = '3.3.0';
+const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
 
@@ -1712,6 +1725,7 @@ const DB = {
         if (!d.objectStoreNames.contains('foto')) d.createObjectStore('foto');
         if (!d.objectStoreNames.contains('audio')) d.createObjectStore('audio');
         if (!d.objectStoreNames.contains('traccia')) d.createObjectStore('traccia', { autoIncrement: true });
+        if (!d.objectStoreNames.contains('specie')) d.createObjectStore('specie', { keyPath: 'nomeSci' });
       };
       r.onsuccess = () => { this.db = r.result; ok(); };
       r.onerror = () => ko(r.error);
@@ -1748,10 +1762,11 @@ const S = {
   vista: 'schede',          // 'schede' | 'mappa'
   traccia: [],              // punti del percorso registrato: {lat,lng,alt,acc,quando}
   cestino: [],              // schede spostate nel cestino (cancellata valorizzato)
+  specie: [],               // catalogo specie identificate con PlantNet: {nomeSci,nomeComune,volte,primaVolta,ultimaVolta,confidenzaMax}
 };
 
 function schedaVuota() {
-  const r = { uid: nuovoId('s'), creato: oraISO(), modificato: oraISO(), gps: null, foto: [], audio: [] };
+  const r = { uid: nuovoId('s'), creato: oraISO(), modificato: oraISO(), gps: null, foto: [], audio: [], gbifId: '' };
   for (const c of CAMPI) r[c.k] = '';
   r.prog = String(S.schede.reduce((m, s) => Math.max(m, Number(s.prog) || 0), 0) + 1);
   // "N° medesimo esemplare" conta quanti alberi uguali ci sono vicino: di default 1
@@ -1765,6 +1780,7 @@ function schedaVuota() {
 function normalizza(v) {
   const r = { uid: v.uid || nuovoId('s'), creato: v.creato || oraISO(), modificato: v.modificato || oraISO() };
   r.cancellata = v.cancellata || null;   // null = attiva; altrimenti data ISO di spostamento nel cestino
+  r.gbifId = v.gbifId || '';             // ID GBIF della specie, se identificata con PlantNet
   for (const c of CAMPI) {
     let val = v[c.k] === undefined || v[c.k] === null ? '' : String(v[c.k]).trim();
     if (c.tipo === 'numero') {
@@ -2054,6 +2070,29 @@ function progDuplicati() {
   return new Set([...conta].filter(([p, n]) => p !== '' && n > 1).map(([p]) => p));
 }
 
+// Duplicati di "N° nel viale/zona": normale che si ripeta TRA viali diversi,
+// ma non dentro lo stesso viale (es. due persone che creano "Via Roma #4" in parallelo).
+function numeroZonaDuplicati() {
+  const conta = new Map();
+  for (const r of S.schede) {
+    if (!r.viale || r.numeroZona === '') continue;
+    const chiave = r.viale.trim().toLowerCase() + '|' + r.numeroZona;
+    conta.set(chiave, (conta.get(chiave) || 0) + 1);
+  }
+  return new Set([...conta].filter(([, n]) => n > 1).map(([chiave]) => chiave));
+}
+
+// Calcola il prossimo "N° nel viale/zona" per un dato viale (riparte da 1 a ogni nuovo viale).
+function calcolaNumeroZona(viale, escludiUid) {
+  const v = (viale || '').trim().toLowerCase();
+  if (!v) return '';
+  const max = S.schede.reduce((m, s) => {
+    if (s.uid === escludiUid || (s.viale || '').trim().toLowerCase() !== v) return m;
+    return Math.max(m, Number(s.numeroZona) || 0);
+  }, 0);
+  return String(max + 1);
+}
+
 function vialiUsati() {
   return [...new Set(S.schede.map((r) => r.viale).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'it'));
 }
@@ -2078,6 +2117,7 @@ async function disegnaElenco() {
   aggiornaFiltroViale();
   const vis = schedeVisibili();
   const dup = progDuplicati();
+  const dupZona = numeroZonaDuplicati();
   const nFoto = S.schede.reduce((n, r) => n + r.foto.length, 0);
   $('#conteggio').textContent = `${S.schede.length} schede, ${nFoto} foto`;
 
@@ -2110,7 +2150,8 @@ async function disegnaElenco() {
         el('div', { class: 'segni' },
           segni.join('   '),
           r.problemi ? el('span', { class: 'allerta' }, (segni.length ? '   ' : '') + '⚠ problemi') : null,
-          dup.has(r.prog) ? el('span', { class: 'allerta' }, '   N° duplicato') : null)),
+          dup.has(r.prog) ? el('span', { class: 'allerta' }, '   N° duplicato') : null,
+          dupZona.has((r.viale || '').trim().toLowerCase() + '|' + r.numeroZona) ? el('span', { class: 'allerta' }, '   N° di zona duplicato') : null)),
       el('div', { class: 'voce-azioni' },
         el('label', { class: 'sel-stampa', onclick: (e) => e.stopPropagation() },
           el('input', {
@@ -2298,6 +2339,17 @@ function costruisciModulo() {
     if (k === 'altezza' || k === 'grandezza' || k === 'circonferenza') disegnaStima();
     salvaPresto(r);
   });
+
+  // "N° nel viale/zona" si ricalcola da solo quando si lascia il campo Viale/zona
+  // (non a ogni tasto, altrimenti "V", "Vi", "Via..." darebbero ogni volta un numero diverso).
+  $('#modulo').addEventListener('change', (e) => {
+    const r = S.aperta;
+    if (!r || e.target.name !== 'viale') return;
+    r.numeroZona = calcolaNumeroZona(e.target.value, r.uid);
+    $('#f-numeroZona').value = r.numeroZona;
+    r.modificato = oraISO();
+    salvaPresto(r);
+  });
 }
 
 // ---------- campi illustrati (select con icona + spiegazione) ----------
@@ -2400,8 +2452,10 @@ function apriEditor(uid) {
   const r = S.schede.find((s) => s.uid === uid);
   if (!r) return;
   S.aperta = r;
-  // il datalist del viale propone i viali già usati
+  // il datalist del viale propone i viali già usati; quello del nome, le specie già viste
+  // (nelle schede e nel catalogo identificato con PlantNet), utile anche offline
   $('#dl-viale').replaceChildren(...vialiUsati().map((v) => el('option', { value: v })));
+  aggiornaDatalistNome();
   for (const c of CAMPI) {
     if (c.tipo === 'illustrata') aggiornaBottoneIllustrato(c.k);
     else $('#f-' + c.k).value = r[c.k] ?? '';
@@ -2415,6 +2469,7 @@ function apriEditor(uid) {
   disegnaFoto();
   disegnaAudio();
   disegnaQR();
+  disegnaLinkGbif();
   disegnaStima();
   aggiornaSuggerimentiFito(r.problemi);
   aggiornaUIRegistrazione();
@@ -2568,6 +2623,14 @@ async function eliminaSchedaDaElenco(uid) {
 }
 
 /* ---------- GPS ---------- */
+function qualitaSegnaleGPS(acc) {
+  if (acc == null) return null;
+  if (acc <= 5) return { testo: 'ottimo', colore: 'var(--bosco)' };
+  if (acc <= 15) return { testo: 'buono', colore: 'var(--bosco)' };
+  if (acc <= 30) return { testo: 'scarso', colore: 'var(--ruggine)' };
+  return { testo: 'molto scarso', colore: 'var(--ruggine)' };
+}
+
 function disegnaGPS() {
   const r = S.aperta;
   const box = $('#gps-box');
@@ -2579,11 +2642,14 @@ function disegnaGPS() {
     return;
   }
   const g = r.gps;
+  const qualita = qualitaSegnaleGPS(g.acc);
   box.replaceChildren(...[
     el('strong', { testo: `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}` }),
     g.manuale ? el('span', { style: 'color:var(--tenue)' }, 'posizione scelta a mano') : (g.acc != null ? el('span', { testo: `±${Math.round(g.acc)} m` }) : null),
+    qualita ? el('span', { style: `color:${qualita.colore};font-weight:600`, testo: `segnale ${qualita.testo}` }) : null,
     g.alt != null ? el('span', { testo: `${Math.round(g.alt)} m s.l.m.` }) : null,
     el('span', { style: 'color:var(--tenue);font-size:13px', testo: dataIT(g.quando) }),
+    g.online !== undefined ? el('span', { style: 'font-size:13px;color:var(--tenue)', testo: g.online ? '🌐 online' : '📴 offline' }) : null,
     el('a', { href: `https://www.openstreetmap.org/?mlat=${g.lat}&mlon=${g.lng}#map=19/${g.lat}/${g.lng}`, target: '_blank', rel: 'noopener' }, 'Apri mappa'),
     el('button', { type: 'button', class: 'btn', onclick: rilevaGPS }, '↻ Rileva di nuovo'),
     el('button', { type: 'button', class: 'btn', onclick: () => sceglierePosizioneDaMappa(r) }, '🗺 Scegli dalla mappa'),
@@ -2608,7 +2674,7 @@ function rilevaGPS() {
     (p) => {
       const c = p.coords;
       if (!GPSR.migliore || c.accuracy < GPSR.migliore.acc) {
-        GPSR.migliore = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, quando: oraISO() };
+        GPSR.migliore = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, quando: oraISO(), online: navigator.onLine };
       }
       mostraRicercaGPS(`📡 Precisione attuale ±${Math.round(c.accuracy)} m (migliore ±${Math.round(GPSR.migliore.acc)} m)`);
       if (GPSR.migliore.acc <= 5) fermaGPS(true);    // già ottimo: inutile aspettare
@@ -2694,7 +2760,7 @@ function confermaPosizioneScelta() {
   if (!markerScegliPos || !sceltaGPSPer) { $('#dlg-mappa-scegli').close(); return; }
   const p = markerScegliPos.getLatLng();
   const r = sceltaGPSPer;
-  r.gps = { lat: p.lat, lng: p.lng, acc: null, alt: null, quando: oraISO(), manuale: true };
+  r.gps = { lat: p.lat, lng: p.lng, acc: null, alt: null, quando: oraISO(), manuale: true, online: navigator.onLine };
   r.modificato = oraISO();
   salvaOra(r);
   $('#dlg-mappa-scegli').close();
@@ -2810,10 +2876,11 @@ async function eseguiIdentificazione() {
       const conf = Math.round((ris.score || 0) * 100);
       const nomeSci = ris.species?.scientificNameWithoutAuthor || ris.species?.scientificName || 'Sconosciuto';
       const nomeComune = ris.species?.commonNames?.[0] || '';
+      const gbifId = ris.gbif?.id || '';
       return el('div', { class: 'ident-carta' },
         el('div', {}, el('b', { class: 'specie' }, nomeSci), nomeComune ? ` — ${nomeComune}` : ''),
         el('div', { class: 'ident-conf' }, `${conf}% di confidenza`),
-        el('button', { type: 'button', class: 'btn primario', onclick: () => usaIdentificazione(nomeSci, nomeComune, conf) }, 'Usa come nome esemplare'));
+        el('button', { type: 'button', class: 'btn primario', onclick: () => usaIdentificazione(nomeSci, nomeComune, conf, gbifId) }, 'Usa come nome esemplare'));
     }));
   } catch (e) {
     const rete = e instanceof TypeError; // fetch fallita: niente rete o richiesta bloccata
@@ -2821,23 +2888,91 @@ async function eseguiIdentificazione() {
   }
 }
 
-function usaIdentificazione(nomeSci, nomeComune, conf) {
+function usaIdentificazione(nomeSci, nomeComune, conf, gbifId) {
   const r = IDENT.riga;
   const sostituire = !r.nome.trim() || confirm(`Il nome attuale è "${r.nome}". Sostituirlo con "${nomeSci}"?`);
   if (sostituire) {
     r.nome = nomeSci;
     if (S.aperta === r) { $('#f-nome').value = nomeSci; aggiornaTitoloEditor(); }
   }
-  const nota = `Identificato con PlantNet: ${nomeSci}${nomeComune ? ' (' + nomeComune + ')' : ''} — ${conf}%, ${dataIT(oraISO())}`;
+  if (gbifId) r.gbifId = gbifId;
+  const linkGbif = gbifId ? ` — GBIF: https://www.gbif.org/species/${gbifId}` : '';
+  const nota = `Identificato con PlantNet: ${nomeSci}${nomeComune ? ' (' + nomeComune + ')' : ''} — ${conf}%, ${dataIT(oraISO())}${linkGbif}`;
   r.note = r.note ? r.note + '\n' + nota : nota;
   if (S.aperta === r) $('#f-note').value = r.note;
   IDENT.foto.identificata = true;
   r.modificato = oraISO();
   salvaOra(r);
-  if (S.aperta === r) disegnaFoto();
+  registraSpecieIdentificata(nomeSci, nomeComune, conf, gbifId);
+  if (S.aperta === r) { disegnaFoto(); disegnaLinkGbif(); }
   disegnaElenco();
   $('#dlg-identifica').close();
   stato('Identificazione applicata');
+}
+
+/* ---------- catalogo specie: si arricchisce da solo a ogni identificazione
+   confermata, e serve a suggerire i nomi anche offline (senza PlantNet) ---------- */
+async function registraSpecieIdentificata(nomeSci, nomeComune, conf, gbifId) {
+  if (!nomeSci) return;
+  // il GBIF ID è più affidabile del solo testo del nome (evita doppioni per piccole
+  // differenze di scrittura o sinonimi): se lo conosciamo già, controlliamo prima quello.
+  let voce = (gbifId && S.specie.find((s) => s.gbifId === gbifId)) || S.specie.find((s) => s.nomeSci === nomeSci);
+  if (voce) {
+    voce.volte = (voce.volte || 1) + 1;
+    voce.ultimaVolta = oraISO();
+    if (nomeComune && !voce.nomeComune) voce.nomeComune = nomeComune;
+    if (conf > (voce.confidenzaMax || 0)) voce.confidenzaMax = conf;
+    if (gbifId && !voce.gbifId) voce.gbifId = gbifId;
+  } else {
+    voce = { nomeSci, nomeComune: nomeComune || '', volte: 1, primaVolta: oraISO(), ultimaVolta: oraISO(), confidenzaMax: conf, gbifId: gbifId || '' };
+    S.specie.push(voce);
+  }
+  await DB.scrivi('specie', voce);
+  aggiornaDatalistNome();
+}
+
+// Piccolo link cliccabile verso la scheda della specie su GBIF, quando la conosciamo.
+function disegnaLinkGbif() {
+  const cont = $('#gbif-link');
+  if (!cont) return;
+  const r = S.aperta;
+  cont.replaceChildren(r?.gbifId
+    ? el('a', { href: `https://www.gbif.org/species/${r.gbifId}`, target: '_blank', rel: 'noopener', style: 'font-size:13px' }, '🔗 Apri la specie su GBIF')
+    : null);
+}
+
+// Suggerimenti per "Nome esemplare": nomi già usati nelle schede + catalogo specie
+// (così propone anche specie identificate in passato ma non più presenti in nessuna scheda attiva).
+function nomiUsati() {
+  const daSchede = S.schede.map((r) => r.nome).filter(Boolean);
+  const daSpecie = [...S.specie].sort((a, b) => (b.volte || 0) - (a.volte || 0)).map((s) => s.nomeSci);
+  return [...new Set([...daSpecie, ...daSchede])];
+}
+function aggiornaDatalistNome() {
+  const dl = $('#dl-nome');
+  if (dl) dl.replaceChildren(...nomiUsati().map((v) => el('option', { value: v })));
+}
+
+// Unisce il catalogo specie ricevuto da un backup di un collega: per ogni specie
+// tiene il conteggio più alto e la confidenza migliore vista dai due dispositivi.
+async function unisciCatalogoSpecie(specieArrivate) {
+  if (!specieArrivate?.length) return;
+  for (const voce of specieArrivate) {
+    const esistente = (voce.gbifId && S.specie.find((s) => s.gbifId === voce.gbifId)) || S.specie.find((s) => s.nomeSci === voce.nomeSci);
+    if (!esistente) {
+      S.specie.push(voce);
+      await DB.scrivi('specie', voce);
+    } else {
+      esistente.volte = Math.max(esistente.volte || 0, voce.volte || 0);
+      esistente.confidenzaMax = Math.max(esistente.confidenzaMax || 0, voce.confidenzaMax || 0);
+      esistente.nomeComune = esistente.nomeComune || voce.nomeComune || '';
+      esistente.gbifId = esistente.gbifId || voce.gbifId || '';
+      if (Date.parse(voce.ultimaVolta) > Date.parse(esistente.ultimaVolta || 0)) esistente.ultimaVolta = voce.ultimaVolta;
+      if (Date.parse(voce.primaVolta) < Date.parse(esistente.primaVolta || voce.primaVolta)) esistente.primaVolta = voce.primaVolta;
+      await DB.scrivi('specie', esistente);
+    }
+  }
+  aggiornaDatalistNome();
 }
 
 /* =====================================================================
@@ -2933,6 +3068,7 @@ a{color:#2f5d3a}
 <table>${righeDati}</table>
 <div class="stima"><b>Stima ambientale (indicativa)</b>${righeStimaTxt}<small>Stima divulgativa con metodo dichiarato: non sostituisce un rilievo agronomico né vale per crediti di carbonio certificati.</small></div>
 ${r.gps ? `<p style="font-family:system-ui,sans-serif;font-size:13px">📍 <a href="${mappaLink}" target="_blank" rel="noopener">${r.gps.lat.toFixed(6)}, ${r.gps.lng.toFixed(6)} — apri su OpenStreetMap</a></p>` : ''}
+${r.gbifId ? `<p style="font-family:system-ui,sans-serif;font-size:13px">🔗 <a href="https://www.gbif.org/species/${r.gbifId}" target="_blank" rel="noopener">Apri la specie su GBIF</a></p>` : ''}
 ${fotoInline.length ? `<div class="foto-griglia">${fotoHtml}</div>` : ''}
 <footer>Scheda Botanica — report generato il ${dataIT(oraISO())} · by Lollo ®2026</footer>
 </body></html>`;
@@ -3235,6 +3371,7 @@ async function apriStampa(soloQuesta = null) {
   $('#st-n-tut').textContent = `Tutte le schede (${S.schede.length})`;
   $('#st-cosa').classList.toggle('nascosto', !!soloQuesta);
   if (!soloQuesta && S.selezionate.size) dlg.querySelector('input[value=selezionate]').checked = true;
+  popolaCampiStampa();
 
   if ((await chiedi(dlg)) !== 'stampa') return;
 
@@ -3255,7 +3392,9 @@ async function apriStampa(soloQuesta = null) {
     area.replaceChildren(el('div', { class: 'p-etichette' }, lista.map((r) =>
       el('div', { class: 'p-etichetta' }, qrSVG(testoQR(r)), el('b', { testo: `N° ${r.prog}` }), el('i', { testo: r.nome || '' })))));
   } else {
-    const opz = { qr: $('#st-qr').checked, foto: $('#st-foto').checked, colonne: Number($('#st-colonne').value) };
+    const campiScelti = [...document.querySelectorAll('input[name=st-campo]:checked')].map((i) => i.value);
+    localStorage.setItem('sb-stampa-campi', JSON.stringify(campiScelti));
+    const opz = { qr: $('#st-qr').checked, foto: $('#st-foto').checked, colonne: Number($('#st-colonne').value), campi: new Set(campiScelti) };
     area.replaceChildren(...await Promise.all(lista.map((r) => paginaScheda(r, opz))));
   }
   // aspetta che le immagini siano pronte, altrimenti escono riquadri vuoti
@@ -3265,6 +3404,33 @@ async function apriStampa(soloQuesta = null) {
 }
 
 const CAMPI_TESTATA = ['prog', 'nome', 'viale'];
+
+function campiStampabili() {
+  return CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k));
+}
+
+// Ricorda l'ultima scelta di campi da stampare; se non ne è mai stata salvata
+// una, di default sono tutti inclusi (comportamento di sempre).
+function campiStampaSalvati() {
+  try {
+    const v = JSON.parse(localStorage.getItem('sb-stampa-campi') || 'null');
+    return Array.isArray(v) ? new Set(v) : null;
+  } catch { return null; }
+}
+
+function popolaCampiStampa() {
+  const salvati = campiStampaSalvati();
+  const cont = $('#st-campi');
+  cont.replaceChildren(...SEZIONI.map((sez) => {
+    const campi = campiStampabili().filter((c) => c.sez === sez.id);
+    if (!campi.length) return null;
+    return el('div', { style: 'margin-bottom:6px' },
+      el('div', { style: 'font-size:12px;font-weight:600;color:var(--tenue);margin-bottom:2px', testo: sez.titolo }),
+      ...campi.map((c) => el('label', { style: 'display:block;font-size:13.5px' },
+        el('input', { type: 'checkbox', name: 'st-campo', value: c.k, checked: !salvati || salvati.has(c.k) }),
+        ' ' + c.label)));
+  }).filter(Boolean));
+}
 
 async function paginaScheda(r, opz) {
   const g = r.gps;
@@ -3282,14 +3448,14 @@ async function paginaScheda(r, opz) {
       opz.qr ? el('div', { class: 'p-qr' }, qrSVG(testoQR(r))) : null));
 
   for (const sez of SEZIONI) {
-    const campi = CAMPI.filter((c) => c.sez === sez.id && !CAMPI_TESTATA.includes(c.k));
+    const campi = CAMPI.filter((c) => c.sez === sez.id && !CAMPI_TESTATA.includes(c.k) && (!opz.campi || opz.campi.has(c.k)));
     if (!campi.length) continue;
     pagina.append(el('section', { class: 'p-sez' },
       el('h3', { testo: sez.titolo }),
       el('dl', { class: 'p-dati' }, campi.map((c) => {
         let v = r[c.k];
         if (c.tipo === 'scelta') v = v ? (c.valori.find(([x]) => x === v) || [, v])[1] : '';
-        return el('div', { class: c.largo ? 'largo' : '' }, el('dt', { testo: c.label }), el('dd', { testo: v || '—' }));
+        return el('div', { class: c.largo ? 'largo' : '' }, el('dt', { testo: c.etichettaStampa || c.label }), el('dd', { testo: v || '—' }));
       }))));
   }
 
@@ -3418,7 +3584,8 @@ async function leggiBackupZip(file) {
   if (!dj) throw new Error('questo ZIP non contiene backup.json: è un’esportazione vecchia o non creata dall’app');
   const json = JSON.parse(await dj.async('string'));
   const indice = json.file || {};
-  return Promise.all((json.schede || []).map(async (s) => {
+  const specieFile = zip.file('specie.json');
+  const voci = await Promise.all((json.schede || []).map(async (s) => {
     const { record } = normalizza(s);
     const fotoDaSalvare = [], audioDaSalvare = [];
     for (const p of record.foto) {
@@ -3432,6 +3599,8 @@ async function leggiBackupZip(file) {
     }
     return { record, fotoDaSalvare, audioDaSalvare };
   }));
+  voci.specie = specieFile ? JSON.parse(await specieFile.async('string')) : [];
+  return voci;
 }
 
 async function importaBackupDaFile(file) {
@@ -3447,6 +3616,7 @@ async function importaBackupDaFile(file) {
     if (modo === 'sostituisci' && !confirm('Tutte le schede attuali verranno cancellate. Continuare?')) return;
     stato('Importazione in corso…');
     await importaDati(voci, modo);
+    await unisciCatalogoSpecie(voci.specie);
     stato('Importazione completata');
   } catch (e) {
     alert('Importazione non riuscita: ' + e.message);
@@ -3461,13 +3631,13 @@ function testoCSV() {
     return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const num = (v, dec) => (v == null || v === '' ? '' : Number(v).toFixed(dec).replace('.', ','));
-  const intest = [...CAMPI.map((c) => c.label), 'Latitudine', 'Longitudine', 'Precisione (m)', 'Quota (m)', 'Volume chioma (m³)', 'Ombra (m²)', 'CO2 stoccata (kg)', 'N° foto', 'N° audio', 'Creata', 'Modificata'];
+  const intest = [...CAMPI.map((c) => c.label), 'Latitudine', 'Longitudine', 'Precisione (m)', 'Quota (m)', 'Volume chioma (m³)', 'Ombra (m²)', 'CO2 stoccata (kg)', 'ID GBIF', 'N° foto', 'N° audio', 'Creata', 'Modificata'];
   const righe = [...S.schede].sort(perProg).map((r) => {
     const s = stimaAlbero(r);
     return [
       ...CAMPI.map((c) => (c.tipo === 'numero' ? String(r[c.k]).replace('.', ',') : r[c.k])),
       num(r.gps?.lat, 6), num(r.gps?.lng, 6), num(r.gps?.acc, 0), num(r.gps?.alt, 0),
-      num(s.volumeChioma, 1), num(s.ombraM2, 0), num(s.co2Kg, 0),
+      num(s.volumeChioma, 1), num(s.ombraM2, 0), num(s.co2Kg, 0), r.gbifId || '',
       r.foto.length, r.audio.length, dataIT(r.creato), dataIT(r.modificato),
     ];
   });
@@ -3503,6 +3673,7 @@ function testoGeoJSON() {
           ['volume_chioma_m3', s.volumeChioma != null ? Number(s.volumeChioma.toFixed(1)) : null],
           ['ombra_m2', s.ombraM2 != null ? Number(s.ombraM2.toFixed(0)) : null],
           ['co2_kg', s.co2Kg != null ? Number(s.co2Kg.toFixed(0)) : null],
+          ['gbif_id', r.gbifId || null],
           ['qr', testoQR(r)],
         ]),
       };
@@ -3537,7 +3708,7 @@ function testoKML() {
   const l = schedeConGPS(false);
   if (!l.length) return null;
   const placemark = l.map((r) => `<Placemark><name>${escHtml(r.prog + ' - ' + (r.nome || ''))}</name>` +
-    `<description>${escHtml([r.viale, r.problemi].filter(Boolean).join(' – '))}</description>` +
+    `<description>${escHtml([r.viale, r.problemi, r.gbifId ? `GBIF: https://www.gbif.org/species/${r.gbifId}` : ''].filter(Boolean).join(' – '))}</description>` +
     `<Point><coordinates>${r.gps.lng},${r.gps.lat}${r.gps.alt != null ? ',' + r.gps.alt : ''}</coordinates></Point></Placemark>`).join('');
   return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Scheda Botanica</name>${placemark}</Document></kml>`;
 }
@@ -3576,6 +3747,7 @@ async function esportaZIP(modo = 'scarica') {
       }
     }
     zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 3, esportato: oraISO(), schede: tutteLeSchede, file: indice }));
+    if (S.specie.length) zip.file('specie.json', JSON.stringify(S.specie));
     zip.file('rilevazioni.csv', testoCSV());
     const gj = testoGeoJSON(); if (gj) zip.file('rilevazioni.geojson', gj);
     const gpx = testoGPX(); if (gpx) zip.file('rilevazioni.gpx', gpx);
@@ -3747,6 +3919,8 @@ function collegaEventi() {
   $('#filtro-viale').onchange = disegnaElenco;
   $('#btn-nuova').onclick = nuovaScheda;
   $('#btn-stampa').onclick = () => apriStampa();
+  $('#st-campi-tutti').onclick = (e) => { e.preventDefault(); document.querySelectorAll('input[name=st-campo]').forEach((c) => { c.checked = true; }); };
+  $('#st-campi-nessuno').onclick = (e) => { e.preventDefault(); document.querySelectorAll('input[name=st-campo]').forEach((c) => { c.checked = false; }); };
 
   $('#btn-chiudi').onclick = () => chiudiEditor();
   $('#btn-elimina').onclick = eliminaScheda;
@@ -3931,6 +4105,7 @@ async function avvio() {
   await purgaCestinoScaduto();
 
   S.traccia = await DB.tutte('traccia');
+  S.specie = await DB.tutte('specie');
   if (localStorage.getItem('sb-traccia-attiva')) avviaTraccia(); // riprende la registrazione se era rimasta attiva
 
   const ultimo = localStorage.getItem('sb-ultimo-backup');
@@ -3940,6 +4115,18 @@ async function avvio() {
 }
 
 avvio();
+
+// Indicatore live "online/offline" in alto: utile per sapere se, al momento
+// del rilievo, i dati sono stati presi con o senza connessione (la mappa e
+// PlantNet ne hanno bisogno; il resto dell'app funziona comunque offline).
+function aggiornaStatoRete() {
+  const el = document.getElementById('stato-rete');
+  if (!el) return;
+  el.textContent = navigator.onLine ? '' : ' · 📴 offline';
+}
+aggiornaStatoRete();
+window.addEventListener('online', aggiornaStatoRete);
+window.addEventListener('offline', aggiornaStatoRete);
 
 // Registrazione del service worker: rende l'app installabile e utilizzabile offline
 // dopo la prima visita. Se il file non è servito da un vero server (es. aperto
