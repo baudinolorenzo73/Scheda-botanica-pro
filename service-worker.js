@@ -2,7 +2,7 @@
 // Strategia: "app shell" in cache, così l'app si apre anche offline dopo la prima visita.
 // Non tocca IndexedDB (dati, foto, audio): quelli restano sempre gestiti dall'app stessa.
 
-const CACHE_NOME = 'scheda-botanica-v7'; // cambia il numero quando pubblichi un aggiornamento importante
+const CACHE_NOME = 'scheda-botanica-v8'; // cambia il numero quando pubblichi un aggiornamento importante
 // Cache separata per le tile della mappa (OpenStreetMap): tenerla a parte
 // significa che "svuotare"/aggiornare l'app shell non cancella le zone di
 // mappa già scaricate per l'uso offline. NOME USATO ANCHE DA index.html
@@ -33,7 +33,24 @@ const HOST_TILE = ['tile.openstreetmap.org', 'a.tile.openstreetmap.org', 'b.tile
 
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
-    caches.open(CACHE_NOME).then((cache) => cache.addAll(FILE_APP_SHELL))
+    caches.open(CACHE_NOME).then((cache) =>
+      // Un file alla volta, invece di cache.addAll(): se UN file manca o ha
+      // un percorso sbagliato sul sito pubblicato, gli altri si mettono in
+      // cache lo stesso e il service worker arriva comunque ad attivarsi.
+      // Con addAll() invece basta un solo file rotto per far fallire tutta
+      // l'installazione — e Chrome, senza un service worker attivo, rifiuta
+      // di offrire "Installa" (è probabilmente quello che è successo qui).
+      Promise.all(FILE_APP_SHELL.map((file) =>
+        cache.add(file).then(() => null).catch((err) => { console.warn('service worker: file non messo in cache:', file, err); return file; })
+      )).then((esiti) => {
+        const falliti = esiti.filter(Boolean);
+        // Segnalazione letta dalla pagina (vedi app.js): un postMessage qui
+        // arriverebbe troppo presto al primissimo avvio (la pagina non è
+        // ancora "controllata"), quindi la scriviamo in cache e la pagina
+        // la legge lei quando è pronta.
+        if (falliti.length) return cache.put('./__sw-diagnostica__', new Response(JSON.stringify(falliti)));
+      })
+    )
   );
   self.skipWaiting();
 });

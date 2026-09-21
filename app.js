@@ -50,7 +50,7 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.7.0';
+const APP_VERSIONE = '3.7.1';
 const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
@@ -3163,5 +3163,18 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
   });
+  // Se all'installazione il service worker non è riuscito a mettere in cache
+  // uno o più file dell'app-shell (es. percorso sbagliato sul sito
+  // pubblicato), lo trova qui e lo segnala: un avviso diretto in app, senza
+  // bisogno di collegare il telefono a un computer per vederlo negli
+  // strumenti sviluppatore. Compare una volta sola per ogni elenco di file
+  // mancanti (si azzera da solo quando li ricarichi e ripubblichi).
+  navigator.serviceWorker.ready.then(() => caches.match('./__sw-diagnostica__')).then((risposta) => risposta && risposta.json()).then((falliti) => {
+    if (!falliti || !falliti.length) return;
+    const chiave = falliti.join('|');
+    if (localStorage.getItem('sw-diagnostica-vista') === chiave) return;
+    localStorage.setItem('sw-diagnostica-vista', chiave);
+    alert('Attenzione: questi file non sono stati trovati sul sito pubblicato e vanno ricaricati:\n\n' + falliti.join('\n') + '\n\nL\'app funziona comunque, ma quei file non saranno disponibili offline finché non li ricarichi nel posto giusto.');
+  }).catch(() => {});
 }
 
