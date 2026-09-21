@@ -50,7 +50,7 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.7.0';
+const APP_VERSIONE = '3.7.2';
 const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
@@ -2866,6 +2866,7 @@ function collegaEventi() {
     localStorage.setItem('sb-notifica-backup', e.target.checked ? '1' : '0');
     aggiornaStatoNotificaBackup();
   };
+  $('#avviso-db-riprova').onclick = () => location.reload();
   $('#avviso-backup-fai').onclick = () => { nascondiAvvisoBackup(); esportaZIP(); };
   $('#avviso-backup-ignora').onclick = () => { localStorage.setItem('sb-avviso-backup-ignorato', oggi()); nascondiAvvisoBackup(); };
   $('#dlg-menu').addEventListener('click', (e) => {
@@ -3098,12 +3099,26 @@ async function avvio() {
   costruisciModulo();
   collegaEventi();
 
-  try {
-    await DB.apri();
-  } catch (e) {
-    stato('Archivio non disponibile (' + e.message + '). In navigazione anonima il salvataggio non funziona.', true);
+  async function proviAprireDB() {
+    try { await DB.apri(); return null; } catch (e) { return e; }
+  }
+  let erroreDB = await proviAprireDB();
+  if (erroreDB) {
+    // un errore nell'apertura di IndexedDB è spesso transitorio (es. il
+    // service worker si è appena attivato proprio in quel momento): un
+    // secondo tentativo, dopo una breve pausa, spesso basta da solo.
+    await new Promise((r) => setTimeout(r, 500));
+    erroreDB = await proviAprireDB();
+  }
+  if (erroreDB) {
+    $('#avviso-db-testo').textContent = `⚠ Archivio non disponibile (${erroreDB.message || 'errore sconosciuto'}). In navigazione anonima o con poco spazio libero può succedere: il salvataggio non funziona finché non si risolve.`;
+    $('#avviso-db').classList.remove('nascosto');
+    $('#btn-nuova').disabled = true;
+    stato('Archivio non disponibile: vedi l\'avviso qui sopra.', true);
     return;
   }
+  $('#avviso-db').classList.add('nascosto');
+  $('#btn-nuova').disabled = false;
   navigator.storage?.persist?.().catch(() => {});
 
   const tutte = (await DB.tutte('schede')).map((r) => normalizza(r).record);
@@ -3163,5 +3178,18 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
   });
+  // Se all'installazione il service worker non è riuscito a mettere in cache
+  // uno o più file dell'app-shell (es. percorso sbagliato sul sito
+  // pubblicato), lo trova qui e lo segnala: un avviso diretto in app, senza
+  // bisogno di collegare il telefono a un computer per vederlo negli
+  // strumenti sviluppatore. Compare una volta sola per ogni elenco di file
+  // mancanti (si azzera da solo quando li ricarichi e ripubblichi).
+  navigator.serviceWorker.ready.then(() => caches.match('./__sw-diagnostica__')).then((risposta) => risposta && risposta.json()).then((falliti) => {
+    if (!falliti || !falliti.length) return;
+    const chiave = falliti.join('|');
+    if (localStorage.getItem('sw-diagnostica-vista') === chiave) return;
+    localStorage.setItem('sw-diagnostica-vista', chiave);
+    alert('Attenzione: questi file non sono stati trovati sul sito pubblicato e vanno ricaricati:\n\n' + falliti.join('\n') + '\n\nL\'app funziona comunque, ma quei file non saranno disponibili offline finché non li ricarichi nel posto giusto.');
+  }).catch(() => {});
 }
 

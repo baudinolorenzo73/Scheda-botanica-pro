@@ -274,6 +274,14 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 .nome-guida-bottone{flex:none;min-height:46px;padding:0 14px;font-size:18px;line-height:1}
 .campo-nome-riga{display:flex;gap:6px}
 .campo-nome-riga input{flex:1;min-width:0}
+
+/* ---------- guida specie: modalità e ricerca per caratteristiche ---------- */
+.gs-modo{display:flex;gap:8px}
+.gs-modo .btn{flex:1;text-align:center;padding:9px 6px}
+.gs-modo .btn[aria-selected="true"]{background:var(--bosco);border-color:var(--bosco);color:#fff}
+.gs-carat-griglia{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.gs-carat-griglia label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tenue)}
+.gs-punteggio{font-size:11.5px;color:var(--tenue)}
 #vista-foto{max-width:96vw;padding:8px}
 #vista-foto img{max-width:100%;max-height:78vh;display:block;margin:auto}
 
@@ -424,6 +432,12 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   </div>
 </div>
 <div class="stato-salv" id="stato" role="status" aria-live="polite"></div>
+<div class="avviso-backup nascosto" id="avviso-db" role="alert" style="border-color:var(--ruggine)">
+  <span id="avviso-db-testo"></span>
+  <span class="avviso-backup-azioni">
+    <button type="button" class="btn primario" id="avviso-db-riprova">↻ Riprova</button>
+  </span>
+</div>
 <div class="avviso-backup nascosto" id="avviso-backup" role="status">
   <span id="avviso-backup-testo"></span>
   <span class="avviso-backup-azioni">
@@ -644,9 +658,34 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 
 <dialog id="dlg-guida-specie">
   <h2>Guida alle specie</h2>
-  <p style="font-size:12.5px;color:var(--tenue);margin:0 0 10px">144 specie e varietà di alberi dal materiale del corso ("GLI ALBERI — Riconoscimento vegetale", M. Fontana). Usala per confrontare quello che osservi sul campo.</p>
-  <input type="search" id="gs-cerca" class="campo-base" style="width:100%;margin-bottom:10px" placeholder="🔍 Cerca per nome o famiglia…">
-  <div id="gs-lista" style="max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:6px"></div>
+  <p style="font-size:12.5px;color:var(--tenue);margin:0 0 10px">144 specie e varietà di alberi dal materiale del corso ("GLI ALBERI — Riconoscimento vegetale", M. Fontana).</p>
+
+  <div class="gs-modo" role="tablist">
+    <button type="button" class="btn" id="gs-modo-nome" aria-selected="true">🔤 Per nome</button>
+    <button type="button" class="btn" id="gs-modo-carat" aria-selected="false">🧩 Per caratteristiche</button>
+  </div>
+
+  <input type="search" id="gs-cerca" class="campo-base" style="width:100%;margin:10px 0" placeholder="🔍 Cerca per nome o famiglia…">
+
+  <div id="gs-carat-pannello" class="nascosto gs-carat-pannello">
+    <p style="font-size:12.5px;color:var(--tenue);margin:0 0 8px">Non sai il nome? Imposta quello che vedi — anche solo una o due voci — e la guida propone le specie più probabili. Lascia "—" quello che non hai osservato.</p>
+    <div class="gs-carat-griglia">
+      <label>Persistenza <select id="gs-c-persistenza" class="campo-base"></select></label>
+      <label>Forma chioma <select id="gs-c-formaChioma" class="campo-base"></select></label>
+      <label>Rami (inserzione) <select id="gs-c-rami" class="campo-base"></select></label>
+      <label>Tipo di foglia <select id="gs-c-tipoFoglia" class="campo-base"></select></label>
+      <label>Forma lamina <select id="gs-c-lamina" class="campo-base"></select></label>
+      <label>Margine fogliare <select id="gs-c-margine" class="campo-base"></select></label>
+      <label>Classe di grandezza <select id="gs-c-grandezza" class="campo-base"></select></label>
+    </div>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;margin-top:8px">
+      Altro (corteccia, colore, frutto, fiore…)
+      <input type="text" id="gs-c-altro" class="campo-base" placeholder="es. corteccia liscia grigia, frutto a pigna…">
+    </label>
+    <p style="font-size:11.5px;color:var(--tenue);margin:6px 0 0">Il materiale del corso non descrive ogni caratteristica per ogni specie: i risultati sono ordinati per quante corrispondono, non un filtro rigido.</p>
+  </div>
+
+  <div id="gs-lista" style="max-height:45vh;overflow:auto;display:flex;flex-direction:column;gap:6px"></div>
   <div id="gs-dettaglio" class="nascosto" style="max-height:50vh;overflow:auto"></div>
   <div class="azioni"><button type="button" class="btn" id="gs-chiudi">Chiudi</button></div>
 </dialog>
@@ -729,6 +768,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 
   <h3>Guida alle specie (144 alberi del corso)</h3>
   <p>Il pulsante 📖 accanto a "Nome esemplare" apre un catalogo di riferimento con 144 specie e varietà (famiglia, tipologia, classe di grandezza, provenienza e caratteristiche distintive), tratto dal materiale del corso. Utile per confermare sul posto quello che stai osservando; dal risultato puoi anche usare direttamente quel nome per la scheda aperta. Le specie già rilevate nell'archivio sono segnate con "✓".</p>
+  <p>Non sai ancora il nome? Nella guida tocca "🧩 Per caratteristiche": imposta quello che vedi (persistenza, forma chioma, rami, foglia…) e la guida propone le specie più probabili, ordinate per quante corrispondono. Se apri la guida dal campo "Nome esemplare" quando è ancora vuoto ma hai già compilato altri campi della scheda, parte già precompilata con quelli.</p>
   <p><button type="button" class="btn" onclick="this.closest('dialog').close(); apriGuidaSpecie()">📖 Apri la guida alle specie</button></p>
 
   <h3>QR e ricerca rapida</h3>
