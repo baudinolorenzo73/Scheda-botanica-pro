@@ -50,7 +50,7 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.5.0';
+const APP_VERSIONE = '3.7.0';
 const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
@@ -1521,6 +1521,106 @@ const GS_CHIP_ETICHETTA = {
   gemmeForma: 'Gemme', gemmePosizione: 'Gemme (posizione)', gemmeOrientamento: 'Gemme (orientamento)', gemmeTipologia: 'Gemme (tipo)',
 };
 
+// Corrispondenza tra i campi illustrati della scheda e i campi strutturati
+// del catalogo (che usano nomi diversi in alcuni casi).
+const GS_CAMPO_GUIDA = { formaChioma: 'chiomaForma', rami: 'ramiInserzione', tipoFoglia: 'fogliaTipo', lamina: 'fogliaLamina', margine: 'fogliaMargine' };
+
+// I campi strutturati del catalogo sono pieni solo per una minoranza delle
+// 144 specie (il materiale del corso li cita solo quando sono utili per
+// quella specie). Per non perdere le altre, quando manca il dato
+// strutturato si cerca comunque la parola corrispondente nel testo
+// descrittivo — un indizio più debole, ma molto più spesso presente.
+const GS_PAROLE_CHIAVE = {
+  persistenza: { sempreverde: ['sempreverde'], caduca: ['caducifogli', 'caduc'], semisempreverde: ['sempreverde'], semicaduca: ['caduc'] },
+  formaChioma: {
+    piramidale: ['piramidal'], 'a cono': ['piramidal', 'conic'], espansa: ['espans'], globosa: ['globos'],
+    colonnare: ['colonnar', 'fastigiat'], 'a ombrello': ['ombrell'], piangente: ['piangent'],
+  },
+  rami: { opposti: ['oppost'], alterni: ['altern'], verticillati: ['verticill'] },
+  tipoFoglia: { aghiforme: ['aghiform', 'aghi'], semplice: ['semplice'], composta: ['compost'], squamiforme: ['squam'] },
+  lamina: { ovata: ['ovat'], lanceolata: ['lanceolat'], ellittica: ['ellittic'], aghiforme: ['aghiform'], squamiforme: ['squam'], palmata: ['palmat'] },
+  margine: { intero: ['margine inter'], seghettato: ['seghettat'], dentato: ['dentat'], lobato: ['lobat'], ondulato: ['ondulat'] },
+};
+
+// Restituisce 'dato' (corrisponde un campo strutturato del catalogo),
+// 'testo' (trovata solo nel testo descrittivo) o null (nessuna corrispondenza).
+function corrispondeCaratteristica(v, campo, valore) {
+  if (campo === 'persistenza') {
+    const t = v.tipologia;
+    if ((valore === 'sempreverde' || valore === 'semisempreverde') && (t === 'sempreverde' || t === 'ex palme')) return 'dato';
+    if ((valore === 'caduca' || valore === 'semicaduca') && t === 'caducifoglia') return 'dato';
+  } else {
+    const campoGuida = GS_CAMPO_GUIDA[campo];
+    if (campoGuida && v[campoGuida] && v[campoGuida].toLowerCase() === valore.toLowerCase()) return 'dato';
+  }
+  const parole = (GS_PAROLE_CHIAVE[campo] && GS_PAROLE_CHIAVE[campo][valore]) || [];
+  const nota = (v.note || '').toLowerCase();
+  return parole.some((p) => nota.includes(p)) ? 'testo' : null;
+}
+
+function punteggioCaratteristiche(v, filtri) {
+  let punti = 0, totale = 0;
+  for (const [campo, valore] of Object.entries(filtri.campi)) {
+    if (!valore) continue;
+    totale++;
+    if (corrispondeCaratteristica(v, campo, valore)) punti++;
+  }
+  if (filtri.grandezza) { totale++; if (v.grandezza === filtri.grandezza) punti++; }
+  if (filtri.altro) { totale++; if ((v.note || '').toLowerCase().includes(filtri.altro)) punti++; }
+  return { punti, totale };
+}
+
+function leggiFiltriCaratteristiche() {
+  return {
+    campi: {
+      persistenza: $('#gs-c-persistenza').value, formaChioma: $('#gs-c-formaChioma').value, rami: $('#gs-c-rami').value,
+      tipoFoglia: $('#gs-c-tipoFoglia').value, lamina: $('#gs-c-lamina').value, margine: $('#gs-c-margine').value,
+    },
+    grandezza: $('#gs-c-grandezza').value,
+    altro: $('#gs-c-altro').value.trim().toLowerCase(),
+  };
+}
+
+// null = nessun criterio impostato (non ha senso mostrare un punteggio).
+function risultatiPerCaratteristiche() {
+  const filtri = leggiFiltriCaratteristiche();
+  if (Object.values(filtri.campi).every((v) => !v) && !filtri.grandezza && !filtri.altro) return null;
+  return GUIDA_SPECIE
+    .map((v) => ({ v, ...punteggioCaratteristiche(v, filtri) }))
+    .filter((r) => r.punti > 0)
+    .sort((a, b) => b.punti - a.punti || a.v.nomeSci.localeCompare(b.v.nomeSci, 'it'))
+    .slice(0, 30);
+}
+
+function popolaSelectCaratteristica(id, valori) {
+  $(id).replaceChildren(el('option', { value: '' }, '—'),
+    ...valori.map((v) => el('option', { value: v }, v.charAt(0).toUpperCase() + v.slice(1))));
+}
+
+function inizializzaSelectCaratteristiche() {
+  const campo = (k) => CAMPI.find((c) => c.k === k).valori;
+  popolaSelectCaratteristica('#gs-c-persistenza', campo('persistenza'));
+  popolaSelectCaratteristica('#gs-c-formaChioma', campo('formaChioma'));
+  popolaSelectCaratteristica('#gs-c-rami', campo('rami'));
+  popolaSelectCaratteristica('#gs-c-tipoFoglia', campo('tipoFoglia'));
+  popolaSelectCaratteristica('#gs-c-lamina', campo('lamina'));
+  popolaSelectCaratteristica('#gs-c-margine', campo('margine'));
+  $('#gs-c-grandezza').replaceChildren(
+    el('option', { value: '' }, '—'), el('option', { value: '1' }, '1ª grandezza (maggiore)'),
+    el('option', { value: '2' }, '2ª grandezza'), el('option', { value: '3' }, '3ª grandezza'));
+  // (il catalogo del corso non arriva a citare una 4ª classe)
+}
+
+let guidaSpecieModoCarat = false;
+
+function cambiaModoGuidaSpecie(modo) {
+  guidaSpecieModoCarat = modo === 'carat';
+  $('#gs-modo-nome').setAttribute('aria-selected', String(!guidaSpecieModoCarat));
+  $('#gs-modo-carat').setAttribute('aria-selected', String(guidaSpecieModoCarat));
+  $('#gs-cerca').classList.toggle('nascosto', guidaSpecieModoCarat);
+  $('#gs-carat-pannello').classList.toggle('nascosto', !guidaSpecieModoCarat);
+}
+
 function risultatiGuidaSpecie(q) {
   q = (q || '').trim().toLowerCase();
   const lista = q ? GUIDA_SPECIE.filter((v) => (v.nomeSci + ' ' + v.famiglia + ' ' + (v.varieta || '')).toLowerCase().includes(q)) : GUIDA_SPECIE;
@@ -1533,10 +1633,24 @@ function nomiGiaRilevati() {
 }
 
 function disegnaListaGuidaSpecie() {
-  const ris = risultatiGuidaSpecie($('#gs-cerca').value);
-  const gia = nomiGiaRilevati();
   $('#gs-dettaglio').classList.add('nascosto');
   $('#gs-lista').classList.remove('nascosto');
+  const gia = nomiGiaRilevati();
+
+  if (guidaSpecieModoCarat) {
+    const risultati = risultatiPerCaratteristiche();
+    if (risultati === null) { $('#gs-lista').replaceChildren(el('p', { class: 'vuoto' }, 'Imposta almeno una caratteristica qui sopra.')); return; }
+    if (!risultati.length) { $('#gs-lista').replaceChildren(el('p', { class: 'vuoto' }, 'Nessuna specie corrisponde a queste caratteristiche.')); return; }
+    $('#gs-lista').replaceChildren(...risultati.map(({ v, punti, totale }) => {
+      const trovata = gia.has(v.nomeSci.toLowerCase());
+      return el('button', { type: 'button', class: 'gs-riga', onclick: () => mostraDettaglioGuidaSpecie(v) },
+        el('b', { class: 'specie', testo: v.nomeSci + (v.varieta ? ` '${v.varieta}'` : '') }),
+        el('span', { class: 'gs-punteggio', testo: `${v.famiglia} · ${punti}/${totale} caratteristiche` + (trovata ? ' · ✓ già rilevata' : '') }));
+    }));
+    return;
+  }
+
+  const ris = risultatiGuidaSpecie($('#gs-cerca').value);
   if (!ris.length) { $('#gs-lista').replaceChildren(el('p', { class: 'vuoto' }, 'Nessuna specie trovata.')); return; }
   $('#gs-lista').replaceChildren(...ris.map((v) => {
     const trovata = gia.has(v.nomeSci.toLowerCase());
@@ -1554,11 +1668,18 @@ function schedaGuidaSpecie(v) {
     v.provenienza && `Provenienza: ${v.provenienza}`,
   ].filter(Boolean);
   const chip = Object.keys(GS_CHIP_ETICHETTA).filter((k) => v[k]).map((k) => `${GS_CHIP_ETICHETTA[k]}: ${v[k]}`);
+  const srcSlide = v.pagina ? `./slides/${v.pagina}.webp` : null;
   return el('div', {},
+    srcSlide ? el('img', {
+      src: srcSlide, alt: `Slide ${v.pagina} del PDF del corso`, loading: 'lazy',
+      style: 'width:100%;border-radius:var(--r-piccolo);border:1.5px solid var(--linea);cursor:zoom-in;margin-bottom:10px',
+      onclick: () => { $('#vista-img').src = srcSlide; $('#vista-foto').showModal(); },
+    }) : null,
     el('h3', { class: 'specie', style: 'margin:0 0 2px' }, v.nomeSci + (v.varieta ? ` '${v.varieta}'` : '')),
     el('p', { style: 'font-size:13px;color:var(--tenue);margin:0 0 8px', testo: righe.join(' · ') }),
     chip.length ? el('p', { style: 'font-size:12.5px;margin:0 0 8px', testo: chip.join(' · ') }) : null,
     v.note ? el('p', { style: 'font-size:13.5px;line-height:1.5;margin:0', testo: v.note }) : null,
+    v.pagina ? el('p', { style: 'font-size:11.5px;color:var(--tenue);margin:8px 0 0', testo: `Slide ${v.pagina} del PDF del corso` }) : null,
     S.aperta ? el('button', { type: 'button', class: 'btn primario', style: 'margin-top:12px', onclick: () => usaNomeDaGuidaSpecie(v.nomeSci) }, '✓ Usa questo nome nella scheda') : null);
 }
 
@@ -1571,8 +1692,21 @@ function mostraDettaglioGuidaSpecie(v) {
     schedaGuidaSpecie(v));
 }
 
+const GS_CAMPI_SCHEDA = ['persistenza', 'formaChioma', 'rami', 'tipoFoglia', 'lamina', 'margine'];
+
 function apriGuidaSpecie(filtroIniziale) {
-  $('#gs-cerca').value = filtroIniziale || '';
+  const schedaHaCaratteristiche = S.aperta && GS_CAMPI_SCHEDA.some((k) => S.aperta[k]);
+  if (!filtroIniziale && schedaHaCaratteristiche) {
+    // Aperta dal pulsante nel campo nome, nome ancora vuoto ma altri campi già
+    // compilati: precompiliamo la ricerca per caratteristiche con quelli.
+    cambiaModoGuidaSpecie('carat');
+    for (const k of GS_CAMPI_SCHEDA) $('#gs-c-' + k).value = S.aperta[k] || '';
+    $('#gs-c-grandezza').value = S.aperta.grandezza || '';
+    $('#gs-c-altro').value = '';
+  } else {
+    cambiaModoGuidaSpecie('nome');
+    $('#gs-cerca').value = filtroIniziale || '';
+  }
   disegnaListaGuidaSpecie();
   $('#dlg-guida-specie').showModal();
 }
@@ -2769,6 +2903,12 @@ function collegaEventi() {
   $('#btn-aiuto').onclick = () => { $('#aiuto-versione').textContent = `Versione dell'app: ${APP_VERSIONE}`; $('#dlg-aiuto').showModal(); };
   $('#gs-cerca').oninput = disegnaListaGuidaSpecie;
   $('#gs-chiudi').onclick = () => $('#dlg-guida-specie').close();
+  inizializzaSelectCaratteristiche();
+  $('#gs-modo-nome').onclick = () => { cambiaModoGuidaSpecie('nome'); disegnaListaGuidaSpecie(); };
+  $('#gs-modo-carat').onclick = () => { cambiaModoGuidaSpecie('carat'); disegnaListaGuidaSpecie(); };
+  for (const k of GS_CAMPI_SCHEDA) $('#gs-c-' + k).onchange = disegnaListaGuidaSpecie;
+  $('#gs-c-grandezza').onchange = disegnaListaGuidaSpecie;
+  $('#gs-c-altro').oninput = disegnaListaGuidaSpecie;
 
   // cestino
   $('#btn-cestino').onclick = () => {

@@ -2,7 +2,7 @@
 // Strategia: "app shell" in cache, così l'app si apre anche offline dopo la prima visita.
 // Non tocca IndexedDB (dati, foto, audio): quelli restano sempre gestiti dall'app stessa.
 
-const CACHE_NOME = 'scheda-botanica-v4'; // cambia il numero quando pubblichi un aggiornamento importante
+const CACHE_NOME = 'scheda-botanica-v7'; // cambia il numero quando pubblichi un aggiornamento importante
 // Cache separata per le tile della mappa (OpenStreetMap): tenerla a parte
 // significa che "svuotare"/aggiornare l'app shell non cancella le zone di
 // mappa già scaricate per l'uso offline. NOME USATO ANCHE DA index.html
