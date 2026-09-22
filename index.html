@@ -30,6 +30,7 @@
   --carta:#eef1ea; --foglio:#fbfcf8; --inchiostro:#1d2a22; --tenue:#5d6b61;
   --bosco:#2f5d3a; --bosco-scuro:#234a2d; --lichene:#9bb35a; --corteccia:#6b4f3a;
   --ruggine:#b4452f; --linea:#cfd6c9; --focus:#fff7d6;
+  --concorda-bg:#eaf3ec; --discorda-bg:#fbeae6;
   --r-grande:14px; --r-piccolo:8px;
   color-scheme: light;
 }
@@ -39,6 +40,7 @@
   --carta:#141a16; --foglio:#1c241f; --inchiostro:#e3e9e2; --tenue:#99a79c;
   --bosco:#5c9a69; --bosco-scuro:#4b8558; --lichene:#b5cc74; --corteccia:#b99478;
   --ruggine:#e07a62; --linea:#2f3a33; --focus:#2a3326;
+  --concorda-bg:#1e2f22; --discorda-bg:#3a2420;
   color-scheme: dark;
 }
 *{box-sizing:border-box}
@@ -291,6 +293,8 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   background:var(--carta);border:1.5px solid var(--linea);border-radius:var(--r-piccolo);
   padding:6px 12px;min-height:48px;width:100%;
 }
+.illustr-bottone.illustr-concorda{border-color:var(--bosco);background:var(--concorda-bg)}
+.illustr-bottone.illustr-discorda{border-color:var(--ruggine);background:var(--discorda-bg)}
 .illustr-icona{width:32px !important;height:32px !important}
 .illustr-icona:empty{display:none}
 #editor fieldset{scroll-margin-top:78px}

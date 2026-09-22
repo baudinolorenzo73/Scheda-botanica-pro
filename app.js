@@ -50,7 +50,7 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.8.0';
+const APP_VERSIONE = '3.8.3';
 const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
@@ -851,6 +851,7 @@ function costruisciModulo() {
 
       griglia.append(el('label', { class: 'campo' + (c.largo ? ' largo' : ''), for: id },
         c.label, campoInput, c.k === 'prog' ? el('span', { class: 'avviso-campo', id: 'avviso-prog' }) : null,
+        c.tipo === 'illustrata' ? el('span', { class: 'avviso-campo', id: 'avviso-' + c.k }) : null,
         c.aiuto ? el('span', { class: 'campo-aiuto', testo: c.aiuto }) : null));
       if (c.tipo === 'lista') griglia.append(el('datalist', { id: 'dl-' + c.k }, (c.valori || []).map((v) => el('option', { value: v }))));
     }
@@ -892,6 +893,7 @@ function costruisciModulo() {
       controllaProg();
     }
     if (k === 'prog' || k === 'nome') aggiornaTitoloEditor();
+    if (k === 'nome') confrontaConCatalogo();
     if (k === 'problemi') aggiornaSuggerimentiFito(e.target.value);
     if (k === 'altezza' || k === 'grandezza' || k === 'circonferenza') disegnaStima();
     salvaPresto(r);
@@ -956,6 +958,7 @@ function sceglIllustrata(k, v) {
   svuotaCampiNonPertinenti(k, v);
   applicaDipendenze();
   if (k === 'formaChioma' || k === 'tipoFoglia') disegnaStima();
+  confrontaConCatalogo();
   salvaPresto(r);
   $('#dlg-illustrata').close();
 }
@@ -1021,6 +1024,7 @@ function apriEditor(uid) {
   }
   applicaDipendenze();
   controllaProg();
+  confrontaConCatalogo();
   aggiornaTitoloEditor();
   $('#ed-stato').textContent = `Modificata il ${dataIT(r.modificato)}`;
   $('#foto-avanz').textContent = '';
@@ -1742,13 +1746,14 @@ function schedaGuidaSpecie(v) {
       src: srcSlide, alt: `Slide ${v.pagina} del PDF del corso`, loading: 'lazy',
       style: 'width:100%;border-radius:var(--r-piccolo);border:1.5px solid var(--linea);cursor:zoom-in;margin-bottom:10px',
       onclick: () => { $('#vista-img').src = srcSlide; $('#vista-foto').showModal(); },
+      onerror: (e) => e.target.remove(),   // slide non disponibile (es. cartella slides/ non caricata): sparisce invece di mostrare un'icona rotta
     }) : null,
     el('h3', { class: 'specie', style: 'margin:0 0 2px' }, v.nomeSci + (v.varieta ? ` '${v.varieta}'` : '')),
     el('p', { style: 'font-size:13px;color:var(--tenue);margin:0 0 8px', testo: righe.join(' · ') }),
     chip.length ? el('p', { style: 'font-size:12.5px;margin:0 0 8px', testo: chip.join(' · ') }) : null,
     v.note ? el('p', { style: 'font-size:13.5px;line-height:1.5;margin:0', testo: v.note }) : null,
     v.pagina ? el('p', { style: 'font-size:11.5px;color:var(--tenue);margin:8px 0 0', testo: `Slide ${v.pagina} del PDF del corso` }) : null,
-    S.aperta ? el('button', { type: 'button', class: 'btn primario', style: 'margin-top:12px', onclick: () => usaNomeDaGuidaSpecie(v.nomeSci) }, '✓ Usa questo nome nella scheda') : null);
+    S.aperta ? el('button', { type: 'button', class: 'btn primario', style: 'margin-top:12px', onclick: () => usaNomeDaGuidaSpecie(v) }, '✓ Usa questo nome nella scheda') : null);
 }
 
 function mostraDettaglioGuidaSpecie(v) {
@@ -1779,16 +1784,88 @@ function apriGuidaSpecie(filtroIniziale) {
   $('#dlg-guida-specie').showModal();
 }
 
-function usaNomeDaGuidaSpecie(nome) {
+// Tipologia del catalogo -> valore del campo "persistenza" della scheda
+// (il catalogo usa un vocabolario leggermente diverso da quello dell'app).
+const GS_MAPPA_TIPOLOGIA = { caducifoglia: 'caduca', sempreverde: 'sempreverde', 'ex palme': 'sempreverde' };
+
+// Cerca nel catalogo la specie con questo nome scientifico esatto (per il
+// confronto sotto). Un nome parziale o diverso semplicemente non trova nulla.
+function trovaSpecieGuida(nomeSci) {
+  const q = (nomeSci || '').trim().toLowerCase();
+  if (!q) return null;
+  return GUIDA_SPECIE.find((v) => v.nomeSci.toLowerCase() === q) || null;
+}
+
+// Confronta i campi illustrati della scheda aperta con quello che dice il
+// catalogo per quella specie (solo se il nome combacia esattamente con una
+// delle 144), e colora/avvisa quelli che non corrispondono. È un controllo
+// dal vivo, ricalcolato ad ogni modifica: non serve salvare nulla in più.
+const GS_CAMPI_CONFRONTABILI = ['persistenza', ...Object.keys(GS_CAMPO_GUIDA)];
+
+function confrontaConCatalogo() {
+  const r = S.aperta;
+  if (!r) return;
+  for (const k of GS_CAMPI_CONFRONTABILI) {
+    $('#f-' + k)?.classList.remove('illustr-concorda', 'illustr-discorda');
+    const avviso = $('#avviso-' + k);
+    if (avviso) avviso.textContent = '';
+  }
+  const specie = trovaSpecieGuida(r.nome);
+  if (!specie) return;
+
+  const controlla = (k, valoreCatalogo) => {
+    const bottone = $('#f-' + k);
+    if (!bottone || !r[k] || !valoreCatalogo) return;
+    if (r[k] === valoreCatalogo) {
+      bottone.classList.add('illustr-concorda');
+    } else {
+      bottone.classList.add('illustr-discorda');
+      const avviso = $('#avviso-' + k);
+      if (avviso) avviso.textContent = `⚠ il catalogo per questa specie indica "${valoreCatalogo}"`;
+    }
+  };
+  controlla('persistenza', GS_MAPPA_TIPOLOGIA[specie.tipologia]);
+  for (const [campoScheda, campoGuida] of Object.entries(GS_CAMPO_GUIDA)) controlla(campoScheda, specie[campoGuida]);
+}
+
+function usaNomeDaGuidaSpecie(v) {
   if (!S.aperta) { $('#dlg-guida-specie').close(); return; }
   const r = S.aperta;
-  r.nome = nome;
+  r.nome = v.nomeSci;
+
+  // Oltre al nome, compila anche i campi illustrati corrispondenti — ma SOLO
+  // quelli ancora vuoti (non sovrascrive mai un'osservazione già fatta sul
+  // campo) e solo dove il catalogo ha davvero un dato per quella specie
+  // (i campi strutturati sono pieni solo per una parte delle 144 specie).
+  const compilati = [];
+  if (!r.persistenza && GS_MAPPA_TIPOLOGIA[v.tipologia]) {
+    r.persistenza = GS_MAPPA_TIPOLOGIA[v.tipologia];
+    compilati.push('persistenza');
+  }
+  for (const [campoScheda, campoGuida] of Object.entries(GS_CAMPO_GUIDA)) {
+    if (r[campoScheda] || !v[campoGuida]) continue;
+    const valori = CAMPI.find((c) => c.k === campoScheda)?.valori || [];
+    if (valori.includes(v[campoGuida])) {
+      r[campoScheda] = v[campoGuida];
+      compilati.push(campoScheda);
+    }
+  }
+  if (!r.grandezza && v.grandezza) { r.grandezza = v.grandezza; compilati.push('grandezza'); }
+
   r.modificato = oraISO();
-  $('#f-nome').value = nome;
+  $('#f-nome').value = r.nome;
   aggiornaTitoloEditor();
+  for (const k of compilati) {
+    const cDef = CAMPI.find((c) => c.k === k);
+    if (cDef?.tipo === 'illustrata') { aggiornaBottoneIllustrato(k); svuotaCampiNonPertinenti(k, r[k]); }
+    else if ($('#f-' + k)) $('#f-' + k).value = r[k];
+  }
+  applicaDipendenze();
+  disegnaStima();
+  confrontaConCatalogo();
   salvaPresto(r);
   $('#dlg-guida-specie').close();
-  toast('Nome aggiornato dalla guida specie');
+  toast(compilati.length ? `Nome e altri ${compilati.length} campi compilati dalla guida` : 'Nome aggiornato dalla guida specie');
 }
 
 /* =====================================================================
