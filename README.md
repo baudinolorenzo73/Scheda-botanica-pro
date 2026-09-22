@@ -8,7 +8,7 @@ App **offline** per il rilievo botanico sul campo: schede per censire alberi con
 
 ## 📱 Prova l'app
 
-👉 **[Apri Scheda Botanica PRO](https://baudinolorenzo73.github.io/scheda-botanica-pro/)** *(link attivo dopo aver pubblicato con GitHub Pages, vedi sotto)*
+👉 **[Apri Scheda Botanica PRO](https://baudinolorenzo73.github.io/Scheda-botanica-pro/)** *(link attivo dopo aver pubblicato con GitHub Pages, vedi sotto)*
 
 È una **PWA** (Progressive Web App): si può usare direttamente nel browser oppure installare sulla schermata home del telefono, e da quel momento funziona anche **senza connessione a internet**.
 
