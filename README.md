@@ -1,6 +1,6 @@
 # 🌳 Scheda Botanica PRO
 
-App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup — tutto in un unico file HTML, senza server e senza account.
+App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
 **by Lollo ®2026**
 
@@ -28,10 +28,10 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 - **GPS** con affinamento della precisione sotto la chioma.
 - **Stima ambientale**: volume della chioma, ombra proiettata, CO₂ stoccata.
 - **Riconoscimento specie** da foto con [PlantNet](https://plantnet.org) (chiave gratuita, opzionale).
-- **Codice QR** per ogni scheda, per ritrovarla sul campo inquadrando un'etichetta.
-- **Mappa** e **Timeline** (per confrontare più visite allo stesso albero).
+- **Codice QR permanente** per ogni scheda, per ritrovarla senza ambiguità anche dopo l’apertura di un nuovo elenco.
+- **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
 - **Stampa** di una o più schede, anche solo come etichette QR.
-- **Backup completo (.zip)**, import/export CSV, GeoJSON (QGIS), KML (Google Earth), GPX.
+- **Backup completo (.zip)** con ripristino protetto di schede, cestino, foto, audio, catalogo e traccia; import/export CSV, GeoJSON, KML e GPX.
 - **100% offline-first**: tutti i dati restano sul dispositivo (IndexedDB), nessun server coinvolto a parte le due funzioni facoltative (mappa e PlantNet).
 
 ## 🖼️ Screenshot
@@ -54,7 +54,11 @@ Nella cartella [`manuali/`](manuali/):
 ## 🗂️ Struttura del repository
 
 ```
-├── index.html              L'app (un unico file autonomo: HTML + CSS + JS)
+├── index.html               Struttura e stile dell'app
+├── app.js                   Logica, archivio, GPS, backup e importazioni
+├── icone.js                 Disegni dei campi botanici
+├── data/                    Guida locale alle specie
+├── lib/                     Librerie incluse per mappa, QR, ZIP ed Excel
 ├── manifest.json            Manifest PWA (nome, icone, colori)
 ├── service-worker.js        Cache offline dell'app shell
 ├── icons/                   Icone dell'app in varie dimensioni
@@ -78,7 +82,7 @@ L'app non ha un server: i dati (schede, foto, audio) restano **solo sul disposit
 
 ## 🧑‍💻 Tecnologie
 
-File HTML singolo, senza framework né build: JavaScript nativo, [Leaflet](https://leafletjs.com) per la mappa (incluso nel file), IndexedDB per il salvataggio, Web Speech/MediaRecorder per l'audio, Geolocation API per il GPS.
+JavaScript nativo senza framework né build, [Leaflet](https://leafletjs.com) per la mappa, IndexedDB per il salvataggio, MediaRecorder per l'audio e Geolocation API per il GPS.
 
 ## ⚖️ Licenza
 

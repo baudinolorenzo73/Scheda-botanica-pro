@@ -17,18 +17,18 @@ const SEZIONI = [
 // tipo: testo | numero | scelta (select chiusa) | lista (testo libero con suggerimenti)
 //       | illustrata (scelta guidata con icona + spiegazione, vedi ICONE/DEFINIZIONI) | area
 const CAMPI = [
-  { k: 'prog',          sez: 'oss', label: 'N° progressivo',              tipo: 'numero', passo: 1,
-    aiuto: 'Numero identificativo unico di questa scheda su tutto l\'archivio: non si ripete mai. Usato dal codice QR per ritrovarla sempre in modo sicuro.' },
+  { k: 'prog',          sez: 'oss', label: 'N° progressivo',              tipo: 'numero', passo: 1, min: 1, intero: true,
+    aiuto: 'Numero della scheda nell’elenco corrente. Può ripartire da 1 quando crei un nuovo elenco; il QR usa un identificativo interno permanente.' },
   { k: 'data',          sez: 'oss', label: 'Data',                       tipo: 'data' },
-  { k: 'numeroZona',    sez: 'oss', label: 'N° nel giorno',              tipo: 'numero', passo: 1, etichettaStampa: 'N° nel giorno',
+  { k: 'numeroZona',    sez: 'oss', label: 'N° nel giorno',              tipo: 'numero', passo: 1, min: 1, intero: true, etichettaStampa: 'N° nel giorno',
     aiuto: 'Numerazione che riparte da 1 a ogni nuova data: si calcola da sola quando scegli la Data qui sopra. Utile per contare gli alberi rilevati in una stessa giornata.' },
   { k: 'nome',          sez: 'oss', label: 'Nome esemplare (genere, specie, varietà)', tipo: 'lista', largo: true },
-  { k: 'numero',        sez: 'oss', label: 'N° medesimo esemplare',         tipo: 'numero', passo: 1, etichettaStampa: 'Esemplari vicini',
+  { k: 'numero',        sez: 'oss', label: 'N° medesimo esemplare',         tipo: 'numero', passo: 1, min: 1, intero: true, etichettaStampa: 'Esemplari vicini',
     aiuto: 'Quanti alberi uguali a questo si trovano nelle vicinanze (per esempio un filare). Di default è 1, cioè "esemplare isolato, nessun altro uguale intorno".' },
   { k: 'grandezza',     sez: 'oss', label: 'Classe di grandezza',         tipo: 'scelta', etichettaStampa: 'Grandezza',
     valori: [['', '—'], ['1', '1ª grandezza (maggiore)'], ['2', '2ª grandezza'], ['3', '3ª grandezza'], ['4', '4ª grandezza (minore)']] },
-  { k: 'altezza',       sez: 'oss', label: 'Altezza (m)',                 tipo: 'numero', passo: 0.5 },
-  { k: 'circonferenza', sez: 'oss', label: 'Circonferenza a 1,30 m (cm)', tipo: 'numero', passo: 1, etichettaStampa: 'Circonferenza (cm)' },
+  { k: 'altezza',       sez: 'oss', label: 'Altezza (m)',                 tipo: 'numero', passo: 0.5, min: 0, max: 150 },
+  { k: 'circonferenza', sez: 'oss', label: 'Circonferenza a 1,30 m (cm)', tipo: 'numero', passo: 1, min: 0, max: 5000, etichettaStampa: 'Circonferenza (cm)' },
   { k: 'persistenza',   sez: 'oss', label: 'Persistenza foglie',          tipo: 'illustrata', valori: ['sempreverde', 'caduca', 'semisempreverde', 'semicaduca'] },
   { k: 'formaChioma',   sez: 'oss', label: 'Forma della chioma',          tipo: 'illustrata', etichettaStampa: 'Forma chioma', valori: ['piramidale', 'a cono', 'espansa', 'globosa', 'colonnare', 'a ombrello', 'piangente'] },
   { k: 'rami',          sez: 'oss', label: 'Rami secondari',              tipo: 'illustrata', valori: ['opposti', 'alterni', 'verticillati'] },
@@ -50,7 +50,7 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.7.2';
+const APP_VERSIONE = '3.8.0';
 const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
@@ -87,7 +87,15 @@ const dataIT = (iso) => iso ? new Date(iso).toLocaleString('it-IT', { day: '2-di
 // Formatta una data "sola" (YYYY-MM-DD, senza ora) in gg/mm/aaaa senza passare da Date/fuso orario,
 // per evitare che una data-solo-giorno slitti di un giorno vicino alla mezzanotte.
 const dataBreveIT = (iso) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
-const oggi = () => new Date().toISOString().slice(0, 10);
+// Data del calendario locale. toISOString() usa UTC e, dopo mezzanotte in Italia,
+// può ancora restituire il giorno precedente.
+const dataLocaleISO = (data = new Date()) => {
+  const y = data.getFullYear();
+  const m = String(data.getMonth() + 1).padStart(2, '0');
+  const d = String(data.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+const oggi = () => dataLocaleISO();
 const perProg = (a, b) => (Number(a.prog) || 0) - (Number(b.prog) || 0);
 
 function stato(msg, errore = false) {
@@ -187,6 +195,23 @@ const DB = {
   scrivi: (store, v, k) => DB.tx(store, 'readwrite', (s) => (k === undefined ? s.put(v) : s.put(v, k))),
   cancella: (store, k) => DB.tx(store, 'readwrite', (s) => s.delete(k)),
   svuota: (store) => DB.tx(store, 'readwrite', (s) => s.clear()),
+  // Sostituisce l'intero archivio con una sola transazione: se una scrittura
+  // fallisce, IndexedDB annulla anche le cancellazioni iniziali.
+  sostituisciArchivio({ schede, foto, audio, specie, traccia }) {
+    return new Promise((ok, ko) => {
+      const nomi = ['schede', 'foto', 'audio', 'specie', 'traccia'];
+      const t = this.db.transaction(nomi, 'readwrite');
+      for (const nome of nomi) t.objectStore(nome).clear();
+      for (const r of schede) t.objectStore('schede').put(r);
+      for (const f of foto) t.objectStore('foto').put(f.blob, f.id);
+      for (const a of audio) t.objectStore('audio').put(a.blob, a.id);
+      for (const s of specie) t.objectStore('specie').put(s);
+      for (const p of traccia) t.objectStore('traccia').add(p);
+      t.oncomplete = () => ok();
+      t.onerror = () => ko(t.error);
+      t.onabort = () => ko(t.error || new Error('Ripristino annullato: archivio precedente conservato'));
+    });
+  },
 };
 
 /* =====================================================================
@@ -226,7 +251,11 @@ function normalizza(v) {
     let val = v[c.k] === undefined || v[c.k] === null ? '' : String(v[c.k]).trim();
     if (c.tipo === 'numero') {
       val = val.replace(',', '.');
-      if (val !== '' && !isFinite(Number(val))) val = '';   // un campo numerico non accetta testo
+      const n = Number(val);
+      if (val !== '' && (!Number.isFinite(n) ||
+          (c.min != null && n < c.min) ||
+          (c.max != null && n > c.max) ||
+          (c.intero && !Number.isInteger(n)))) val = '';
     }
     r[c.k] = val;
   }
@@ -238,6 +267,8 @@ function normalizza(v) {
       acc: v.gps.acc ?? v.gps.accuracy ?? null,
       alt: v.gps.alt ?? v.gps.altitude ?? null,
       quando: v.gps.quando || oraISO(),
+      manuale: v.gps.manuale === true,
+      ...(typeof v.gps.online === 'boolean' ? { online: v.gps.online } : {}),
     };
   }
   const fotoDaSalvare = [];
@@ -273,6 +304,7 @@ const timerSalva = new Map();
 
 function salvaPresto(r) {
   r.modificato = oraISO();
+  stato('Salvataggio in corso…');
   clearTimeout(timerSalva.get(r.uid));
   timerSalva.set(r.uid, setTimeout(() => salvaOra(r), 400));
 }
@@ -800,7 +832,10 @@ function costruisciModulo() {
       let input;
       if (c.tipo === 'area') input = el('textarea', { id, name: c.k, rows: 3 });
       else if (c.tipo === 'scelta') input = el('select', { id, name: c.k }, c.valori.map(([v, t]) => el('option', { value: v }, t)));
-      else if (c.tipo === 'numero') input = el('input', { id, name: c.k, type: 'number', inputmode: 'decimal', step: c.passo, min: 0 });
+      else if (c.tipo === 'numero') input = el('input', {
+        id, name: c.k, type: 'number', inputmode: c.intero ? 'numeric' : 'decimal',
+        step: c.passo, min: c.min ?? 0, max: c.max ?? null,
+      });
       else if (c.tipo === 'data') input = el('input', { id, name: c.k, type: 'date' });
       else if (c.tipo === 'illustrata') input = el('button', { type: 'button', id, class: 'illustr-bottone', onclick: () => apriPicker(c.k) },
         el('span', { class: 'illustr-icona', id: id + '-icona' }),
@@ -827,8 +862,25 @@ function costruisciModulo() {
   $('#modulo').addEventListener('input', (e) => {
     const r = S.aperta;
     const k = e.target.name;
-    if (!r || !k || !CAMPI.some((c) => c.k === k)) return;
+    const campo = CAMPI.find((c) => c.k === k);
+    if (!r || !k || !campo) return;
     let valore = e.target.value;
+    if (campo.tipo === 'numero' && valore !== '') {
+      const n = Number(valore);
+      const nonValido = !Number.isFinite(n) ||
+        (campo.min != null && n < campo.min) ||
+        (campo.max != null && n > campo.max) ||
+        (campo.intero && !Number.isInteger(n));
+      e.target.setCustomValidity(nonValido ? `Inserisci un valore valido tra ${campo.min ?? 0}${campo.max != null ? ' e ' + campo.max : ''}.` : '');
+      e.target.toggleAttribute('aria-invalid', nonValido);
+      if (nonValido) {
+        stato(`${campo.label}: valore non valido`, true);
+        return;
+      }
+    } else {
+      e.target.setCustomValidity('');
+      e.target.removeAttribute('aria-invalid');
+    }
     if (k === 'nome' && valore && /^[a-zà-ù]/.test(valore)) {
       const pos = e.target.selectionStart;
       valore = valore.charAt(0).toUpperCase() + valore.slice(1);
@@ -848,6 +900,10 @@ function costruisciModulo() {
   // "N° nel giorno" si ricalcola da solo quando si sceglie la Data.
   $('#modulo').addEventListener('change', (e) => {
     const r = S.aperta;
+    if (e.target.matches('input[type="number"]') && !e.target.checkValidity()) {
+      e.target.reportValidity();
+      return;
+    }
     if (!r || e.target.name !== 'data') return;
     r.numeroZona = calcolaNumeroZona(e.target.value, r.uid);
     $('#f-numeroZona').value = r.numeroZona;
@@ -993,6 +1049,14 @@ function nascondiEditor() {
 
 async function chiudiEditor(daIndietro = false) {
   if (!S.aperta) return;
+  const nonValido = $('#modulo').querySelector(':invalid');
+  if (nonValido) {
+    stato('Correggi il valore non valido prima di chiudere', true);
+    nonValido.reportValidity();
+    nonValido.focus();
+    if (daIndietro) history.pushState({ editor: true }, '');
+    return;
+  }
   if (REG.attiva && REG.riga === S.aperta) fermaRegistrazione();
   if (GPSR.watch !== null && GPSR.riga === S.aperta) fermaGPS(true);
   const uid = S.aperta.uid;
@@ -1082,7 +1146,11 @@ async function nuovoElenco() {
   await salvaTuttiInSospeso();
   const adesso = new Date();
   const bolla = `${oggi()}_${String(adesso.getHours()).padStart(2, '0')}-${String(adesso.getMinutes()).padStart(2, '0')}`;
-  await esportaZIP('scarica', { nomeFile: `scheda-botanica-elenco-${bolla}.zip`, soloAttive: true });
+  const backupRiuscito = await esportaZIP('scarica', { nomeFile: `scheda-botanica-elenco-${bolla}.zip`, soloAttive: true });
+  if (!backupRiuscito) {
+    stato('Nuovo elenco annullato: il backup non è riuscito', true);
+    return;
+  }
   const quando = oraISO();
   for (const r of S.schede) { r.cancellata = quando; r.modificato = quando; await DB.scrivi('schede', r); }
   S.cestino.push(...S.schede);
@@ -1462,9 +1530,9 @@ function disegnaLinkGbif() {
   const cont = $('#gbif-link');
   if (!cont) return;
   const r = S.aperta;
-  cont.replaceChildren(r?.gbifId
-    ? el('a', { href: `https://www.gbif.org/species/${r.gbifId}`, target: '_blank', rel: 'noopener', style: 'font-size:13px' }, '🔗 Apri la specie su GBIF')
-    : null);
+  cont.replaceChildren(...(r?.gbifId
+    ? [el('a', { href: `https://www.gbif.org/species/${r.gbifId}`, target: '_blank', rel: 'noopener', style: 'font-size:13px' }, '🔗 Apri la specie su GBIF')]
+    : []));
 }
 
 // Suggerimenti per "Nome esemplare": nomi già usati nelle schede + catalogo specie
@@ -1725,11 +1793,12 @@ function usaNomeDaGuidaSpecie(nome) {
 
 /* =====================================================================
    9. QR CODE (SVG vettoriale, nitido in stampa)
-   Stesso formato della versione precedente: SCHEDA:prog|nome|lat,lng
+   Usa l'uid permanente; lo scanner accetta anche il vecchio formato.
    ===================================================================== */
 function testoQR(r) {
   const pos = r.gps ? `${r.gps.lat.toFixed(6)},${r.gps.lng.toFixed(6)}` : 'no-gps';
-  return `SCHEDA:${r.prog}|${r.nome || 'esemplare'}|${pos}`;
+  // uid è stabile e non viene riutilizzato quando si apre un nuovo elenco.
+  return `SCHEDA_UID:${r.uid}|${r.prog}|${r.nome || 'esemplare'}|${pos}`;
 }
 
 function qrSVG(testo) {
@@ -1872,11 +1941,18 @@ function chiudiScanner() {
 }
 
 function cercaDaTestoQR(testo) {
-  const m = testo.match(/SCHEDA:([^|]+)/i);
-  const prog = m ? m[1].trim() : (testo.trim() ? testo.trim() : null);
-  if (!prog) return alert('Codice non riconosciuto:\n' + testo);
-  const r = S.schede.find((s) => s.prog === prog);
-  if (!r) return alert(`Nessuna scheda con N° ${prog}.`);
+  const nuovo = testo.match(/SCHEDA_UID:([^|]+)/i);
+  let r = nuovo ? S.schede.find((s) => s.uid === nuovo[1].trim()) : null;
+  // Compatibilità con le etichette create dalle versioni precedenti.
+  if (!r) {
+    const vecchio = testo.match(/SCHEDA:([^|]+)/i);
+    const prog = vecchio ? vecchio[1].trim() : (testo.trim() ? testo.trim() : null);
+    if (!prog) return alert('Codice non riconosciuto:\n' + testo);
+    const trovate = S.schede.filter((s) => s.prog === prog);
+    if (trovate.length > 1) return alert(`Il vecchio QR usa il N° ${prog}, presente in più schede. Cerca la scheda dall’elenco e ristampa la nuova etichetta QR.`);
+    r = trovate[0];
+    if (!r) return alert(`Nessuna scheda con N° ${prog}.`);
+  }
   cambiaVista('schede');
   apriEditor(r.uid);
 }
@@ -2098,8 +2174,19 @@ function cambiaVista(tab) {
    indipendente dai punti delle singole schede. Resta salvata offline
    nello store IndexedDB "traccia" finché non la cancelli.
    ===================================================================== */
-const TRK = { watch: null };
+const TRK = { watch: null, segmentoCorrente: null, scartati: 0 };
 let lineaTraccia = null;
+
+function segmentiTraccia() {
+  const gruppi = [];
+  for (const p of S.traccia) {
+    const id = Number(p.segmento) || 1;
+    let gruppo = gruppi.find((g) => g.id === id);
+    if (!gruppo) { gruppo = { id, punti: [] }; gruppi.push(gruppo); }
+    gruppo.punti.push(p);
+  }
+  return gruppi;
+}
 
 // distanza in metri tra due coordinate (formula dell'emisenoverso)
 function distanzaMetri(a, b) {
@@ -2111,7 +2198,9 @@ function distanzaMetri(a, b) {
 }
 function distanzaTotaleTraccia() {
   let tot = 0;
-  for (let i = 1; i < S.traccia.length; i++) tot += distanzaMetri(S.traccia[i - 1], S.traccia[i]);
+  for (const gruppo of segmentiTraccia()) {
+    for (let i = 1; i < gruppo.punti.length; i++) tot += distanzaMetri(gruppo.punti[i - 1], gruppo.punti[i]);
+  }
   return tot;
 }
 const formattaDistanza = (m) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2).replace('.', ',')} km`;
@@ -2122,7 +2211,9 @@ function aggiornaInfoTraccia() {
   if (!n) { info.textContent = TRK.watch !== null ? 'Registrazione avviata… in attesa del primo punto' : ''; }
   else {
     const durataMin = Math.round((Date.parse(S.traccia[n - 1].quando) - Date.parse(S.traccia[0].quando)) / 60000);
-    info.textContent = `${n} punti · ${formattaDistanza(distanzaTotaleTraccia())} · ${durataMin} min`;
+    const segmenti = segmentiTraccia().length;
+    info.textContent = `${n} punti · ${segmenti} ${segmenti === 1 ? 'tratto' : 'tratti'} · ${formattaDistanza(distanzaTotaleTraccia())} · ${durataMin} min` +
+      (TRK.scartati ? ` · ${TRK.scartati} GPS imprecisi ignorati` : '');
   }
   $('#btn-traccia-avvia').classList.toggle('nascosto', TRK.watch !== null);
   $('#btn-traccia-ferma').classList.toggle('nascosto', TRK.watch === null);
@@ -2134,17 +2225,37 @@ function disegnaLineaTraccia() {
   if (!mappa) return;
   if (lineaTraccia) { mappa.removeLayer(lineaTraccia); lineaTraccia = null; }
   if (S.traccia.length < 2) return;
-  lineaTraccia = L.polyline(S.traccia.map((p) => [p.lat, p.lng]), { color: '#2f5d3a', weight: 4, opacity: .8 }).addTo(mappa);
+  const linee = segmentiTraccia().map((g) => g.punti.map((p) => [p.lat, p.lng])).filter((x) => x.length > 1);
+  if (!linee.length) return;
+  lineaTraccia = L.polyline(linee, { color: '#2f5d3a', weight: 4, opacity: .8 }).addTo(mappa);
 }
 
 function avviaTraccia() {
   if (!navigator.geolocation) return alert('Geolocalizzazione non disponibile su questo dispositivo.');
   if (TRK.watch !== null) return;
+  TRK.segmentoCorrente = Math.max(0, ...S.traccia.map((p) => Number(p.segmento) || 1)) + 1;
+  TRK.scartati = 0;
   localStorage.setItem('sb-traccia-attiva', '1');
   TRK.watch = navigator.geolocation.watchPosition(
     async (p) => {
       const c = p.coords;
-      const punto = { lat: c.latitude, lng: c.longitude, alt: c.altitude, acc: c.accuracy, quando: oraISO() };
+      if (!Number.isFinite(c.latitude) || !Number.isFinite(c.longitude) || !Number.isFinite(c.accuracy) || c.accuracy > 50) {
+        TRK.scartati++;
+        aggiornaInfoTraccia();
+        return;
+      }
+      const adesso = oraISO();
+      const ultimo = S.traccia[S.traccia.length - 1];
+      const dist = ultimo ? distanzaMetri(ultimo, { lat: c.latitude, lng: c.longitude }) : Infinity;
+      const secondi = ultimo ? Math.max(1, (Date.parse(adesso) - Date.parse(ultimo.quando)) / 1000) : Infinity;
+      if (ultimo && dist < 3 && secondi < 30) return; // riduce il tremolio da fermo
+      if (ultimo && dist / secondi > 12 && c.accuracy > 15) { // salto incompatibile con un percorso a piedi
+        TRK.scartati++;
+        aggiornaInfoTraccia();
+        return;
+      }
+      if (ultimo && secondi > 120) TRK.segmentoCorrente++;
+      const punto = { lat: c.latitude, lng: c.longitude, alt: c.altitude, acc: c.accuracy, quando: adesso, segmento: TRK.segmentoCorrente };
       S.traccia.push(punto);
       await DB.scrivi('traccia', punto);
       disegnaLineaTraccia();
@@ -2152,6 +2263,7 @@ function avviaTraccia() {
     },
     (err) => {
       const motivi = { 1: 'permesso negato (abilita la posizione per il browser)', 2: 'posizione non disponibile', 3: 'tempo scaduto' };
+      if (err.code === 1) fermaTraccia();
       stato('Traccia: ' + (motivi[err.code] || err.message), true);
     },
     { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
@@ -2178,10 +2290,13 @@ async function cancellaTraccia() {
 
 function testoTracciaGPX() {
   if (S.traccia.length < 2) return null;
-  const pt = S.traccia.map((p) => `    <trkpt lat="${p.lat}" lon="${p.lng}">` +
-    (p.alt != null ? `<ele>${p.alt}</ele>` : '') + `<time>${escHtml(p.quando)}</time></trkpt>`).join('\n');
+  const segmenti = segmentiTraccia().map((g) => {
+    const pt = g.punti.map((p) => `      <trkpt lat="${p.lat}" lon="${p.lng}">` +
+      (p.alt != null ? `<ele>${p.alt}</ele>` : '') + `<time>${escHtml(p.quando)}</time></trkpt>`).join('\n');
+    return `    <trkseg>\n${pt}\n    </trkseg>`;
+  }).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Scheda Botanica" xmlns="http://www.topografix.com/GPX/1/1">\n` +
-    `  <trk><name>Percorso ${oggi()}</name><trkseg>\n${pt}\n  </trkseg></trk>\n</gpx>\n`;
+    `  <trk><name>Percorso ${oggi()}</name>\n${segmenti}\n  </trk>\n</gpx>\n`;
 }
 function esportaTracciaGPX() {
   const gpx = testoTracciaGPX();
@@ -2394,43 +2509,88 @@ async function esportaBackup() {
   await salvaTuttiInSospeso();
   stato('Preparo il backup…');
   const foto = {}, audio = {};
-  for (const r of S.schede) {
+  const tutteLeSchede = [...S.schede, ...S.cestino];
+  for (const r of tutteLeSchede) {
     for (const p of r.foto) { const b = await DB.leggi('foto', p.id); if (b) foto[p.id] = await blobInDataURL(b); }
     for (const a of r.audio) { const b = await DB.leggi('audio', a.id); if (b) audio[a.id] = await blobInDataURL(b); }
   }
-  const dati = { app: 'scheda-botanica', versione: 2, esportato: oraISO(), schede: S.schede, foto, audio };
+  const dati = { app: 'scheda-botanica', versione: 4, esportato: oraISO(), schede: tutteLeSchede, foto, audio, specie: S.specie, traccia: S.traccia };
   scarica(new Blob([JSON.stringify(dati)], { type: 'application/json' }), `scheda-botanica-backup-${oggi()}.json`);
   localStorage.setItem('sb-ultimo-backup', oraISO());
-  stato(`Backup esportato: ${S.schede.length} schede, ${Object.keys(foto).length} foto, ${Object.keys(audio).length} audio`);
+  stato(`Backup esportato: ${tutteLeSchede.length} schede, ${Object.keys(foto).length} foto, ${Object.keys(audio).length} audio`);
 }
 
 // Accetta: backup v2 (con audio), backup v1, dati.json dello ZIP della vecchia app (campo "full"), array semplice
 function leggiFormatoBackup(json) {
+  let voci;
   if (json && json.app === 'scheda-botanica' && Array.isArray(json.schede)) {
-    return json.schede.map((s) => {
+    voci = json.schede.map((s) => {
       const { record } = normalizza(s);
       const fotoDaSalvare = record.foto.filter((p) => json.foto?.[p.id]).map((p) => ({ id: p.id, dataUrl: json.foto[p.id] }));
       const audioDaSalvare = record.audio.filter((a) => json.audio?.[a.id]).map((a) => ({ id: a.id, dataUrl: json.audio[a.id] }));
       return { record, fotoDaSalvare, audioDaSalvare };
     });
+    voci.specie = Array.isArray(json.specie) ? json.specie : [];
+    voci.traccia = Array.isArray(json.traccia) ? json.traccia : [];
+    return voci;
   }
-  if (json && Array.isArray(json.full)) return json.full.map(normalizza);
-  if (Array.isArray(json)) return json.map(normalizza);
+  if (json && Array.isArray(json.full)) voci = json.full.map(normalizza);
+  else if (Array.isArray(json)) voci = json.map(normalizza);
+  if (voci) { voci.specie = []; voci.traccia = []; return voci; }
   throw new Error('il file non è un backup di Scheda Botanica');
+}
+
+async function preparaMediaImportazione(voci) {
+  const foto = [], audio = [];
+  for (const { record, fotoDaSalvare = [], audioDaSalvare = [] } of voci) {
+    if (fotoDaSalvare.length !== record.foto.length)
+      throw new Error(`backup incompleto: mancano foto della scheda N° ${record.prog || '?'}`);
+    if (audioDaSalvare.length !== record.audio.length)
+      throw new Error(`backup incompleto: mancano note vocali della scheda N° ${record.prog || '?'}`);
+    for (const f of fotoDaSalvare) {
+      let blob = f.blob || await dataURLInBlob(f.dataUrl);
+      if (!(blob instanceof Blob) || !blob.size) throw new Error(`foto ${f.id} non leggibile`);
+      if (blob.size > 900000) blob = await comprimiFoto(blob);
+      foto.push({ id: f.id, blob });
+    }
+    for (const a of audioDaSalvare) {
+      const blob = a.blob || await dataURLInBlob(a.dataUrl);
+      if (!(blob instanceof Blob) || !blob.size) throw new Error(`audio ${a.id} non leggibile`);
+      audio.push({ id: a.id, blob });
+    }
+  }
+  return { foto, audio };
 }
 
 async function importaDati(voci, modo) {
   if (modo === 'sostituisci') {
-    await DB.svuota('schede');
-    await DB.svuota('foto');
-    await DB.svuota('audio');
+    // Prima leggiamo e validiamo ogni file. Solo dopo sostituiamo i cinque store
+    // in un'unica transazione atomica.
+    const media = await preparaMediaImportazione(voci);
+    const schede = voci.map((v) => v.record);
+    if (new Set(schede.map((r) => r.uid)).size !== schede.length)
+      throw new Error('backup non valido: contiene identificativi scheda duplicati');
+    const specie = Array.isArray(voci.specie) ? voci.specie.filter((s) => s?.nomeSci) : [];
+    const traccia = Array.isArray(voci.traccia) ? voci.traccia.filter((p) =>
+      Number.isFinite(Number(p?.lat)) && Number.isFinite(Number(p?.lng)) && p?.quando).map((p) => ({
+        lat: Number(p.lat), lng: Number(p.lng), alt: p.alt == null ? null : Number(p.alt),
+        acc: p.acc == null ? null : Number(p.acc), quando: p.quando, segmento: Number(p.segmento) || 1,
+      })) : [];
+    await DB.sostituisciArchivio({ schede, foto: media.foto, audio: media.audio, specie, traccia });
     S.urlFoto.forEach((u) => URL.revokeObjectURL(u));
     S.urlFoto.clear();
     S.urlAudio.forEach((u) => URL.revokeObjectURL(u));
     S.urlAudio.clear();
-    S.schede = [];
-    S.cestino = [];
+    S.schede = schede.filter((r) => !r.cancellata);
+    S.cestino = schede.filter((r) => r.cancellata);
+    S.specie = specie;
+    S.traccia = traccia;
     S.selezionate.clear();
+    disegnaElenco();
+    disegnaLineaTraccia();
+    aggiornaBadgeCestino();
+    mostraEsitoImportazione(voci.length, 0, 0, 0);
+    return;
   }
   let nuove = 0, aggiornate = 0, invariate = 0, mediaErr = 0;
   for (const { record, fotoDaSalvare, audioDaSalvare } of voci) {
@@ -2460,6 +2620,10 @@ async function importaDati(voci, modo) {
   }
   disegnaElenco();
   aggiornaBadgeCestino();
+  mostraEsitoImportazione(nuove, aggiornate, invariate, mediaErr);
+}
+
+function mostraEsitoImportazione(nuove, aggiornate, invariate, mediaErr) {
   const dup = progDuplicati().size;
 
   const dlg = el('dialog', {},
@@ -2482,7 +2646,7 @@ function liberaMediaRecord(r) {
   for (const a of r.audio) liberaUrlAudio(a.id);
 }
 
-// Legge un backup ZIP (v3): dati da backup.json, foto e audio come file veri
+// Legge un backup ZIP (v3/v4): dati da backup.json, foto e audio come file veri
 async function leggiBackupZip(file) {
   const zip = await JSZip.loadAsync(file);
   const dj = zip.file('backup.json');
@@ -2505,6 +2669,7 @@ async function leggiBackupZip(file) {
     return { record, fotoDaSalvare, audioDaSalvare };
   }));
   voci.specie = specieFile ? JSON.parse(await specieFile.async('string')) : [];
+  voci.traccia = Array.isArray(json.traccia) ? json.traccia : [];
   return voci;
 }
 
@@ -2515,13 +2680,16 @@ async function importaBackupDaFile(file) {
     const voci = eZip ? await leggiBackupZip(file) : leggiFormatoBackup(JSON.parse(await file.text()));
     const nFoto = voci.reduce((n, v) => n + (v.fotoDaSalvare?.length || 0), 0);
     const nAudio = voci.reduce((n, v) => n + (v.audioDaSalvare?.length || 0), 0);
-    $('#import-info').textContent = `Il file contiene ${voci.length} schede, ${nFoto} foto e ${nAudio} audio.`;
+    const nAttive = voci.filter((v) => !v.record.cancellata).length;
+    const nCestino = voci.length - nAttive;
+    const nTraccia = voci.traccia?.length || 0;
+    $('#import-info').textContent = `Contenuto verificato: ${nAttive} schede attive, ${nCestino} nel cestino, ${nFoto} foto, ${nAudio} audio, ${voci.specie?.length || 0} specie nel catalogo e ${nTraccia} punti traccia.`;
     const modo = await chiedi($('#dlg-import'));
     if (modo === 'annulla') return;
     if (modo === 'sostituisci' && !confirm('Tutte le schede attuali verranno cancellate. Continuare?')) return;
     stato('Importazione in corso…');
     await importaDati(voci, modo);
-    await unisciCatalogoSpecie(voci.specie);
+    if (modo !== 'sostituisci') await unisciCatalogoSpecie(voci.specie);
     stato('Importazione completata');
   } catch (e) {
     alert('Importazione non riuscita: ' + e.message);
@@ -2630,7 +2798,7 @@ function esportaKML() {
 //                    così l'utente sceglie la destinazione in un tocco in più, senza uscire dall'app.
 async function esportaZIP(modo = 'scarica', opzioni = {}) {
   const tutteLeSchede = opzioni.soloAttive ? [...S.schede] : [...S.schede, ...S.cestino];
-  if (!tutteLeSchede.length) return alert('Nessuna scheda da esportare.');
+  if (!tutteLeSchede.length) { alert('Nessuna scheda da esportare.'); return false; }
   await salvaTuttiInSospeso();
   stato('Preparo lo ZIP…');
   try {
@@ -2644,16 +2812,18 @@ async function esportaZIP(modo = 'scarica', opzioni = {}) {
       const base = `${r.prog}_${nomeFile(r.nome)}`;
       for (const p of r.foto) {
         const b = await DB.leggi('foto', p.id);
-        if (b) { const f = `foto/${base}_${p.id}.jpg`; cartFoto.file(f.slice(5), b); indice[p.id] = f; }
+        if (!b) throw new Error(`foto mancante nella scheda N° ${r.prog}`);
+        const f = `foto/${base}_${p.id}.jpg`; cartFoto.file(f.slice(5), b); indice[p.id] = f;
       }
       for (const a of r.audio) {
         const b = await DB.leggi('audio', a.id);
-        if (b) { const f = `audio/${base}_${a.id}.${estensioneAudio(b.type || '')}`; cartAudio.file(f.slice(6), b); indice[a.id] = { percorso: f, tipo: b.type || '' }; }
+        if (!b) throw new Error(`nota vocale mancante nella scheda N° ${r.prog}`);
+        const f = `audio/${base}_${a.id}.${estensioneAudio(b.type || '')}`; cartAudio.file(f.slice(6), b); indice[a.id] = { percorso: f, tipo: b.type || '' };
       }
     }
-    zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 3, esportato: oraISO(), schede: tutteLeSchede, file: indice }));
+    zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 4, esportato: oraISO(), schede: tutteLeSchede, file: indice, traccia: S.traccia }));
     if (S.specie.length) zip.file('specie.json', JSON.stringify(S.specie));
-    zip.file('rilevazioni.csv', testoCSV());
+    const csv = testoCSV(); if (csv) zip.file('rilevazioni.csv', csv);
     const gj = testoGeoJSON(); if (gj) zip.file('rilevazioni.geojson', gj);
     const gpx = testoGPX(); if (gpx) zip.file('rilevazioni.gpx', gpx);
     const kml = testoKML(); if (kml) zip.file('rilevazioni.kml', kml);
@@ -2681,11 +2851,13 @@ async function esportaZIP(modo = 'scarica', opzioni = {}) {
       stato(`Backup esportato: ${tutteLeSchede.length} schede`);
     }
     localStorage.setItem('sb-ultimo-backup', oraISO());
+    return true;
   } catch (e) {
     // L'utente che annulla la finestra di condivisione genera un errore "AbortError": non è un vero errore.
-    if (e.name === 'AbortError') { stato(''); return; }
+    if (e.name === 'AbortError') { stato('Condivisione annullata'); return false; }
     alert('Esportazione ZIP non riuscita: ' + e.message);
-    stato('');
+    stato('Backup non riuscito', true);
+    return false;
   }
 }
 
@@ -3129,7 +3301,7 @@ async function avvio() {
   await migraVecchiaVersione();
   await purgaCestinoScaduto();
 
-  S.traccia = await DB.tutte('traccia');
+  S.traccia = (await DB.tutte('traccia')).map((p) => ({ ...p, segmento: Number(p.segmento) || 1 }));
   S.specie = await DB.tutte('specie');
   if (localStorage.getItem('sb-traccia-attiva')) avviaTraccia(); // riprende la registrazione se era rimasta attiva
 
@@ -3143,7 +3315,8 @@ async function avvio() {
     const giorni = Number(localStorage.getItem('sb-backup-auto-giorni')) || 1;
     if (!ultimo || Date.now() - Date.parse(ultimo) > giorni * 864e5) {
       try {
-        await esportaZIP('scarica');
+        const riuscito = await esportaZIP('scarica');
+        if (!riuscito) throw new Error('backup non creato');
         stato('Backup automatico scaricato');
         localStorage.removeItem('sb-backup-auto-fallito');
       } catch {
@@ -3165,18 +3338,39 @@ avvio();
 function aggiornaStatoRete() {
   const el = document.getElementById('stato-rete');
   if (!el) return;
-  el.textContent = navigator.onLine ? '' : ' · 📴 offline';
+  const rete = navigator.onLine ? '🌐 online' : '📴 offline';
+  const pronta = el.dataset.offline || 'offline in verifica…';
+  el.textContent = `${rete} · ${pronta}`;
 }
 aggiornaStatoRete();
 window.addEventListener('online', aggiornaStatoRete);
 window.addEventListener('offline', aggiornaStatoRete);
+
+async function aggiornaStatoOffline() {
+  const el = document.getElementById('stato-rete');
+  if (!el) return;
+  let testo = 'offline non disponibile';
+  try {
+    if ('serviceWorker' in navigator) {
+      await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, ko) => setTimeout(() => ko(new Error('service worker non pronto')), 5000)),
+      ]);
+      const diagnostica = await caches.match('./__sw-diagnostica__');
+      const falliti = diagnostica ? await diagnostica.json() : [];
+      testo = falliti?.length ? `offline parziale (${falliti.length} file mancanti)` : '✓ offline pronta';
+    }
+  } catch { testo = 'offline da verificare'; }
+  el.dataset.offline = testo;
+  aggiornaStatoRete();
+}
 
 // Registrazione del service worker: rende l'app installabile e utilizzabile offline
 // dopo la prima visita. Se il file non è servito da un vero server (es. aperto
 // come file locale) l'app funziona comunque, solo senza installazione PWA.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js').then(aggiornaStatoOffline).catch(aggiornaStatoOffline);
   });
   // Se all'installazione il service worker non è riuscito a mettere in cache
   // uno o più file dell'app-shell (es. percorso sbagliato sul sito
@@ -3192,4 +3386,3 @@ if ('serviceWorker' in navigator) {
     alert('Attenzione: questi file non sono stati trovati sul sito pubblicato e vanno ricaricati:\n\n' + falliti.join('\n') + '\n\nL\'app funziona comunque, ma quei file non saranno disponibili offline finché non li ricarichi nel posto giusto.');
   }).catch(() => {});
 }
-

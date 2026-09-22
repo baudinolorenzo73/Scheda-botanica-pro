@@ -2,7 +2,7 @@
 // Strategia: "app shell" in cache, così l'app si apre anche offline dopo la prima visita.
 // Non tocca IndexedDB (dati, foto, audio): quelli restano sempre gestiti dall'app stessa.
 
-const CACHE_NOME = 'scheda-botanica-v9'; // cambia il numero quando pubblichi un aggiornamento importante
+const CACHE_NOME = 'scheda-botanica-app-v10'; // cambia il numero quando pubblichi un aggiornamento importante
 // Cache separata per le tile della mappa (OpenStreetMap): tenerla a parte
 // significa che "svuotare"/aggiornare l'app shell non cancella le zone di
 // mappa già scaricate per l'uso offline. NOME USATO ANCHE DA index.html
@@ -49,6 +49,7 @@ self.addEventListener('install', (evento) => {
         // ancora "controllata"), quindi la scriviamo in cache e la pagina
         // la legge lei quando è pronta.
         if (falliti.length) return cache.put('./__sw-diagnostica__', new Response(JSON.stringify(falliti)));
+        return cache.delete('./__sw-diagnostica__');
       })
     )
   );
@@ -60,7 +61,12 @@ self.addEventListener('activate', (evento) => {
     caches.keys().then((nomi) =>
       // La cache delle tile non va mai cancellata qui: contiene le zone
       // scaricate apposta per l'offline, non fa parte dell'app shell.
-      Promise.all(nomi.filter((n) => n !== CACHE_NOME && n !== CACHE_TILE).map((n) => caches.delete(n)))
+      // Cancella esclusivamente le vecchie cache dell'app botanica. Sullo stesso
+      // dominio GitHub Pages possono vivere altre app, che non vanno toccate.
+      Promise.all(nomi.filter((n) =>
+        n !== CACHE_NOME && n !== CACHE_TILE &&
+        (n.startsWith('scheda-botanica-app-') || /^scheda-botanica-v\d+$/.test(n))
+      ).map((n) => caches.delete(n)))
     )
   );
   self.clients.claim();
@@ -103,7 +109,9 @@ self.addEventListener('fetch', (evento) => {
           caches.open(CACHE_NOME).then((cache) => cache.put(richiesta, copia));
           return rete;
         })
-        .catch(() => caches.match('./index.html'));
+        .catch(() => richiesta.mode === 'navigate'
+          ? caches.match('./index.html')
+          : new Response('Risorsa non disponibile offline', { status: 503, statusText: 'Offline' }));
     })
   );
 });

@@ -638,7 +638,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 <dialog id="dlg-import">
   <h2>Importa backup</h2>
   <p id="import-info"></p>
-  <p style="font-size:13px;color:var(--tenue)">Unisci: aggiunge le schede nuove e aggiorna quelle già presenti se il backup è più recente.<br>Sostituisci: cancella tutto e carica il backup.</p>
+  <p style="font-size:13px;color:var(--tenue)">Unisci: aggiunge le schede nuove e aggiorna quelle già presenti se il backup è più recente.<br>Sostituisci: verifica prima tutto il backup, poi sostituisce l’archivio in un’unica operazione protetta.</p>
   <div class="azioni">
     <button class="btn" value="annulla">Annulla</button>
     <button class="btn pericolo" value="sostituisci">Sostituisci tutto</button>
@@ -752,9 +752,9 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <li><b>+ Nuova scheda</b> crea una rilevazione con il numero progressivo successivo.</li>
     <li>In fondo alla scheda ci sono sempre tre pulsanti grandi: <b>📷 Foto</b>, <b>📍 GPS</b> e <b>🎙 Nota vocale</b>, raggiungibili col pollice senza scorrere tutta la scheda.</li>
     <li><b>GPS preciso</b>: sotto gli alberi il segnale è debole, quindi l'app ascolta i satelliti per qualche secondo e tiene la posizione migliore, mostrando la precisione mentre migliora. Puoi fermarla prima toccando di nuovo 📍. Accanto alle coordinate vedi anche una valutazione (ottimo/buono/scarso) e se al momento del rilievo eri online o offline.</li>
-    <li><b>Due numerazioni diverse</b>: "N° progressivo" cresce sempre e non si ripete mai su tutto l'archivio (è quello usato dal QR per ritrovare la scheda giusta); "N° nel giorno" invece riparte da 1 ogni volta che scegli una nuova data, e si calcola da solo quando la scegli — comodo per contare gli alberi rilevati in una stessa giornata.</li>
+    <li><b>Due numerazioni diverse</b>: "N° progressivo" identifica la scheda nell’elenco corrente; "N° nel giorno" riparte da 1 ogni volta che scegli una nuova data. Il QR usa invece un identificativo interno permanente, quindi resta univoco anche quando inizi un nuovo elenco.</li>
     <li><b>Scegli dalla mappa</b>: se non riesci a rilevare il GPS (o vuoi correggerlo dopo), nella sezione Posizione GPS c'è anche "Scegli dalla mappa": tocchi il punto giusto sulla cartina invece di aspettare il satellite.</li>
-    <li><b>Traccia (percorso)</b>: nella vista Mappa, "Inizia traccia" registra il percorso fatto a piedi (come una traccia GPS) finché non tocchi "Ferma traccia"; si vede come linea sulla mappa e si esporta come GPX. Resta salvata sul dispositivo anche chiudendo l'app, finché non la cancelli.</li>
+    <li><b>Traccia (percorso)</b>: nella vista Mappa, "Inizia traccia" registra il percorso fatto a piedi finché non tocchi "Ferma traccia". I punti con precisione peggiore di 50 m e i salti anomali vengono ignorati; una pausa lunga crea un nuovo tratto senza collegamenti falsi. La traccia si esporta in GPX e viene inclusa nel backup completo.</li>
     <li><b>Cestino</b>: eliminando una scheda (dall'elenco o dall'editor) non sparisce subito, va nel cestino (icona 🗑 in alto): da lì puoi ripristinarla o eliminarla per sempre. Dopo il numero di giorni che scegli tu (di default 30), le schede nel cestino vengono eliminate da sole.</li>
     <li>I campi con icona (persistenza, forma della chioma, rami, crescita, tipologia di estensione, tipo di foglia, lamina, margine) si scelgono toccando il riquadro: si apre una schermata con un disegno e una spiegazione per ogni valore, così anche chi è alle prime armi riconosce cosa sta osservando. Se nessuna voce corrisponde, si può scrivere un valore libero in "Altro".</li>
     <li><b>Foto</b>: "Scatta" apre subito la fotocamera, "Dalla galleria" ne permette di scegliere più di una insieme. Le foto vengono ridotte automaticamente per occupare meno spazio.</li>
@@ -772,10 +772,10 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   <p><button type="button" class="btn" onclick="this.closest('dialog').close(); apriGuidaSpecie()">📖 Apri la guida alle specie</button></p>
 
   <h3>QR e ricerca rapida</h3>
-  <p>Ogni scheda ha un codice QR univoco (in fondo alla scheda). Si può scaricare come immagine e stamparlo su un'etichetta da applicare vicino alla pianta. Il pulsante "Trova con QR" nella barra in alto apre la fotocamera: inquadrando l'etichetta si arriva subito alla scheda corrispondente, anche con centinaia di rilevazioni.</p>
+  <p>Ogni scheda ha un codice QR con un identificativo permanente. Si può scaricare come immagine e stamparlo su un'etichetta da applicare vicino alla pianta. Il pulsante "Trova con QR" apre la fotocamera e porta alla scheda esatta. Le vecchie etichette restano compatibili quando il loro numero non è duplicato.</p>
 
   <h3>Mappa</h3>
-  <p>La scheda "Mappa" mostra tutte le rilevazioni con coordinate GPS su una cartina. I numeri colorati di rosso hanno un problema segnalato nel campo "Problemi tronco/foglie". Toccando un punto si apre un riepilogo con un link diretto alla scheda. La cartina di sfondo richiede internet; i punti restano comunque salvati offline.</p>
+  <p>La scheda "Mappa" mostra tutte le rilevazioni con coordinate GPS. I numeri colorati di rosso hanno un problema segnalato. Le zone della cartina già viste o scaricate restano disponibili offline; lo stato in alto indica quando tutti i file dell’app sono pronti per l’uso senza rete.</p>
 
   <h3>Stampa</h3>
   <p>Si può stampare una scheda alla volta (icona 🖨 nell'editor) oppure più schede insieme dal pulsante "Stampa" in alto: a scelta quelle selezionate con la casella, quelle visibili con il filtro attuale, o tutte. È possibile stampare anche solo le etichette con il QR, pronte per il taglio.</p>
@@ -786,7 +786,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <li><b>Backup automatico</b>: attivo di default (menu ⋮), scarica da solo un backup completo con la frequenza che scegli, senza doversene ricordare. Un sito web non può salvare da solo in una cartella a scelta (es. Drive): finisce sempre nella cartella Download del telefono, come un download normale.</li>
     <li><b>Nuovo elenco</b> (menu ⋮): salva le schede di adesso in un backup con data e ora nel nome, le sposta nel cestino (restano recuperabili) e riparte da un elenco vuoto, con "N° progressivo" di nuovo da 1. Comodo per iniziare puliti una nuova giornata o una nuova campagna di rilievi.</li>
     <li><b>Condividi backup</b>: come sopra, ma invece di scaricare il file apre il pannello "Condividi" del telefono, per mandarlo con un tocco in più a Drive, Dropbox o WhatsApp. Se il browser non lo supporta, scarica il file normalmente.</li>
-    <li><b>Ripristina backup</b>: accetta lo .zip e anche i vecchi backup .json.</li>
+    <li><b>Ripristina backup</b>: accetta lo .zip e i vecchi backup .json. Prima mostra un riepilogo di schede, foto, audio, catalogo e traccia. La modalità “Sostituisci” conserva l’archivio attuale se il file è incompleto o una scrittura fallisce.</li>
     <li><b>Importa da Excel o CSV</b>: le colonne vengono riconosciute dal nome dell'intestazione (N° progressivo, Data, Nome…), utile per correggere molti dati insieme al PC.</li>
   </ul>
 
