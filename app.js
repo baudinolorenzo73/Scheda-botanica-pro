@@ -1,219 +1,4 @@
-
 'use strict';
-
-/* =====================================================================
-   1. CONFIGURAZIONE CAMPI
-   Per aggiungere un campo basta una riga qui: editor, stampa, CSV,
-   GeoJSON e ricerca leggono tutti da questa tabella.
-   ===================================================================== */
-const SEZIONI = [
-  { id: 'oss', titolo: 'Osservazioni' },
-  { id: 'veg', titolo: 'Vegetazione' },
-  { id: 'ped', titolo: 'Pedologia' },
-  { id: 'fit', titolo: 'Fitopatologia' },
-  { id: 'not', titolo: 'Note' },
-];
-
-// tipo: testo | numero | scelta (select chiusa) | lista (testo libero con suggerimenti)
-//       | illustrata (scelta guidata con icona + spiegazione, vedi ICONE/DEFINIZIONI) | area
-const CAMPI = [
-  { k: 'prog',          sez: 'oss', label: 'N° progressivo',              tipo: 'numero', passo: 1, min: 1, intero: true,
-    aiuto: 'Numero della scheda nell’elenco corrente. Può ripartire da 1 quando crei un nuovo elenco; il QR usa un identificativo interno permanente.' },
-  { k: 'data',          sez: 'oss', label: 'Data',                       tipo: 'data' },
-  { k: 'numeroZona',    sez: 'oss', label: 'N° nel giorno',              tipo: 'numero', passo: 1, min: 1, intero: true, etichettaStampa: 'N° nel giorno',
-    aiuto: 'Numerazione che riparte da 1 a ogni nuova data: si calcola da sola quando scegli la Data qui sopra. Utile per contare gli alberi rilevati in una stessa giornata.' },
-  { k: 'nome',          sez: 'oss', label: 'Nome esemplare (genere, specie, varietà)', tipo: 'lista', largo: true },
-  { k: 'numero',        sez: 'oss', label: 'N° medesimo esemplare',         tipo: 'numero', passo: 1, min: 1, intero: true, etichettaStampa: 'Esemplari vicini',
-    aiuto: 'Quanti alberi uguali a questo si trovano nelle vicinanze (per esempio un filare). Di default è 1, cioè "esemplare isolato, nessun altro uguale intorno".' },
-  { k: 'grandezza',     sez: 'oss', label: 'Classe di grandezza',         tipo: 'scelta', etichettaStampa: 'Grandezza',
-    valori: [['', '—'], ['1', '1ª grandezza (maggiore)'], ['2', '2ª grandezza'], ['3', '3ª grandezza'], ['4', '4ª grandezza (minore)']] },
-  { k: 'altezza',       sez: 'oss', label: 'Altezza (m)',                 tipo: 'numero', passo: 0.5, min: 0, max: 150 },
-  { k: 'circonferenza', sez: 'oss', label: 'Circonferenza a 1,30 m (cm)', tipo: 'numero', passo: 1, min: 0, max: 5000, etichettaStampa: 'Circonferenza (cm)' },
-  { k: 'persistenza',   sez: 'oss', label: 'Persistenza foglie',          tipo: 'illustrata', valori: ['sempreverde', 'caduca', 'semisempreverde', 'semicaduca'] },
-  { k: 'formaChioma',   sez: 'oss', label: 'Forma della chioma',          tipo: 'illustrata', etichettaStampa: 'Forma chioma', valori: ['piramidale', 'a cono', 'espansa', 'globosa', 'colonnare', 'a ombrello', 'piangente'] },
-  { k: 'rami',          sez: 'oss', label: 'Rami secondari',              tipo: 'illustrata', valori: ['opposti', 'alterni', 'verticillati'] },
-  { k: 'crescita',      sez: 'oss', label: 'Tipo di crescita',            tipo: 'illustrata', valori: ['monopodiale', 'simpodiale'] },
-  { k: 'estensione',    sez: 'oss', label: 'Tipologia di estensione (gemme)', tipo: 'illustrata', etichettaStampa: 'Estensione (gemme)', valori: ['1 – monociclica', '2 – policiclica (olmo)', '3 – continua'] },
-  { k: 'tipoFoglia',    sez: 'veg', label: 'Tipo di foglia',              tipo: 'illustrata', valori: ['aghiforme', 'semplice', 'composta', 'squamiforme'] },
-  { k: 'lamina',        sez: 'veg', label: 'Forma della lamina',          tipo: 'illustrata', etichettaStampa: 'Forma lamina', valori: ['ovata', 'lanceolata', 'ellittica', 'aghiforme', 'squamiforme', 'palmata'] },
-  { k: 'margine',       sez: 'veg', label: 'Margine fogliare',            tipo: 'illustrata', valori: ['intero', 'seghettato', 'dentato', 'lobato', 'ondulato'] },
-  { k: 'terreno',       sez: 'ped', label: 'Condizioni del terreno',      tipo: 'lista', largo: true, etichettaStampa: 'Terreno', valori: ['prato coltivato', 'prato non concimato', 'aiuola', 'terreno compatto', 'terreno drenato', 'pacciamato'] },
-  { k: 'problemi',      sez: 'fit', label: 'Problemi tronco / foglie',    tipo: 'area', largo: true, etichettaStampa: 'Problemi' },
-  { k: 'note',          sez: 'not', label: 'Altro notato',                tipo: 'area', largo: true, etichettaStampa: 'Note' },
-];
-
-// Dipendenze tra campi: se il campo "se" ha valore "valore", i campi
-// elencati in "nascondi" non sono pertinenti e vengono nascosti + svuotati.
-// Per aggiungere altre regole basta una riga qui.
-const DIPENDENZE_CAMPI = [
-  { se: 'tipoFoglia', valore: 'aghiforme', nascondi: ['lamina', 'margine'] },
-];
-
-const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.12.0';
-const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
-const FOTO_LATO_MAX = 1600;   // px, lato lungo
-const FOTO_QUALITA = 0.82;    // qualità JPEG
-
-/* =====================================================================
-   2. UTILITÀ
-   ===================================================================== */
-const $ = (sel, rad = document) => rad.querySelector(sel);
-
-// Crea un elemento DOM. Il testo passa sempre da textContent: nessun
-// problema con nomi che contengono < & " (bug della versione precedente).
-function el(tag, attr = {}, ...figli) {
-  const n = document.createElement(tag);
-  for (const [a, v] of Object.entries(attr)) {
-    if (v === null || v === undefined || v === false) continue;
-    if (a.startsWith('on')) n.addEventListener(a.slice(2), v);
-    else if (a === 'class') n.className = v;
-    else if (a === 'testo') n.textContent = v;
-    else n.setAttribute(a, v === true ? '' : v);
-  }
-  for (const f of figli.flat()) {
-    if (f === null || f === undefined || f === false) continue;
-    n.append(f instanceof Node ? f : document.createTextNode(String(f)));
-  }
-  return n;
-}
-
-const nuovoId = (pref) => `${pref}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-const nomeFile = (s) => (s || 'esemplare').trim().replace(/[^a-z0-9_-]+/gi, '_').slice(0, 30) || 'esemplare';
-const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const mmss = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec) % 60).padStart(2, '0')}`;
-const oraISO = () => new Date().toISOString();
-const dataIT = (iso) => iso ? new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-// Formatta una data "sola" (YYYY-MM-DD, senza ora) in gg/mm/aaaa senza passare da Date/fuso orario,
-// per evitare che una data-solo-giorno slitti di un giorno vicino alla mezzanotte.
-const dataBreveIT = (iso) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
-// Data del calendario locale. toISOString() usa UTC e, dopo mezzanotte in Italia,
-// può ancora restituire il giorno precedente.
-const dataLocaleISO = (data = new Date()) => {
-  const y = data.getFullYear();
-  const m = String(data.getMonth() + 1).padStart(2, '0');
-  const d = String(data.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
-const oggi = () => dataLocaleISO();
-const perProg = (a, b) => (Number(a.prog) || 0) - (Number(b.prog) || 0);
-
-function stato(msg, errore = false) {
-  const s = $('#stato');
-  s.textContent = msg;
-  s.classList.toggle('err', errore);
-  if (S.aperta) $('#ed-stato').textContent = msg;
-}
-
-let toastTimer = null;
-function toast(msg, azione, fn, durata = 7000) {
-  document.querySelector('.toast')?.remove();
-  clearTimeout(toastTimer);
-  const t = el('div', { class: 'toast', role: 'status' }, el('span', { testo: msg }));
-  if (azione) t.append(el('button', { testo: azione, onclick: () => { t.remove(); fn(); } }));
-  document.body.append(t);
-  toastTimer = setTimeout(() => t.remove(), durata);
-}
-
-function scarica(blob, nome) {
-  const url = URL.createObjectURL(blob);
-  const a = el('a', { href: url, download: nome });
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
-
-const blobInDataURL = (blob) => new Promise((ok, ko) => {
-  const r = new FileReader();
-  r.onload = () => ok(r.result);
-  r.onerror = () => ko(r.error);
-  r.readAsDataURL(blob);
-});
-
-async function dataURLInBlob(dataUrl) {
-  return (await fetch(dataUrl)).blob();
-}
-
-// Apre un <dialog> e restituisce il value del pulsante premuto
-function chiedi(dlg) {
-  return new Promise((ok) => {
-    const clic = (e) => {
-      const b = e.target.closest('button[value]');
-      if (b) fine(b.value);
-    };
-    const annulla = (e) => { e.preventDefault(); fine('annulla'); };
-    function fine(v) {
-      dlg.removeEventListener('click', clic);
-      dlg.removeEventListener('cancel', annulla);
-      dlg.close();
-      ok(v);
-    }
-    dlg.addEventListener('click', clic);
-    dlg.addEventListener('cancel', annulla);
-    dlg.showModal();
-  });
-}
-
-/* =====================================================================
-   3. DATABASE (IndexedDB)
-   store "schede": record senza immagini (chiave uid)
-   store "foto":   Blob JPEG compressi (chiave = id foto)
-   Niente più localStorage da 5 MB: lo spazio è quello del dispositivo.
-   ===================================================================== */
-const DB = {
-  db: null,
-  apri() {
-    return new Promise((ok, ko) => {
-      const r = indexedDB.open(DB_NOME, DB_VERSIONE);
-      r.onupgradeneeded = () => {
-        const d = r.result;
-        if (!d.objectStoreNames.contains('schede')) d.createObjectStore('schede', { keyPath: 'uid' });
-        if (!d.objectStoreNames.contains('foto')) d.createObjectStore('foto');
-        if (!d.objectStoreNames.contains('audio')) d.createObjectStore('audio');
-        if (!d.objectStoreNames.contains('traccia')) d.createObjectStore('traccia', { autoIncrement: true });
-        if (!d.objectStoreNames.contains('specie')) d.createObjectStore('specie', { keyPath: 'nomeSci' });
-      };
-      r.onsuccess = () => { this.db = r.result; ok(); };
-      r.onerror = () => ko(r.error);
-    });
-  },
-  // Risolve solo quando la transazione è davvero scritta su disco
-  tx(store, modo, fn) {
-    return new Promise((ok, ko) => {
-      const t = this.db.transaction(store, modo);
-      let esito;
-      const rq = fn(t.objectStore(store));
-      if (rq) rq.onsuccess = () => { esito = rq.result; };
-      t.oncomplete = () => ok(esito);
-      t.onerror = () => ko(t.error);
-      t.onabort = () => ko(t.error || new Error('Scrittura annullata (spazio esaurito?)'));
-    });
-  },
-  tutte: (store) => DB.tx(store, 'readonly', (s) => s.getAll()),
-  leggi: (store, k) => DB.tx(store, 'readonly', (s) => s.get(k)),
-  scrivi: (store, v, k) => DB.tx(store, 'readwrite', (s) => (k === undefined ? s.put(v) : s.put(v, k))),
-  cancella: (store, k) => DB.tx(store, 'readwrite', (s) => s.delete(k)),
-  svuota: (store) => DB.tx(store, 'readwrite', (s) => s.clear()),
-  // Sostituisce l'intero archivio con una sola transazione: se una scrittura
-  // fallisce, IndexedDB annulla anche le cancellazioni iniziali.
-  sostituisciArchivio({ schede, foto, audio, specie, traccia }) {
-    return new Promise((ok, ko) => {
-      const nomi = ['schede', 'foto', 'audio', 'specie', 'traccia'];
-      const t = this.db.transaction(nomi, 'readwrite');
-      for (const nome of nomi) t.objectStore(nome).clear();
-      for (const r of schede) t.objectStore('schede').put(r);
-      for (const f of foto) t.objectStore('foto').put(f.blob, f.id);
-      for (const a of audio) t.objectStore('audio').put(a.blob, a.id);
-      for (const s of specie) t.objectStore('specie').put(s);
-      for (const p of traccia) t.objectStore('traccia').add(p);
-      t.oncomplete = () => ok();
-      t.onerror = () => ko(t.error);
-      t.onabort = () => ko(t.error || new Error('Ripristino annullato: archivio precedente conservato'));
-    });
-  },
-};
-
 /* =====================================================================
    4. STATO
    ===================================================================== */
@@ -244,9 +29,14 @@ function schedaVuota() {
 // Rende compatibile un record di qualsiasi versione (vecchia app inclusa).
 // Restituisce { record, fotoDaSalvare: [{id, dataUrl}], audioDaSalvare: [{id, dataUrl}] }
 function normalizza(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('Scheda non valida');
+  for (const k of ['foto', 'photos', 'audio', 'audioNotes']) {
+    if (v[k] != null && (!Array.isArray(v[k]) || v[k].some((m) => !m || typeof m !== 'object'))) throw new Error('Elenco media non valido');
+  }
+  if (v.uid != null && (typeof v.uid !== 'string' || !v.uid.trim())) throw new Error('Identificativo scheda non valido');
   const r = { uid: v.uid || nuovoId('s'), creato: v.creato || oraISO(), modificato: v.modificato || oraISO() };
   r.cancellata = v.cancellata || null;   // null = attiva; altrimenti data ISO di spostamento nel cestino
-  r.gbifId = v.gbifId || '';             // ID GBIF della specie, se identificata con PlantNet
+  r.gbifId = /^\d+$/.test(String(v.gbifId ?? '')) ? String(v.gbifId) : '';             // ID GBIF della specie, se identificata con PlantNet
   for (const c of CAMPI) {
     let val = v[c.k] === undefined || v[c.k] === null ? '' : String(v[c.k]).trim();
     if (c.tipo === 'numero') {
@@ -257,15 +47,20 @@ function normalizza(v) {
           (c.max != null && n > c.max) ||
           (c.intero && !Number.isInteger(n)))) val = '';
     }
+    if (c.tipo === 'data') val = normalizzaData(val);
+    if (c.tipo === 'scelta' && val) {
+      const opzione = c.valori.find(([codice, testo]) => val === codice || val === testo);
+      if (opzione) val = opzione[0];
+    }
     r[c.k] = val;
   }
   r.gps = null;
-  if (v.gps && isFinite(v.gps.lat) && isFinite(v.gps.lng) &&
+  if (v.gps && numeroFinito(v.gps.lat) && numeroFinito(v.gps.lng) &&
       Math.abs(v.gps.lat) <= 90 && Math.abs(v.gps.lng) <= 180) {
     r.gps = {
       lat: Number(v.gps.lat), lng: Number(v.gps.lng),
-      acc: v.gps.acc ?? v.gps.accuracy ?? null,
-      alt: v.gps.alt ?? v.gps.altitude ?? null,
+      acc: numeroFinito(v.gps.acc ?? v.gps.accuracy) && Number(v.gps.acc ?? v.gps.accuracy) >= 0 ? Number(v.gps.acc ?? v.gps.accuracy) : null,
+      alt: numeroFinito(v.gps.alt ?? v.gps.altitude) ? Number(v.gps.alt ?? v.gps.altitude) : null,
       quando: v.gps.quando || oraISO(),
       manuale: v.gps.manuale === true,
       ...(typeof v.gps.online === 'boolean' ? { online: v.gps.online } : {}),
@@ -301,9 +96,12 @@ function normalizza(v) {
    5. SALVATAGGIO (debounce per record + scrittura immediata in uscita)
    ===================================================================== */
 const timerSalva = new Map();
+const scrittureInCorso = new Map();
+const nonSalvate = new Map();
 
 function salvaPresto(r) {
   r.modificato = oraISO();
+  nonSalvate.set(r.uid, r);
   stato('Salvataggio in corso…');
   clearTimeout(timerSalva.get(r.uid));
   timerSalva.set(r.uid, setTimeout(() => salvaOra(r), 400));
@@ -313,20 +111,28 @@ async function salvaOra(r) {
   if (!r) return false;
   clearTimeout(timerSalva.get(r.uid));
   timerSalva.delete(r.uid);
+  const operazione = DB.scrivi('schede', r);
+  scrittureInCorso.set(r.uid, operazione);
+  nonSalvate.set(r.uid, r);
   try {
-    await DB.scrivi('schede', r);
+    await operazione;
+    if (scrittureInCorso.get(r.uid) === operazione && !timerSalva.has(r.uid)) nonSalvate.delete(r.uid);
     stato(`Salvato alle ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
     return true;
   } catch (e) {
     stato('ERRORE: salvataggio non riuscito — ' + e.message, true);
     alert('Salvataggio non riuscito: ' + e.message + '\nEsporta subito un backup dal menu ⋮.');
     return false;
+  } finally {
+    if (scrittureInCorso.get(r.uid) === operazione) scrittureInCorso.delete(r.uid);
   }
 }
 
 async function salvaTuttiInSospeso() {
-  const lista = [...timerSalva.keys()].map((uid) => S.schede.find((s) => s.uid === uid)).filter(Boolean);
-  await Promise.all(lista.map(salvaOra));
+  await Promise.allSettled([...scrittureInCorso.values()]);
+  const lista = [...new Set([...timerSalva.keys(), ...nonSalvate.keys()])]
+    .map((uid) => S.schede.find((s) => s.uid === uid) || S.cestino.find((s) => s.uid === uid)).filter(Boolean);
+  return (await Promise.all(lista.map(salvaOra))).every(Boolean);
 }
 // App in background o chiusa: scrive subito quello che è in attesa
 document.addEventListener('visibilitychange', () => { if (document.hidden) salvaTuttiInSospeso(); });
@@ -432,9 +238,13 @@ function estensioneAudio(mime) {
 
 async function avviaRegistrazione(r) {
   if (REG.attiva) return alert('C’è già una registrazione in corso.');
-  if (!navigator.mediaDevices?.getUserMedia) return alert('Microfono non disponibile su questo dispositivo/browser.');
+  if (!navigator.mediaDevices?.getUserMedia || !('MediaRecorder' in window)) return alert('Registrazione audio non disponibile su questo dispositivo/browser.');
+  if (!r || REG.inAttesa) return;
+  REG.inAttesa = true;
+  let stream;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (S.aperta !== r || r.cancellata) { stream.getTracks().forEach((t) => t.stop()); return; }
     const mime = ['audio/webm', 'audio/mp4', 'audio/ogg'].find((m) => MediaRecorder.isTypeSupported?.(m)) || '';
     const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
     REG.stream = stream; REG.recorder = rec; REG.chunks = []; REG.riga = r; REG.annullata = false; REG.attiva = true; REG.inizio = Date.now();
@@ -467,8 +277,9 @@ async function avviaRegistrazione(r) {
     aggiornaUIRegistrazione();
     REG.timer = setInterval(aggiornaUIRegistrazione, 500);
   } catch (e) {
+    stream?.getTracks().forEach((t) => t.stop());
     alert('Microfono non accessibile: ' + e.message);
-  }
+  } finally { REG.inAttesa = false; }
 }
 
 function fermaRegistrazione() { if (REG.attiva) REG.recorder.stop(); }
@@ -663,7 +474,9 @@ function toggleSelezionaTutte() {
   disegnaElenco();
 }
 
+let revisioneElenco = 0;
 async function disegnaElenco() {
+  const revisione = ++revisioneElenco;
   aggiornaFiltroData();
   aggiornaFiltroSpecie();
   aggiornaBottoneFiltriAvanzati();
@@ -671,6 +484,10 @@ async function disegnaElenco() {
   const dup = progDuplicati();
   const dupZona = numeroZonaDuplicati();
   const nFoto = S.schede.reduce((n, r) => n + r.foto.length, 0);
+  $('#riepilogo-schede').textContent = S.schede.length;
+  $('#riepilogo-specie').textContent = new Set(S.schede.map((r) => r.nome.trim().toLocaleLowerCase('it')).filter(Boolean)).size;
+  $('#riepilogo-gps').textContent = S.schede.filter((r) => r.gps).length;
+  $('#riepilogo-foto').textContent = nFoto;
   $('#conteggio').textContent = `${S.schede.length} schede, ${nFoto} foto`;
 
   const elenco = $('#elenco');
@@ -678,22 +495,24 @@ async function disegnaElenco() {
   if (!vis.length) {
     elenco.replaceChildren(el('div', { class: 'vuoto' },
       S.schede.length ? 'Nessuna scheda corrisponde alla ricerca.' : 'Nessuna scheda. Tocca “+ Nuova scheda” per iniziare il rilievo.'));
+    if (S.vista === 'mappa') disegnaMappa();
+    if (S.vista === 'timeline') disegnaTimeline();
     return;
   }
   const righe = await Promise.all(vis.map(async (r) => {
     const segni = [];
-    if (r.foto.length) segni.push(`📷 ${r.foto.length}`);
-    if (r.audio.length) segni.push(`🎙 ${r.audio.length}`);
-    if (r.gps) segni.push('📍 GPS');
+    if (r.foto.length) segni.push(`Foto ${r.foto.length}`);
+    if (r.audio.length) segni.push(`Audio ${r.audio.length}`);
+    if (r.gps) segni.push('GPS');
     if (r.altezza) segni.push(`↕ ${String(r.altezza).replace('.', ',')} m`);
     const dati = CAMPI_RIASSUNTO.map((c) => etichettaValore(c, r[c.k])).filter(Boolean).join(' · ');
     const foto = r.foto.length
       ? el('img', { class: 'miniatura', src: await urlFoto(r.foto[0].id), alt: '' })
-      : el('div', { class: 'miniatura vuota' }, '🌳');
+      : el('div', { class: 'miniatura vuota' }, iconaSvg('tree'));
     return el('div', {
       class: 'voce', role: 'button', tabindex: '0', id: 'voce-' + r.uid,
       onclick: () => apriEditor(r.uid),
-      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apriEditor(r.uid); } },
+      onkeydown: (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); apriEditor(r.uid); } },
     },
       el('div', { class: 'voce-foto' }, foto, el('span', { class: 'voce-num', testo: r.prog || '?' })),
       el('div', { style: 'min-width:0' },
@@ -710,13 +529,14 @@ async function disegnaElenco() {
           el('input', {
             type: 'checkbox', 'aria-label': `Seleziona scheda ${r.prog} per la stampa`,
             checked: S.selezionate.has(r.uid),
-            onchange: (e) => { e.target.checked ? S.selezionate.add(r.uid) : S.selezionate.delete(r.uid); },
-          }), '🖨'),
+            onchange: (e) => { e.target.checked ? S.selezionate.add(r.uid) : S.selezionate.delete(r.uid); aggiornaBottoneSelezionaTutte(schedeVisibili()); },
+          }), 'Seleziona'),
         el('button', {
           type: 'button', class: 'btn-elimina-riga', 'aria-label': `Elimina scheda ${r.prog}`,
           onclick: (e) => { e.stopPropagation(); eliminaSchedaDaElenco(r.uid); },
-        }, '🗑')));
+        }, iconaSvg('trash'))));
   }));
+  if (revisione !== revisioneElenco) return;
   elenco.replaceChildren(...righe);
   if (S.vista === 'mappa') disegnaMappa();
   if (S.vista === 'timeline') disegnaTimeline();
@@ -857,7 +677,7 @@ function costruisciModulo() {
       else if (c.tipo === 'scelta') input = el('select', { id, name: c.k }, c.valori.map(([v, t]) => el('option', { value: v }, t)));
       else if (c.tipo === 'numero') input = el('input', {
         id, name: c.k, type: 'number', inputmode: c.intero ? 'numeric' : 'decimal',
-        step: c.passo, min: c.min ?? 0, max: c.max ?? null,
+        step: c.intero ? 1 : 'any', min: c.min ?? 0, max: c.max ?? null,
       });
       else if (c.tipo === 'data') input = el('input', { id, name: c.k, type: 'date' });
       else if (c.tipo === 'illustrata') input = el('button', { type: 'button', id, class: 'illustr-bottone', onclick: () => apriPicker(c.k) },
@@ -870,8 +690,8 @@ function costruisciModulo() {
       // del corso, e l'identificazione da foto con PlantNet.
       const campoInput = c.k === 'nome'
         ? el('div', { class: 'campo-nome-riga' }, input,
-            el('button', { type: 'button', class: 'btn nome-guida-bottone', title: 'Guida specie (144 alberi)', 'aria-label': 'Apri guida specie', onclick: () => apriGuidaSpecie($('#f-nome').value) }, '📖'),
-            el('button', { type: 'button', class: 'btn nome-guida-bottone', title: 'Identifica da foto (PlantNet)', 'aria-label': 'Identifica da foto con PlantNet', onclick: apriGuidaSpecieFoto }, '🔎'))
+            el('button', { type: 'button', class: 'btn nome-guida-bottone', title: 'Guida specie (144 alberi)', 'aria-label': 'Apri guida specie', onclick: () => apriGuidaSpecie($('#f-nome').value) }, iconaSvg('book')),
+            el('button', { type: 'button', class: 'btn nome-guida-bottone', title: 'Identifica da foto (PlantNet)', 'aria-label': 'Identifica da foto con PlantNet', onclick: apriGuidaSpecieFoto }, iconaSvg('search')))
         : input;
 
       griglia.append(el('label', { class: 'campo' + (c.largo ? ' largo' : ''), for: id },
@@ -881,7 +701,7 @@ function costruisciModulo() {
         c.aiuto ? el('span', { class: 'campo-aiuto', testo: c.aiuto }) : null));
       if (c.tipo === 'lista') griglia.append(el('datalist', { id: 'dl-' + c.k }, (c.valori || []).map((v) => el('option', { value: v }))));
     }
-    cont.append(el('fieldset', { class: sez.id }, el('legend', { testo: sez.titolo }), griglia,
+    cont.append(el('fieldset', { class: sez.id, id: 'sez-' + sez.id }, el('legend', { testo: sez.titolo }), griglia,
       sez.id === 'fit' ? el('div', { id: 'fito-suggerimenti' }) : null));
   }
 
@@ -892,9 +712,9 @@ function costruisciModulo() {
     const campo = CAMPI.find((c) => c.k === k);
     if (!r || !k || !campo) return;
     let valore = e.target.value;
-    if (campo.tipo === 'numero' && valore !== '') {
+    if (campo.tipo === 'numero' && (valore !== '' || e.target.validity.badInput)) {
       const n = Number(valore);
-      const nonValido = !Number.isFinite(n) ||
+      const nonValido = e.target.validity.badInput || !Number.isFinite(n) ||
         (campo.min != null && n < campo.min) ||
         (campo.max != null && n > campo.max) ||
         (campo.intero && !Number.isInteger(n));
@@ -1051,7 +871,12 @@ function apriEditor(uid) {
   aggiornaDatalistNome();
   for (const c of CAMPI) {
     if (c.tipo === 'illustrata') aggiornaBottoneIllustrato(c.k);
-    else $('#f-' + c.k).value = r[c.k] ?? '';
+    else {
+      const input = $('#f-' + c.k);
+      input.value = r[c.k] ?? '';
+      input.setCustomValidity('');
+      input.removeAttribute('aria-invalid');
+    }
   }
   applicaDipendenze();
   controllaProg();
@@ -1095,7 +920,10 @@ async function chiudiEditor(daIndietro = false) {
   if (REG.attiva && REG.riga === S.aperta) fermaRegistrazione();
   if (GPSR.watch !== null && GPSR.riga === S.aperta) fermaGPS(true);
   const uid = S.aperta.uid;
-  await salvaOra(S.aperta);
+  if (!(await salvaOra(S.aperta))) {
+    if (daIndietro) history.pushState({ editor: true }, '');
+    return;
+  }
   nascondiEditor();
   document.getElementById('voce-' + uid)?.scrollIntoView({ block: 'center' });
   if (!daIndietro && history.state?.editor) history.back();
@@ -1106,7 +934,7 @@ window.addEventListener('popstate', () => { if (S.aperta) chiudiEditor(true); })
 async function nuovaScheda() {
   const r = schedaVuota();
   S.schede.push(r);
-  await salvaOra(r);
+  if (!(await salvaOra(r))) { S.schede = S.schede.filter((s) => s.uid !== r.uid); return; }
   apriEditor(r.uid);
   $('#f-nome').focus();
 }
@@ -1126,9 +954,9 @@ async function spostaNelCestino(r) {
   if (GPSR.watch !== null && GPSR.riga === r) fermaGPS(false);
   clearTimeout(timerSalva.get(r.uid));
   timerSalva.delete(r.uid);
-  r.cancellata = oraISO();
-  r.modificato = oraISO();
-  await DB.scrivi('schede', r);
+  const modifiche = { cancellata: oraISO(), modificato: oraISO() };
+  await DB.scrivi('schede', { ...r, ...modifiche });
+  Object.assign(r, modifiche);
   S.schede = S.schede.filter((s) => s.uid !== r.uid);
   S.selezionate.delete(r.uid);
   S.cestino.push(r);
@@ -1138,9 +966,9 @@ async function spostaNelCestino(r) {
 }
 
 async function ripristinaDalCestino(r) {
-  r.cancellata = null;
-  r.modificato = oraISO();
-  await DB.scrivi('schede', r);
+  const modifiche = { cancellata: null, modificato: oraISO() };
+  await DB.scrivi('schede', { ...r, ...modifiche });
+  Object.assign(r, modifiche);
   S.cestino = S.cestino.filter((s) => s.uid !== r.uid);
   S.schede.push(r);
   disegnaElenco();
@@ -1207,8 +1035,11 @@ async function purgaCestinoScaduto() {
 function aggiornaBadgeCestino() {
   const n = S.cestino.length;
   const b = $('#btn-cestino');
-  b.textContent = n ? `🗑 ${n}` : '🗑';
+  const badge = $('#cestino-badge');
+  badge.textContent = String(n);
+  badge.classList.toggle('nascosto', n === 0);
   b.title = n ? `Cestino (${n})` : 'Cestino';
+  b.setAttribute('aria-label', b.title);
 }
 
 function disegnaCestino() {
@@ -1350,7 +1181,7 @@ let sceltaGPSPer = null; // scheda a cui assegnare il punto scelto
 
 function posizionaMarkerScelta(lat, lng) {
   if (!markerScegliPos) {
-    markerScegliPos = L.marker([lat, lng], { draggable: true }).addTo(mappaScegli);
+    markerScegliPos = L.marker([lat, lng], { draggable: true, icon: L.divIcon({ className: 'marker-scelta', html: '<span></span>', iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(mappaScegli);
     markerScegliPos.on('dragend', () => {
       const p = markerScegliPos.getLatLng();
       mostraCoordScelta(p.lat, p.lng);
@@ -1536,7 +1367,7 @@ function usaIdentificazione(nomeSci, nomeComune, conf, gbifId) {
     const specieCatalogo = trovaSpecieGuida(nomeSci);
     if (specieCatalogo) compilaCampiDaGuidaSpecie(r, specieCatalogo);
   }
-  if (gbifId) r.gbifId = gbifId;
+  if (sostituire && gbifId) r.gbifId = gbifId;
   const linkGbif = gbifId ? ` — GBIF: https://www.gbif.org/species/${gbifId}` : '';
   const nota = `Identificato con PlantNet: ${nomeSci}${nomeComune ? ' (' + nomeComune + ')' : ''} — ${conf}%, ${dataIT(oraISO())}${linkGbif}`;
   r.note = r.note ? r.note + '\n' + nota : nota;
@@ -2193,7 +2024,7 @@ ${fotoInline.length ? `<div class="foto-griglia">${fotoHtml}</div>` : ''}
 /* =====================================================================
    9b. SCANSIONE QR — ritrova rapidamente una scheda inquadrando l'etichetta
    ===================================================================== */
-const SCAN = { attiva: false, stream: null };
+const SCAN = { attiva: false, stream: null, sessione: 0 };
 
 async function apriScanner() {
   if (!('BarcodeDetector' in window)) {
@@ -2202,9 +2033,11 @@ async function apriScanner() {
     return;
   }
   const dlg = $('#dlg-scanner');
+  const sessione = ++SCAN.sessione;
   dlg.showModal();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    if (sessione !== SCAN.sessione || !dlg.open) { stream.getTracks().forEach((t) => t.stop()); return; }
     SCAN.stream = stream;
     const video = $('#scanner-video');
     video.srcObject = stream;
@@ -2227,6 +2060,7 @@ async function apriScanner() {
 }
 
 function chiudiScanner() {
+  SCAN.sessione++;
   SCAN.attiva = false;
   SCAN.stream?.getTracks().forEach((t) => t.stop());
   SCAN.stream = null;
@@ -2451,13 +2285,14 @@ function disegnaMappa() {
 
 function cambiaVista(tab) {
   S.vista = tab;
+  for (const nome of ['schede', 'mappa', 'timeline']) $('#tab-' + nome).setAttribute('aria-pressed', String(tab === nome));
   $('#tab-schede').classList.toggle('attiva', tab === 'schede');
   $('#tab-mappa').classList.toggle('attiva', tab === 'mappa');
   $('#tab-timeline').classList.toggle('attiva', tab === 'timeline');
   $('#vista-schede').classList.toggle('nascosto', tab !== 'schede');
   $('#vista-mappa').classList.toggle('nascosto', tab !== 'mappa');
   $('#vista-timeline').classList.toggle('nascosto', tab !== 'timeline');
-  $('#btn-nuova').classList.toggle('nascosto', tab !== 'schede');
+  // La creazione rimane sempre raggiungibile dalla navigazione principale.
   if (tab === 'mappa') { assicuraMappa(); disegnaMappa(); disegnaLineaTraccia(); aggiornaInfoTraccia(); aggiornaInfoCacheMappa(); }
   if (tab === 'timeline') disegnaTimeline();
 }
@@ -2526,7 +2361,7 @@ function disegnaLineaTraccia() {
 function avviaTraccia() {
   if (!navigator.geolocation) return alert('Geolocalizzazione non disponibile su questo dispositivo.');
   if (TRK.watch !== null) return;
-  TRK.segmentoCorrente = Math.max(0, ...S.traccia.map((p) => Number(p.segmento) || 1)) + 1;
+  TRK.segmentoCorrente = S.traccia.reduce((max, p) => Math.max(max, Number(p.segmento) || 1), 0) + 1;
   TRK.scartati = 0;
   localStorage.setItem('sb-traccia-attiva', '1');
   TRK.watch = navigator.geolocation.watchPosition(
@@ -2538,7 +2373,8 @@ function avviaTraccia() {
         return;
       }
       const adesso = oraISO();
-      const ultimo = S.traccia[S.traccia.length - 1];
+      const precedente = S.traccia[S.traccia.length - 1];
+      const ultimo = precedente?.segmento === TRK.segmentoCorrente ? precedente : null;
       const dist = ultimo ? distanzaMetri(ultimo, { lat: c.latitude, lng: c.longitude }) : Infinity;
       const secondi = ultimo ? Math.max(1, (Date.parse(adesso) - Date.parse(ultimo.quando)) / 1000) : Infinity;
       if (ultimo && dist < 3 && secondi < 30) return; // riduce il tremolio da fermo
@@ -2549,8 +2385,9 @@ function avviaTraccia() {
       }
       if (ultimo && secondi > 120) TRK.segmentoCorrente++;
       const punto = { lat: c.latitude, lng: c.longitude, alt: c.altitude, acc: c.accuracy, quando: adesso, segmento: TRK.segmentoCorrente };
+      try { await DB.scrivi('traccia', punto); }
+      catch (e) { fermaTraccia(); stato('Traccia non salvata: ' + e.message, true); return; }
       S.traccia.push(punto);
-      await DB.scrivi('traccia', punto);
       disegnaLineaTraccia();
       aggiornaInfoTraccia();
     },
@@ -2575,8 +2412,8 @@ function fermaTraccia() {
 async function cancellaTraccia() {
   if (!confirm(`Cancellare la traccia registrata (${S.traccia.length} punti)? Non si può annullare.`)) return;
   fermaTraccia();
-  S.traccia = [];
   await DB.svuota('traccia');
+  S.traccia = [];
   disegnaLineaTraccia();
   aggiornaInfoTraccia();
 }
@@ -2645,7 +2482,7 @@ async function disegnaTimeline() {
         el('span', { class: 'tl-conteggio', testo: `${g.righe.length} visite · ${fotoConData.length} foto` })),
       fotoConData.length ? el('div', { class: 'tl-filmstrip' }, filmstrip) : null,
       el('ul', { class: 'tl-note' }, g.righe.map((r) => el('li', { role: 'button', tabindex: '0',
-        onclick: () => apriEditor(r.uid), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apriEditor(r.uid); } } },
+        onclick: () => apriEditor(r.uid), onkeydown: (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); apriEditor(r.uid); } } },
         el('b', {}, dataIT(r.creato) + ': '), r.problemi || r.note || '— nessuna nota —'))));
   }));
   cont.replaceChildren(...blocchi);
@@ -2887,8 +2724,8 @@ async function esportaBackup() {
   const foto = {}, audio = {};
   const tutteLeSchede = [...S.schede, ...S.cestino];
   for (const r of tutteLeSchede) {
-    for (const p of r.foto) { const b = await DB.leggi('foto', p.id); if (b) foto[p.id] = await blobInDataURL(b); }
-    for (const a of r.audio) { const b = await DB.leggi('audio', a.id); if (b) audio[a.id] = await blobInDataURL(b); }
+    for (const p of r.foto) { const b = await DB.leggi('foto', p.id); if (!b) throw new Error(`Foto mancante nella scheda ${r.prog}`); foto[p.id] = await blobInDataURL(b); }
+    for (const a of r.audio) { const b = await DB.leggi('audio', a.id); if (!b) throw new Error(`Nota vocale mancante nella scheda ${r.prog}`); audio[a.id] = await blobInDataURL(b); }
   }
   const dati = { app: 'scheda-botanica', versione: 4, esportato: oraISO(), schede: tutteLeSchede, foto, audio, specie: S.specie, traccia: S.traccia };
   scarica(new Blob([JSON.stringify(dati)], { type: 'application/json' }), `scheda-botanica-backup-${oggi()}.json`);
@@ -2918,7 +2755,12 @@ function leggiFormatoBackup(json) {
 
 async function preparaMediaImportazione(voci) {
   const foto = [], audio = [];
+  const identificativi = new Set();
   for (const { record, fotoDaSalvare = [], audioDaSalvare = [] } of voci) {
+    for (const m of [...record.foto, ...record.audio]) {
+      if (typeof m.id !== 'string' || !m.id || identificativi.has(m.id)) throw new Error('Identificativo media non valido o duplicato');
+      identificativi.add(m.id);
+    }
     if (fotoDaSalvare.length !== record.foto.length)
       throw new Error(`backup incompleto: mancano foto della scheda N° ${record.prog || '?'}`);
     if (audioDaSalvare.length !== record.audio.length)
@@ -2939,6 +2781,13 @@ async function preparaMediaImportazione(voci) {
 }
 
 async function importaDati(voci, modo) {
+  if (!['sostituisci', 'unisci'].includes(modo)) throw new Error('Modalità importazione non valida');
+  if (REG.attiva || TRK.watch !== null || GPSR.watch !== null || S.aperta)
+    throw new Error('Chiudi la scheda e ferma le registrazioni prima di importare');
+  if (!(await salvaTuttiInSospeso())) throw new Error('Salva prima le modifiche in sospeso');
+  if (new Set(voci.map((v) => v.record.uid)).size !== voci.length) throw new Error('Identificativi scheda duplicati');
+  for (const s of voci.specie || []) if (!s || typeof s.nomeSci !== 'string' || !s.nomeSci.trim()) throw new Error('Catalogo specie non valido');
+
   if (modo === 'sostituisci') {
     // Prima leggiamo e validiamo ogni file. Solo dopo sostituiamo i cinque store
     // in un'unica transazione atomica.
@@ -2948,10 +2797,11 @@ async function importaDati(voci, modo) {
       throw new Error('backup non valido: contiene identificativi scheda duplicati');
     const specie = Array.isArray(voci.specie) ? voci.specie.filter((s) => s?.nomeSci) : [];
     const traccia = Array.isArray(voci.traccia) ? voci.traccia.filter((p) =>
-      Number.isFinite(Number(p?.lat)) && Number.isFinite(Number(p?.lng)) && p?.quando).map((p) => ({
-        lat: Number(p.lat), lng: Number(p.lng), alt: p.alt == null ? null : Number(p.alt),
-        acc: p.acc == null ? null : Number(p.acc), quando: p.quando, segmento: Number(p.segmento) || 1,
+      numeroFinito(p?.lat) && numeroFinito(p?.lng) && Math.abs(Number(p.lat)) <= 90 && Math.abs(Number(p.lng)) <= 180 && Number.isFinite(Date.parse(p.quando))).map((p) => ({
+        lat: Number(p.lat), lng: Number(p.lng), alt: numeroFinito(p.alt) ? Number(p.alt) : null,
+        acc: numeroFinito(p.acc) && Number(p.acc) >= 0 ? Number(p.acc) : null, quando: p.quando, segmento: Number(p.segmento) || 1,
       })) : [];
+    if (traccia.length !== (voci.traccia || []).length) throw new Error('Traccia con coordinate o date non valide: archivio conservato');
     await DB.sostituisciArchivio({ schede, foto: media.foto, audio: media.audio, specie, traccia });
     S.urlFoto.forEach((u) => URL.revokeObjectURL(u));
     S.urlFoto.clear();
@@ -2968,35 +2818,42 @@ async function importaDati(voci, modo) {
     mostraEsitoImportazione(voci.length, 0, 0, 0);
     return;
   }
-  let nuove = 0, aggiornate = 0, invariate = 0, mediaErr = 0;
-  for (const { record, fotoDaSalvare, audioDaSalvare } of voci) {
-    const esistente = S.schede.find((s) => s.uid === record.uid) || S.cestino.find((s) => s.uid === record.uid);
-    if (esistente && esistente.modificato >= record.modificato) { invariate++; continue; }
-    for (const f of fotoDaSalvare || []) {
-      try {
-        const blob = f.blob || await dataURLInBlob(f.dataUrl);
-        // le foto enormi della vecchia app vengono ricompresse
-        await DB.scrivi('foto', blob.size > 900000 ? await comprimiFoto(blob) : blob, f.id);
-      } catch { mediaErr++; }
-    }
-    for (const a of audioDaSalvare || []) {
-      try { await DB.scrivi('audio', a.blob || await dataURLInBlob(a.dataUrl), a.id); } catch { mediaErr++; }
-    }
-    await DB.scrivi('schede', record);
-    if (esistente) {
-      liberaMediaRecord(esistente);
-      S.schede = S.schede.filter((s) => s.uid !== record.uid);
-      S.cestino = S.cestino.filter((s) => s.uid !== record.uid);
-      (record.cancellata ? S.cestino : S.schede).push(record);
-      aggiornate++;
-    } else {
-      (record.cancellata ? S.cestino : S.schede).push(record);
-      nuove++;
-    }
+  let nuove = 0, aggiornate = 0, invariate = 0;
+  const accettate = [];
+  for (const voce of voci) {
+    const esistente = [...S.schede, ...S.cestino].find((s) => s.uid === voce.record.uid);
+    if (esistente && Date.parse(esistente.modificato) >= Date.parse(voce.record.modificato)) { invariate++; continue; }
+    accettate.push(voce);
+    esistente ? aggiornate++ : nuove++;
   }
-  disegnaElenco();
+  const media = await preparaMediaImportazione(accettate);
+  // Nuovi ID per i media importati: non sovrascrivono i file di altre schede.
+  const records = accettate.map(({ record }) => structuredClone(record));
+  for (const [tipo, pref] of [['foto', 'f'], ['audio', 'a']]) {
+    const mappa = new Map(media[tipo].map((m) => [m.id, nuovoId(pref)]));
+    media[tipo].forEach((m) => { m.id = mappa.get(m.id); });
+    records.forEach((r) => r[tipo].forEach((m) => { m.id = mappa.get(m.id); }));
+  }
+  const catalogo = new Map(S.specie.map((s) => [s.nomeSci, s]));
+  for (const s of voci.specie || []) {
+    const precedente = catalogo.get(s.nomeSci);
+    catalogo.set(s.nomeSci, precedente ? { ...s, ...precedente,
+      volte: Math.max(Number(s.volte) || 0, Number(precedente.volte) || 0),
+      confidenzaMax: Math.max(Number(s.confidenzaMax) || 0, Number(precedente.confidenzaMax) || 0),
+    } : s);
+  }
+  await DB.sostituisciArchivio({ schede: records, ...media, specie: [...catalogo.values()], traccia: [] }, false);
+  for (const record of records) {
+    const esistente = [...S.schede, ...S.cestino].find((s) => s.uid === record.uid);
+    if (esistente) liberaMediaRecord(esistente);
+    S.schede = S.schede.filter((s) => s.uid !== record.uid);
+    S.cestino = S.cestino.filter((s) => s.uid !== record.uid);
+    (record.cancellata ? S.cestino : S.schede).push(record);
+  }
+  S.specie = [...catalogo.values()];
+  await disegnaElenco();
   aggiornaBadgeCestino();
-  mostraEsitoImportazione(nuove, aggiornate, invariate, mediaErr);
+  mostraEsitoImportazione(nuove, aggiornate, invariate, 0);
 }
 
 function mostraEsitoImportazione(nuove, aggiornate, invariate, mediaErr) {
@@ -3028,6 +2885,7 @@ async function leggiBackupZip(file) {
   const dj = zip.file('backup.json');
   if (!dj) throw new Error('questo ZIP non contiene backup.json: è un’esportazione vecchia o non creata dall’app');
   const json = JSON.parse(await dj.async('string'));
+  if (json?.app !== 'scheda-botanica' || !Array.isArray(json.schede)) throw new Error('backup.json non è un archivio valido');
   const indice = json.file || {};
   const specieFile = zip.file('specie.json');
   const voci = await Promise.all((json.schede || []).map(async (s) => {
@@ -3065,7 +2923,7 @@ async function importaBackupDaFile(file) {
     if (modo === 'sostituisci' && !confirm('Tutte le schede attuali verranno cancellate. Continuare?')) return;
     stato('Importazione in corso…');
     await importaDati(voci, modo);
-    if (modo !== 'sostituisci') await unisciCatalogoSpecie(voci.specie);
+    // Catalogo e media sono già stati salvati nella stessa transazione.
     stato('Importazione completata');
   } catch (e) {
     alert('Importazione non riuscita: ' + e.message);
@@ -3174,7 +3032,7 @@ function esportaKML() {
 //                    così l'utente sceglie la destinazione in un tocco in più, senza uscire dall'app.
 async function esportaZIP(modo = 'scarica', opzioni = {}) {
   const tutteLeSchede = opzioni.soloAttive ? [...S.schede] : [...S.schede, ...S.cestino];
-  if (!tutteLeSchede.length) { alert('Nessuna scheda da esportare.'); return false; }
+  if (!tutteLeSchede.length && !S.traccia.length && !S.specie.length) { alert('Nessun dato da esportare.'); return false; }
   await salvaTuttiInSospeso();
   stato('Preparo lo ZIP…');
   try {
@@ -3224,7 +3082,7 @@ async function esportaZIP(modo = 'scarica', opzioni = {}) {
       }
     } else {
       scarica(blob, nomeFileZip);
-      stato(`Backup esportato: ${tutteLeSchede.length} schede`);
+      stato(`Backup preparato: ${tutteLeSchede.length} schede. Verifica il file nei download.`);
     }
     localStorage.setItem('sb-ultimo-backup', oraISO());
     return true;
@@ -3299,7 +3157,8 @@ async function importaExcelDaFile(file) {
       const obj = {};
       CAMPI.forEach((c) => {
         const i = mappa[c.k];
-        obj[c.k] = i >= 0 && cols[i] !== undefined ? String(cols[i]) : '';
+        const valore = i >= 0 && cols[i] !== undefined ? cols[i] : '';
+        obj[c.k] = c.tipo === 'data' ? normalizzaData(valore, !!cartella.Workbook?.WBProps?.date1904) : String(valore);
       });
       return normalizza(obj);
     });
@@ -3363,6 +3222,7 @@ function applicaTema(t) {
 }
 
 function collegaEventi() {
+  $('.nav-editor').onclick = (e) => { const link = e.target.closest('a'); if (link) { e.preventDefault(); $(link.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
   $('#btn-tema').onclick = () => {
     const t = document.documentElement.dataset.tema === 'scuro' ? 'chiaro' : 'scuro';
     localStorage.setItem('sb-tema', t);
@@ -3370,12 +3230,15 @@ function collegaEventi() {
   };
   $('#cerca').oninput = disegnaElenco;
   $('#filtro-data').onchange = disegnaElenco;
-  $('#btn-filtri-avanzati').onclick = () => $('#pannello-filtri').classList.toggle('nascosto');
+  $('#btn-filtri-avanzati').onclick = () => {
+    const nascosto = $('#pannello-filtri').classList.toggle('nascosto');
+    $('#btn-filtri-avanzati').setAttribute('aria-expanded', String(!nascosto));
+  };
   $('#btn-seleziona-tutte').onclick = toggleSelezionaTutte;
   for (const id of ['#filtro-specie', '#filtro-dal', '#filtro-al']) $(id).onchange = disegnaElenco;
   for (const id of ['#filtro-problemi', '#filtro-senza-foto', '#filtro-senza-gps']) $(id).onchange = disegnaElenco;
   $('#btn-filtri-azzera').onclick = azzeraFiltriAvanzati;
-  $('#btn-nuova').onclick = nuovaScheda;
+  $('#btn-nuova').onclick = () => { cambiaVista('schede'); nuovaScheda(); };
   $('#btn-stampa').onclick = () => apriStampa();
   $('#st-campi-tutti').onclick = (e) => { e.preventDefault(); document.querySelectorAll('input[name=st-campo]').forEach((c) => { c.checked = true; }); };
   $('#st-campi-nessuno').onclick = (e) => { e.preventDefault(); document.querySelectorAll('input[name=st-campo]').forEach((c) => { c.checked = false; }); };
@@ -3422,7 +3285,7 @@ function collegaEventi() {
     const az = e.target.closest('button[data-az]')?.dataset.az;
     if (!az) return;
     $('#dlg-menu').close();
-    if (az === 'backup') esportaBackup();
+    if (az === 'backup') esportaBackup().catch((e) => { stato('Backup non riuscito: ' + e.message, true); alert('Backup non riuscito: ' + e.message); });
     if (az === 'ripristina') $('#in-backup').click();
     if (az === 'excel') $('#in-excel').click();
     if (az === 'zip') esportaZIP();
@@ -3715,7 +3578,7 @@ async function avvio() {
       try {
         const riuscito = await esportaZIP('scarica');
         if (!riuscito) throw new Error('backup non creato');
-        stato('Backup automatico scaricato');
+        stato('Backup automatico preparato: verifica il file nei download.');
         localStorage.removeItem('sb-backup-auto-fallito');
       } catch {
         localStorage.setItem('sb-backup-auto-fallito', oggi());
@@ -3728,7 +3591,7 @@ async function avvio() {
   controllaPromemoriaBackup();
 }
 
-avvio();
+avvio().catch((e) => { stato('Avvio non riuscito: ' + e.message, true); $('#avviso-db').classList.remove('nascosto'); $('#avviso-db-testo').textContent = 'Impossibile caricare l’archivio. Ricarica l’app; non cancellare i dati del browser.'; });
 
 // Indicatore live "online/offline" in alto: utile per sapere se, al momento
 // del rilievo, i dati sono stati presi con o senza connessione (la mappa e
@@ -3768,7 +3631,12 @@ async function aggiornaStatoOffline() {
 // come file locale) l'app funziona comunque, solo senza installazione PWA.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').then(aggiornaStatoOffline).catch(aggiornaStatoOffline);
+    navigator.serviceWorker.register('service-worker.js').then((reg) => {
+      const avvisa = () => { if (reg.waiting && navigator.serviceWorker.controller) toast('Aggiornamento pronto. Chiudi tutte le finestre dell’app e riaprila per applicarlo.', null, null, 12000); };
+      avvisa();
+      reg.addEventListener('updatefound', () => reg.installing?.addEventListener('statechange', avvisa));
+      aggiornaStatoOffline();
+    }).catch(aggiornaStatoOffline);
   });
   // Se all'installazione il service worker non è riuscito a mettere in cache
   // uno o più file dell'app-shell (es. percorso sbagliato sul sito

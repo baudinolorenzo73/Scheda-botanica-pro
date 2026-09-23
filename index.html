@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2f5d3a">
+<meta name="theme-color" content="#20543c">
 <meta name="description" content="App offline per rilievi botanici sul campo: schede alberi, foto, GPS, note vocali, stampa e backup.">
 
 <!-- PWA: installabile su home screen, icone e comportamento standalone -->
@@ -17,396 +17,50 @@
 <meta name="mobile-web-app-capable" content="yes">
 
 <title>Scheda Botanica — by Lollo ®2026</title>
-<style>
-/* =====================================================================
-   SCHEDA BOTANICA — v2 (ricostruzione leggibile, file unico, offline)
-   Blocco 1: schede + salvataggio IndexedDB + foto compresse + GPS + backup
-   Blocco 2: stampa A4 ed etichette QR
-   Blocco 3: campi illustrati, note vocali, mappa, scansione QR, Excel/ZIP,
-             riconoscimento dispositivo, guida in-app
-   ===================================================================== */
-:root{
-  --largo:980px;
-  --carta:#eef1ea; --foglio:#fbfcf8; --inchiostro:#1d2a22; --tenue:#5d6b61;
-  --bosco:#2f5d3a; --bosco-scuro:#234a2d; --lichene:#9bb35a; --corteccia:#6b4f3a;
-  --ruggine:#b4452f; --linea:#cfd6c9; --focus:#fff7d6;
-  --concorda-bg:#eaf3ec; --discorda-bg:#fbeae6;
-  --r-grande:14px; --r-piccolo:8px;
-  color-scheme: light;
-}
-:root[data-dispositivo="tablet"]{--largo:1300px}
-:root[data-dispositivo="pc"]{--largo:1600px}
-:root[data-tema="scuro"]{
-  --carta:#141a16; --foglio:#1c241f; --inchiostro:#e3e9e2; --tenue:#99a79c;
-  --bosco:#5c9a69; --bosco-scuro:#4b8558; --lichene:#b5cc74; --corteccia:#b99478;
-  --ruggine:#e07a62; --linea:#2f3a33; --focus:#2a3326;
-  --concorda-bg:#1e2f22; --discorda-bg:#3a2420;
-  color-scheme: dark;
-}
-*{box-sizing:border-box}
-html,body{margin:0}
-body{
-  background:var(--carta); color:var(--inchiostro);
-  font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  padding-bottom:90px;
-}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:3px solid var(--lichene);outline-offset:2px}
-.specie{font-family:Georgia,"Times New Roman",serif;font-style:italic}
-.nascosto{display:none !important}
-
-/* ---------- testata ---------- */
-header.testata{
-  position:sticky;top:0;z-index:20;background:var(--bosco);color:#fff;
-  display:flex;align-items:center;gap:8px;padding:10px 12px;
-  padding-top:max(10px, env(safe-area-inset-top));
-}
-header.testata h1{margin:0;font:600 19px/1.1 Georgia,serif;flex:1}
-header.testata h1 small{display:block;font:12px system-ui,sans-serif;opacity:.8;margin-top:2px}
-header.testata h1 .marchio{display:block;font:400 10px system-ui,sans-serif;opacity:.5;margin-top:1px}
-.btn-icona{
-  width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.28);
-  background:rgba(255,255,255,.1);color:#fff;font-size:18px;display:grid;place-items:center;
-  flex:none;
-}
-.badge-dispositivo{
-  font-size:11.5px;white-space:nowrap;padding:6px 11px;border-radius:999px;
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.26);color:#fff;
-}
-
-/* ---------- tab schede/mappa ---------- */
-.tab-riga{max-width:var(--largo);margin:0 auto;padding:0 12px 10px}
-.tab-gruppo{display:inline-flex;border:1px solid var(--linea);border-radius:999px;padding:3px;background:var(--foglio)}
-.tab-gruppo button{border:0;background:none;padding:7px 16px;border-radius:999px;font-weight:600;font-size:13px;color:var(--tenue)}
-.tab-gruppo button.attiva{background:var(--bosco);color:#fff}
-
-/* ---------- barra strumenti ---------- */
-.barra{max-width:var(--largo);margin:0 auto;padding:10px 12px;display:grid;gap:8px;grid-template-columns:1fr auto auto}
-.barra input[type=search]{grid-column:1/-1;min-width:0}
-.barra select{min-width:0}
-@media (min-width:700px){.barra{grid-template-columns:1fr 220px auto auto}.barra input[type=search]{grid-column:auto}}
-
-/* ---------- pannello filtri avanzati ---------- */
-.pannello-filtri{
-  max-width:var(--largo);margin:0 auto 10px;padding:12px;
-  background:var(--foglio);border:1.5px solid var(--linea);border-radius:var(--r-grande);
-  display:flex;flex-direction:column;gap:10px;
-}
-.pf-riga{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.pf-riga label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tenue);flex:1;min-width:140px}
-.pf-riga.pf-check label{flex-direction:row;align-items:center;font-size:13.5px;color:var(--inchiostro);flex:none;gap:7px}
-#btn-filtri-avanzati.attivo{background:var(--bosco);border-color:var(--bosco);color:#fff}
-.campo-base{
-  background:var(--foglio);border:1.5px solid var(--linea);border-radius:var(--r-piccolo);
-  padding:10px 12px;min-height:46px;font-size:16px;
-}
-.btn{
-  border:1.5px solid var(--linea);background:var(--foglio);border-radius:var(--r-piccolo);
-  padding:10px 16px;min-height:46px;font-weight:600;font-size:15px;
-}
-.btn.primario{background:var(--bosco);border-color:var(--bosco);color:#fff}
-.btn.pericolo{color:var(--ruggine);border-color:var(--ruggine)}
-.btn:disabled{opacity:.5}
-
-.stato-salv{max-width:var(--largo);margin:0 auto;padding:0 12px;font-size:13px;color:var(--tenue);min-height:18px}
-.stato-salv.err{color:var(--ruggine);font-weight:600}
-
-/* ---------- promemoria backup in ritardo ---------- */
-.avviso-backup{
-  max-width:var(--largo);margin:8px auto 0;padding:10px 14px;
-  background:var(--focus);border:1.5px solid var(--ruggine);border-radius:var(--r-piccolo);
-  display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
-  font-size:13.5px;
-}
-.avviso-backup-azioni{display:flex;gap:8px;flex-wrap:wrap}
-.avviso-backup-azioni .btn{min-height:36px;padding:6px 12px;font-size:13px}
-
-/* ---------- elenco schede ---------- */
-main{max-width:var(--largo);margin:0 auto;padding:0 12px}
-.elenco{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
-.voce{
-  display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
-  background:var(--foglio);border:1px solid var(--linea);border-radius:var(--r-grande);
-  padding:10px;text-align:left;width:100%;
-}
-/* il cartellino: il numero progressivo come l'etichetta appesa all'albero */
-.cartellino{
-  position:relative;min-width:52px;height:52px;padding:0 8px;border-radius:6px 14px 14px 6px;
-  background:var(--corteccia);color:#fff;display:grid;place-items:center;
-  font:700 20px/1 Georgia,serif;
-}
-.cartellino::before{
-  content:"";position:absolute;left:6px;top:50%;width:7px;height:7px;margin-top:-3.5px;
-  border-radius:50%;background:var(--carta);
-}
-.cartellino span{padding-left:8px}
-.voce .titolo{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.voce .sotto{font-size:13px;color:var(--tenue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.voce .segni{font-size:12px;color:var(--tenue);margin-top:3px}
-.voce .segni .allerta{color:var(--ruggine);font-weight:600}
-.voce .dati-riassunto{font-size:12px;color:var(--inchiostro);opacity:.75;margin-top:2px;line-height:1.35}
-.voce-foto{position:relative;width:56px;height:56px;flex:none;margin:4px}
-.miniatura{
-  width:100%;height:100%;border-radius:10px;object-fit:cover;display:block;
-  border:1px solid var(--linea);background:var(--carta);
-}
-.miniatura.vuota{display:grid;place-items:center;font-size:22px;opacity:.45}
-.voce-num{
-  position:absolute;left:-8px;top:-8px;background:var(--corteccia);color:#fff;
-  font:700 13px Georgia,serif;min-width:24px;height:24px;padding:0 5px;border-radius:7px;
-  display:grid;place-items:center;border:2px solid var(--foglio);box-shadow:0 1px 3px rgba(0,0,0,.35);
-}
-.voce input[type=checkbox]{width:26px;height:26px;accent-color:var(--bosco);margin:0}
-.voce-azioni{display:flex;flex-direction:column;align-items:center;gap:2px}
-.voce .sel-stampa{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--tenue);padding:6px}
-.btn-elimina-riga{border:0;background:none;color:var(--ruggine);font-size:15px;padding:6px;min-height:36px;min-width:36px;border-radius:8px;opacity:.75}
-.btn-elimina-riga:active{background:rgba(180,69,47,.12);opacity:1}
-.vuoto{text-align:center;padding:48px 16px;color:var(--tenue)}
-
-.fab{
-  position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:15;
-  height:56px;padding:0 22px;border-radius:28px;border:0;background:var(--bosco);color:#fff;
-  font-weight:700;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,.25);
-}
-
-/* ---------- editor ---------- */
-#editor{position:fixed;inset:0;z-index:30;background:var(--carta);overflow-y:auto;padding-bottom:110px}
-.azioni-rapide{
-  position:fixed;left:0;right:0;bottom:0;z-index:31;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
-  padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--foglio);border-top:1.5px solid var(--linea);
-  box-shadow:0 -4px 14px rgba(0,0,0,.12);
-}
-.azioni-rapide button{
-  min-height:58px;border-radius:12px;border:1.5px solid var(--linea);background:var(--carta);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;font-size:13px;
-}
-.azioni-rapide button span{font-size:22px;line-height:1}
-.azioni-rapide button.attivo{background:var(--ruggine);border-color:var(--ruggine);color:#fff}
-.azioni-rapide button:active{transform:scale(.97)}
-@media (min-width:1000px){.azioni-rapide{left:50%;right:auto;transform:translateX(-50%);width:600px;border-radius:14px 14px 0 0;border:1.5px solid var(--linea)}}
-#editor .testata{background:var(--bosco-scuro)}
-.modulo{max-width:760px;margin:0 auto;padding:12px}
-fieldset{
-  border:1px solid var(--linea);border-radius:var(--r-grande);background:var(--foglio);
-  margin:0 0 14px;padding:12px;
-}
-legend{font:600 15px Georgia,serif;padding:0 6px;color:var(--bosco)}
-fieldset.ped legend{color:var(--corteccia)}
-fieldset.fit legend{color:var(--ruggine)}
-.griglia{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
-.griglia .largo{grid-column:1/-1}
-label.campo{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--tenue)}
-label.campo input,label.campo select,label.campo textarea{
-  background:var(--carta);border:1.5px solid var(--linea);border-radius:var(--r-piccolo);
-  padding:10px 12px;min-height:48px;font-size:16px;color:var(--inchiostro);width:100%;
-}
-label.campo textarea{min-height:84px;resize:vertical}
-label.campo input:focus,label.campo select:focus,label.campo textarea:focus{background:var(--focus)}
-.avviso-campo{color:var(--ruggine);font-size:12px;font-weight:600}
-.campo-aiuto{color:var(--tenue);font-size:11.5px;font-weight:400;line-height:1.35}
-
-/* ---------- diario fitopatologico ---------- */
-#fito-suggerimenti{grid-column:1/-1;margin-top:6px;display:flex;flex-direction:column;gap:8px}
-.fito-titolo{margin:0;font-size:12.5px;font-weight:600;color:var(--ruggine)}
-.fito-carta{background:var(--fit-bg,var(--carta));border:1px solid var(--linea);border-radius:var(--r-piccolo);padding:8px 10px}
-:root{--fit-bg:#fdf2f0}
-:root[data-tema="scuro"]{--fit-bg:#2a1e1c}
-.fito-carta b{font-size:13px;color:var(--ruggine)}
-.fito-carta p{margin:3px 0 0;font-size:12px;line-height:1.4}
-.fito-avviso{margin:0;font-size:11px;color:var(--tenue)}
-
-/* ---------- timeline ---------- */
-.tl-gruppo{background:var(--foglio);border:1px solid var(--linea);border-radius:var(--r-grande);padding:12px;margin-bottom:12px}
-.tl-intestazione{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-bottom:8px}
-.tl-intestazione .tl-conteggio{font-size:12px;color:var(--tenue)}
-.tl-filmstrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
-.tl-foto{flex:none;border:0;background:none;padding:0;width:96px;text-align:center}
-.tl-foto img{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--linea);display:block}
-.tl-foto span{font-size:11px;color:var(--tenue)}
-.tl-note{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
-.tl-note li{border:0;background:var(--carta);border-radius:6px;padding:6px 8px;font-size:12.5px;text-align:left;width:100%}
-.tl-note li b{color:var(--bosco)}
-
-.gps-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px}
-.gps-box a{color:var(--bosco)}
-
-.foto-griglia{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:10px}
-.foto{border:1px solid var(--linea);border-radius:var(--r-piccolo);overflow:hidden;background:var(--carta)}
-.foto-img-wrap{position:relative}
-.foto img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:var(--linea)}
-.badge-ident{position:absolute;bottom:4px;left:4px;background:rgba(47,93,58,.88);color:#fff;border-radius:999px;width:22px;height:22px;display:grid;place-items:center;font-size:12px}
-.foto .dida{padding:6px;display:flex;flex-direction:column;gap:4px;font-size:12px}
-.foto .dida input[type=text]{border:1.5px solid var(--linea);border-radius:6px;padding:8px;background:var(--foglio);min-height:44px;font-size:15px}
-.foto .riga{display:flex;align-items:center;justify-content:flex-end;gap:10px;color:var(--tenue);flex-wrap:wrap}
-.foto .riga label{margin-right:auto}
-.foto .riga button{border:0;background:none;color:var(--ruggine);font-weight:600;padding:10px 6px;min-height:44px}
-.foto .riga button.link-identifica{color:var(--bosco)}
-
-/* ---------- identificazione specie (PlantNet) ---------- */
-#ident-anteprima{width:100%;max-height:220px;object-fit:contain;border-radius:10px;background:var(--carta);margin-bottom:10px}
-.ident-carta{border:1px solid var(--linea);border-radius:var(--r-piccolo);padding:10px;margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:space-between}
-.ident-conf{font-size:12px;color:var(--tenue)}
-
-/* ---------- adattamento al dispositivo ---------- */
-:root[data-dispositivo="pc"] .modulo{max-width:980px}
-:root[data-dispositivo="pc"] .griglia{grid-template-columns:repeat(3,1fr)}
-:root[data-dispositivo="tablet"] .griglia{grid-template-columns:repeat(2,1fr)}
-:root[data-dispositivo="smartphone"] .griglia{grid-template-columns:1fr}
-:root[data-dispositivo="smartphone"] .foto-griglia{grid-template-columns:repeat(2,1fr)}
-:root[data-dispositivo="smartphone"] .elenco{grid-template-columns:1fr}
-
-/* ---------- dialoghi ---------- */
-dialog{
-  border:1px solid var(--linea);border-radius:var(--r-grande);background:var(--foglio);color:var(--inchiostro);
-  padding:16px;max-width:min(560px,94vw);width:100%;max-height:88vh;overflow:auto;
-}
-dialog::backdrop{background:rgba(10,20,14,.55)}
-dialog h2{margin:0 0 10px;font:600 19px Georgia,serif}
-dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:14px}
-.scelte{display:flex;flex-direction:column;gap:8px}
-.scelte label{display:flex;gap:8px;align-items:center}
-.scelte input{accent-color:var(--bosco);width:20px;height:20px}
-.menu-lista{display:flex;flex-direction:column;gap:8px}
-.menu-lista .btn{text-align:left}
-
-/* ---------- guida specie (catalogo di riferimento) ---------- */
-.gs-riga{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;
-  border:1.5px solid var(--linea);background:var(--foglio);border-radius:var(--r-piccolo);padding:9px 12px;width:100%}
-.nome-guida-bottone{flex:none;min-height:46px;padding:0 14px;font-size:18px;line-height:1}
-.campo-nome-riga{display:flex;gap:6px}
-.campo-nome-riga input{flex:1;min-width:0}
-
-/* ---------- guida specie: modalità e ricerca per caratteristiche ---------- */
-.gs-modo{display:flex;flex-wrap:wrap;gap:8px}
-.gs-foto-esistente{padding:0;border:1.5px solid var(--linea);border-radius:var(--r-piccolo);overflow:hidden;aspect-ratio:1;background:var(--carta)}
-.gs-foto-esistente img{width:100%;height:100%;object-fit:cover;display:block}
-.gs-modo .btn{flex:1 1 30%;min-width:104px;text-align:center;padding:9px 6px;font-size:13px}
-.gs-modo .btn[aria-selected="true"]{background:var(--bosco);border-color:var(--bosco);color:#fff}
-.gs-carat-griglia{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
-.gs-carat-griglia label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tenue)}
-.gs-punteggio{font-size:11.5px;color:var(--tenue)}
-#vista-foto{max-width:96vw;padding:8px}
-#vista-foto img{max-width:100%;max-height:78vh;display:block;margin:auto}
-
-/* ---------- campo illustrato (select con icona + spiegazione) ---------- */
-.illustr-bottone{
-  display:flex;align-items:center;gap:10px;text-align:left;
-  background:var(--carta);border:1.5px solid var(--linea);border-radius:var(--r-piccolo);
-  padding:6px 12px;min-height:48px;width:100%;
-}
-.illustr-bottone.illustr-concorda{border-color:var(--bosco);background:var(--concorda-bg)}
-.illustr-bottone.illustr-discorda{border-color:var(--ruggine);background:var(--discorda-bg)}
-.illustr-icona{width:32px !important;height:32px !important}
-.illustr-icona:empty{display:none}
-#editor fieldset{scroll-margin-top:78px}
-.illustr-testo{font-size:16px !important}
-.illustr-icona{width:26px;height:26px;flex:none;color:var(--bosco)}
-.illustr-icona svg{width:100%;height:100%;stroke:currentColor;fill:none}
-.illustr-testo{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.illustr-freccia{color:var(--tenue);flex:none}
-.pk-griglia{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));margin-top:4px}
-.pk-carta{
-  display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;
-  background:var(--carta);border:1.5px solid var(--linea);border-radius:var(--r-piccolo);padding:10px 8px;
-}
-.pk-carta.sel{border-color:var(--bosco);background:var(--focus)}
-.pk-carta svg{width:44px;height:44px;stroke:var(--bosco);fill:none}
-.pk-carta b{font-size:13px}
-.pk-carta p{margin:0;font-size:11px;color:var(--tenue);line-height:1.3}
-.pk-altro-riga{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-
-/* ---------- note vocali ---------- */
-.nota-audio{display:flex;flex-wrap:wrap;align-items:center;gap:8px;border:1px solid var(--linea);border-radius:var(--r-piccolo);padding:8px;background:var(--carta)}
-.nota-audio audio{height:36px;flex:1 1 200px;min-width:0}
-.nota-audio input[type=text]{flex:1 1 140px;min-width:0;border:1.5px solid var(--linea);border-radius:6px;padding:8px 10px;background:var(--foglio);min-height:44px;font-size:15px}
-
-/* ---------- guida ---------- */
-#dlg-aiuto h3{margin:16px 0 4px;font:600 15px Georgia,serif;color:var(--bosco)}
-#dlg-aiuto h3:first-of-type{margin-top:0}
-#dlg-aiuto p, #dlg-aiuto li{font-size:13.5px;line-height:1.5}
-#dlg-aiuto ul{margin:4px 0;padding-left:20px}
-
-/* ---------- mappa ---------- */
-#mappa{height:60vh;min-height:320px;border-radius:var(--r-grande);overflow:hidden;border:1px solid var(--linea)}
-.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--foglio);color:var(--inchiostro)}
-.leaflet-popup-content a{color:var(--bosco)}
-#scanner-video{width:100%;border-radius:10px;background:#000;max-height:60vh}
-
-.toast{
-  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:50;
-  background:var(--inchiostro);color:var(--carta);border-radius:var(--r-piccolo);padding:10px 14px;
-  display:flex;gap:14px;align-items:center;max-width:92vw;
-}
-.toast button{background:none;border:0;color:var(--lichene);font-weight:700}
-
-@media (prefers-reduced-motion:no-preference){
-  #editor{animation:entra .18s ease-out}
-  @keyframes entra{from{transform:translateY(12px);opacity:.4}to{transform:none;opacity:1}}
-}
-
-/* =====================================================================
-   STAMPA
-   ===================================================================== */
-#stampa{display:none}
-@page{size:A4;margin:12mm}
-@media print{
-  body{background:#fff;color:#000;padding:0;font-size:10.5pt}
-  body > *:not(#stampa){display:none !important}
-  #stampa{display:block}
-  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-}
-.p-scheda{break-after:page;color:#000}
-.p-scheda:last-child{break-after:auto}
-.p-testa{display:flex;gap:6mm;align-items:flex-start;border-bottom:1.2pt solid #2f5d3a;padding-bottom:4mm;margin-bottom:4mm}
-.p-testa .p-num{background:#6b4f3a;color:#fff;font:700 20pt Georgia,serif;padding:2mm 4mm;border-radius:1.5mm 4mm 4mm 1.5mm}
-.p-testa .p-nomi{flex:1}
-.p-testa h2{margin:0;font:italic 600 17pt Georgia,serif}
-.p-testa p{margin:1mm 0 0;color:#444}
-.p-qr{width:28mm;height:28mm;flex:none}
-.p-qr svg{width:100%;height:100%;display:block}
-.p-sez{margin-bottom:3mm;break-inside:avoid}
-.p-sez h3{margin:0 0 1.5mm;font:600 11pt Georgia,serif;color:#2f5d3a}
-.p-dati{display:grid;grid-template-columns:1fr 1fr;gap:0 6mm}
-.p-dati div{display:flex;gap:2mm;border-bottom:.4pt solid #ccc;padding:1mm 0}
-.p-dati dt{color:#555;min-width:32mm}
-.p-dati dd{margin:0;font-weight:600;text-align:justify;text-justify:inter-word}
-.p-dati .largo{grid-column:1/-1}
-.p-foto{display:grid;gap:3mm;margin-top:2mm}
-.p-foto figure{margin:0;break-inside:avoid}
-.p-foto img{width:100%;display:block;border:.4pt solid #999;object-fit:cover}
-.p-foto figcaption{font-size:8.5pt;color:#333;margin-top:1mm}
-.p-titolo-foto{margin:0;font:600 11pt Georgia,serif;color:#2f5d3a}
-.p-piede{margin-top:4mm;font-size:8pt;color:#666}
-
-.p-etichette{display:grid;grid-template-columns:repeat(3,50mm);grid-auto-rows:50mm;gap:4mm 8mm;justify-content:center}
-.p-etichetta{
-  border:.5pt dashed #999;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:2mm;break-inside:avoid;text-align:center;overflow:hidden;color:#000
-}
-.p-etichetta svg{width:33mm;height:33mm;display:block}
-.p-etichetta b{font:700 14pt Georgia,serif;margin-top:1mm}
-.p-etichetta i{font:italic 8pt Georgia,serif;max-width:46mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-</style>
+<link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+<svg class="icone-definizioni" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 4c-9-.6-15 2.9-15 10a6 6 0 0 0 6 6c7.1 0 10.6-6 9-16Z"/><path d="M4 21c3-5 7-8 12-11"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15.6A8 8 0 0 1 8.4 4 8 8 0 1 0 20 15.6Z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.3 2.3 0 1 1 3.6 2c-1 .7-1.4 1.2-1.4 2.7"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 8V3h12v5M6 17H4V9h16v8h-2M6 14h12v7H6zM17 11h.01"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM21 14v3M18 20h3M14 20h2"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m12 5-7 7 7 7M5 12h15"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.2"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M8 21h8"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 3 5 13h4l-3 5h12l-3-5h4zM12 18v4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 18v3h16v-3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 17V5m-5 5 5-5 5 5M4 18v3h16v-3"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1ZM12 5v15"/></symbol>
+</svg>
 
 <header class="testata">
-  <h1>Scheda Botanica <small id="conteggio">—</small><small id="stato-rete" title="Stato della connessione"></small><span class="marchio">by Lollo ®2026</span></h1>
-  <button class="btn-icona" id="btn-tema" title="Tema chiaro/scuro" aria-label="Tema chiaro o scuro">◐</button>
-  <button class="btn-icona" id="btn-aiuto" title="Guida" aria-label="Guida">❓</button>
-  <button class="btn-icona" id="btn-cestino" title="Cestino" aria-label="Cestino">🗑</button>
-  <button class="btn-icona" id="btn-menu" title="Backup ed esportazioni" aria-label="Menu">⋮</button>
+  <div class="marchio-app"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-leaf"></use></svg><h1>Scheda Botanica <small id="conteggio">—</small><small id="stato-rete" title="Stato della connessione"></small></h1></div>
+  <div class="testata-azioni" aria-label="Strumenti">
+    <button type="button" class="btn-icona" id="btn-tema" title="Cambia tema" aria-label="Cambia tema"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg></button>
+    <button type="button" class="btn-icona" id="btn-aiuto" title="Guida" aria-label="Guida"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-help"></use></svg></button>
+    <button type="button" class="btn-icona" id="btn-cestino" title="Cestino" aria-label="Cestino"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-trash"></use></svg><span id="cestino-badge" class="badge-cestino nascosto"></span></button>
+    <button type="button" class="btn-icona" id="btn-menu" title="Backup e impostazioni" aria-label="Backup e impostazioni"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg></button>
+  </div>
 </header>
 
 <div class="barra">
-  <input type="search" id="cerca" class="campo-base" placeholder="🔍 Cerca nome, data, N°, problemi…" aria-label="Cerca">
+  <label class="cerca-box"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg><span class="visually-hidden">Cerca nelle schede</span><input type="search" id="cerca" class="campo-base" placeholder="Nome, numero, note…" aria-label="Cerca nelle schede"></label>
   <select id="filtro-data" class="campo-base" aria-label="Filtra per data"></select>
-  <button class="btn" id="btn-scansiona" aria-label="Trova scheda con QR">▦ QR</button>
-  <button class="btn primario" id="btn-stampa" aria-label="Stampa">🖨 Stampa</button>
+  <button type="button" class="btn" id="btn-scansiona" aria-label="Trova scheda con QR"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-qr"></use></svg><span>Scansiona QR</span></button>
+  <button type="button" class="btn" id="btn-stampa" aria-label="Stampa schede"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg><span>Stampa</span></button>
 </div>
 <div style="max-width:var(--largo);margin:0 auto;padding:0 12px 6px">
-  <button type="button" class="btn" id="btn-filtri-avanzati" style="min-height:38px;padding:7px 14px;font-size:13.5px">☰ Filtri avanzati<span id="filtri-avanzati-conteggio"></span></button>
+  <button type="button" class="btn" id="btn-filtri-avanzati" aria-controls="pannello-filtri" aria-expanded="false" ><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-filter"></use></svg><span>Filtri</span><span id="filtri-avanzati-conteggio"></span></button>
 </div>
 <div class="pannello-filtri nascosto" id="pannello-filtri">
   <div class="pf-riga">
@@ -427,16 +81,16 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <button type="button" class="btn" id="btn-filtri-azzera">Azzera filtri avanzati</button>
   </div>
 </div>
-<div class="tab-riga">
+<nav class="tab-riga" aria-label="Navigazione principale">
   <div class="tab-gruppo">
-    <button type="button" id="tab-schede" class="attiva">📋 Schede</button>
-    <button type="button" id="tab-mappa">🗺 Mappa</button>
+    <button type="button" id="tab-schede" aria-pressed="true" class="attiva"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg><span>Schede</span></button>
+    <button type="button" id="tab-mappa" aria-pressed="false"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-map"></use></svg><span>Mappa</span></button>
     <button type="button" id="tab-timeline" class="nascosto">⏱ Timeline</button>
     <!-- Timeline in pausa: raggruppava le schede per "N° medesimo esemplare",
          ma ora quel campo ha un altro significato (vedi sotto). Da riprogettare
          con un campo dedicato quando si deciderà come collegare le visite ripetute. -->
   </div>
-</div>
+</nav>
 <div class="stato-salv" id="stato" role="status" aria-live="polite"></div>
 <div class="avviso-backup nascosto" id="avviso-db" role="alert" style="border-color:var(--ruggine)">
   <span id="avviso-db-testo"></span>
@@ -453,6 +107,12 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 </div>
 
 <main>
+  <section class="riepilogo" aria-label="Riepilogo archivio">
+    <div><strong id="riepilogo-schede">0</strong><span>Schede</span></div>
+    <div><strong id="riepilogo-specie">0</strong><span>Nomi rilevati</span></div>
+    <div><strong id="riepilogo-gps">0</strong><span>Con GPS</span></div>
+    <div><strong id="riepilogo-foto">0</strong><span>Fotografie</span></div>
+  </section>
   <div id="vista-schede">
     <div style="max-width:var(--largo);margin:0 auto;padding:0 12px 8px;display:flex;justify-content:flex-end">
       <button type="button" class="btn nascosto" id="btn-seleziona-tutte" style="min-height:36px;padding:6px 14px;font-size:13px"></button>
@@ -484,16 +144,19 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   </div>
 </main>
 
-<button class="fab" id="btn-nuova">+ Nuova scheda</button>
+<button type="button" class="fab" id="btn-nuova"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Nuova scheda</span></button>
 
 <!-- ================= EDITOR ================= -->
 <section id="editor" class="nascosto" aria-label="Modifica scheda">
   <header class="testata">
-    <button class="btn-icona" id="btn-chiudi" aria-label="Torna all'elenco">←</button>
+    <button class="btn-icona" id="btn-chiudi" aria-label="Torna all'elenco"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-back"></use></svg></button>
     <h1 id="ed-titolo">Scheda <small id="ed-stato">—</small></h1>
-    <button class="btn-icona" id="btn-stampa-una" title="Stampa questa scheda" aria-label="Stampa questa scheda">🖨</button>
+    <button class="btn-icona" id="btn-stampa-una" title="Stampa questa scheda" aria-label="Stampa questa scheda"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg></button>
   </header>
   <form class="modulo" id="modulo" autocomplete="off" onsubmit="return false">
+    <nav class="nav-editor" aria-label="Sezioni scheda">
+      <a href="#sez-oss">Dati</a><a href="#sez-veg">Foglie</a><a href="#sez-ped">Terreno</a><a href="#sez-fit">Salute</a><a href="#sez-not">Note</a>
+    </nav>
     <div id="sezioni"></div>
 
     <fieldset>
@@ -504,8 +167,8 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <fieldset>
       <legend>Foto</legend>
       <div style="display:flex;flex-wrap:wrap;gap:8px">
-        <button type="button" class="btn primario" id="btn-scatta">📷 Scatta</button>
-        <button type="button" class="btn" id="btn-galleria">🖼 Dalla galleria</button>
+        <button type="button" class="btn primario" id="btn-scatta"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-camera"></use></svg> Scatta</button>
+        <button type="button" class="btn" id="btn-galleria"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg> Dalla galleria</button>
         <span id="foto-avanz" style="align-self:center;color:var(--tenue);font-size:13px"></span>
       </div>
       <input type="file" id="in-scatta" accept="image/*" capture="environment" class="nascosto">
@@ -516,7 +179,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <fieldset>
       <legend>Note vocali</legend>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-        <button type="button" class="btn primario" id="btn-audio-rec">🎙 Registra nota</button>
+        <button type="button" class="btn primario" id="btn-audio-rec"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-mic"></use></svg> Registra nota</button>
         <button type="button" class="btn pericolo nascosto" id="btn-audio-stop">⏹ Ferma e salva</button>
         <button type="button" class="btn nascosto" id="btn-audio-annulla">Annulla</button>
         <span id="audio-stato" style="color:var(--tenue);font-size:13px"></span>
@@ -535,8 +198,8 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
         <div id="qr-anteprima" style="width:64px;height:64px;color:var(--inchiostro)"></div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button type="button" class="btn" id="btn-qr-scarica">⭳ Scarica QR (etichetta PNG)</button>
-          <button type="button" class="btn primario" id="btn-report">📄 Scarica report per il cliente</button>
+          <button type="button" class="btn" id="btn-qr-scarica"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg> Scarica QR (etichetta PNG)</button>
+          <button type="button" class="btn primario" id="btn-report"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg> Scarica report per il cliente</button>
         </div>
       </div>
     </fieldset>
@@ -544,9 +207,9 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <button type="button" class="btn pericolo" id="btn-elimina">Elimina scheda</button>
   </form>
   <nav class="azioni-rapide" aria-label="Azioni rapide">
-    <button type="button" id="ar-foto"><span>📷</span>Foto</button>
-    <button type="button" id="ar-gps"><span>📍</span><b id="ar-gps-testo">GPS</b></button>
-    <button type="button" id="ar-audio"><span>🎙</span><b id="ar-audio-testo">Nota vocale</b></button>
+    <button type="button" id="ar-foto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-camera"></use></svg><span>Foto</span></button>
+    <button type="button" id="ar-gps"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-pin"></use></svg><b id="ar-gps-testo">GPS</b></button>
+    <button type="button" id="ar-audio"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-mic"></use></svg><b id="ar-audio-testo">Nota vocale</b></button>
   </nav>
 </section>
 
@@ -554,15 +217,15 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 <dialog id="dlg-menu">
   <h2>Backup ed esportazioni</h2>
   <div class="menu-lista">
-    <button class="btn primario" data-az="zip">💾 Backup completo (.zip con foto e audio)</button>
-    <button class="btn" data-az="zip-condividi">📤 Condividi backup (Drive, Dropbox, WhatsApp…)</button>
-    <button class="btn" data-az="ripristina">📂 Ripristina backup (.zip o .json)…</button>
-    <button class="btn" data-az="excel">📥 Importa da Excel o CSV</button>
-    <button class="btn" data-az="plantnet">🔎 Chiave PlantNet (identificazione foto)</button>
-    <button class="btn" data-az="csv">📊 Esporta tabella CSV (Excel)</button>
-    <button class="btn" data-az="geojson">🗺 Esporta GeoJSON (QGIS)</button>
-    <button class="btn" data-az="kml">🌍 Esporta KML (Google Earth)</button>
-    <button class="btn" data-az="gpx">📍 Esporta punti GPX</button>
+    <button class="btn primario" data-az="zip"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Backup completo, con foto e audio</span></button>
+    <button class="btn" data-az="zip-condividi"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Condividi backup</span></button>
+    <button class="btn" data-az="ripristina"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Ripristina backup</span></button>
+    <button class="btn" data-az="excel"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Importa Excel o CSV</span></button>
+    <button class="btn" data-az="plantnet"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg><span>Chiave PlantNet</span></button>
+    <button class="btn" data-az="csv"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta CSV</span></button>
+    <button class="btn" data-az="geojson"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta GeoJSON</span></button>
+    <button class="btn" data-az="kml"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta KML</span></button>
+    <button class="btn" data-az="gpx"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta GPX</span></button>
   </div>
   <button class="btn pericolo" id="btn-nuovo-elenco" style="width:100%;margin-top:10px">🗂 Nuovo elenco (archivia quello attuale)</button>
   <p style="font-size:12px;color:var(--tenue);margin:4px 2px 0">Salva un backup delle schede di adesso, poi le sposta nel cestino e riparte da un elenco vuoto (N° progressivo da 1).</p>
@@ -645,7 +308,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 
 <dialog id="dlg-import">
   <h2>Importa backup</h2>
-  <p id="import-info"></p>
+  <p id="import-info"></p><p class="campo-aiuto">Unisci conserva la traccia corrente; Sostituisci ripristina anche la traccia del backup. Un file incompleto viene rifiutato prima di modificare i dati.</p>
   <p style="font-size:13px;color:var(--tenue)">Unisci: aggiunge le schede nuove e aggiorna quelle già presenti se il backup è più recente.<br>Sostituisci: verifica prima tutto il backup, poi sostituisce l’archivio in un’unica operazione protetta.</p>
   <div class="azioni">
     <button class="btn" value="annulla">Annulla</button>
@@ -878,6 +541,9 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 <script src="./lib/xlsx-populate.js"></script>
 <script src="./icone.js"></script>
 <script src="./data/guida-specie.js"></script>
+<script src="./js/config.js"></script>
+<script src="./js/utils.js"></script>
+<script src="./js/database.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

@@ -2,7 +2,9 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026**
+**by Lollo ®2026 — versione 3.14.0**
+
+[Revisione grafica e pulsanti](REVISIONE-3.14.md) · [Correzioni tecniche precedenti](REVISIONE-3.13.md)
 
 ---
 
@@ -32,7 +34,7 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 - **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
 - **Stampa** di una o più schede, anche solo come etichette QR.
 - **Backup completo (.zip)** con ripristino protetto di schede, cestino, foto, audio, catalogo e traccia; import/export CSV, GeoJSON, KML e GPX.
-- **100% offline-first**: tutti i dati restano sul dispositivo (IndexedDB), nessun server coinvolto a parte le due funzioni facoltative (mappa e PlantNet).
+- **100% offline-first**: tutti i dati restano sul dispositivo (IndexedDB), archivio locale; alcune funzioni consultano servizi esterni.
 
 ## 🖼️ Screenshot
 
@@ -54,7 +56,10 @@ Nella cartella [`manuali/`](manuali/):
 ## 🗂️ Struttura del repository
 
 ```
-├── index.html               Struttura e stile dell'app
+├── index.html               Struttura della pagina
+├── css/app.css              Stili e layout responsive
+├── js/                      Configurazione, utilità e database
+├── tests/                   Prove automatiche nel browser
 ├── app.js                   Logica, archivio, GPS, backup e importazioni
 ├── icone.js                 Disegni dei campi botanici
 ├── data/                    Guida locale alle specie
@@ -78,7 +83,7 @@ Con **Settings → Pages → Deploy from branch → main / (root)** attivato, Gi
 
 ## 🔒 Privacy e dati
 
-L'app non ha un server: i dati (schede, foto, audio) restano **solo sul dispositivo**, in un archivio locale del browser (IndexedDB). Le uniche connessioni verso l'esterno sono facoltative e attivate solo dall'utente: la cartina di sfondo (OpenStreetMap) e l'identificazione di una foto tramite PlantNet.
+L'app non ha un server: i dati (schede, foto, audio) restano **solo sul dispositivo**, in un archivio locale del browser (IndexedDB). La mappa contatta OpenStreetMap; l’identificazione richiesta invia una foto a PlantNet. La ricerca web consulta Wikipedia/Wikidata. Il collegamento tassonomico può consultare GBIF automaticamente dopo l’inserimento o l’apertura del nome di una specie. Questi servizi richiedono internet; l’archivio locale resta utilizzabile offline.
 
 ## 🧑‍💻 Tecnologie
 
