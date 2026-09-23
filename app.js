@@ -50,7 +50,7 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.11.0';
+const APP_VERSIONE = '3.12.0';
 const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
@@ -866,15 +866,18 @@ function costruisciModulo() {
         el('span', { class: 'illustr-freccia', 'aria-hidden': 'true' }, '▾'));
       else input = el('input', { id, name: c.k, type: 'text', list: c.tipo === 'lista' ? 'dl-' + c.k : null, autocapitalize: 'off' });
 
-      // Il campo "nome" ha in più un pulsante per consultare la guida delle 144 specie del corso.
+      // Il campo "nome" ha in più due pulsanti: la guida delle 144 specie
+      // del corso, e l'identificazione da foto con PlantNet.
       const campoInput = c.k === 'nome'
         ? el('div', { class: 'campo-nome-riga' }, input,
-            el('button', { type: 'button', class: 'btn nome-guida-bottone', title: 'Guida specie (144 alberi)', 'aria-label': 'Apri guida specie', onclick: () => apriGuidaSpecie($('#f-nome').value) }, '📖'))
+            el('button', { type: 'button', class: 'btn nome-guida-bottone', title: 'Guida specie (144 alberi)', 'aria-label': 'Apri guida specie', onclick: () => apriGuidaSpecie($('#f-nome').value) }, '📖'),
+            el('button', { type: 'button', class: 'btn nome-guida-bottone', title: 'Identifica da foto (PlantNet)', 'aria-label': 'Identifica da foto con PlantNet', onclick: apriGuidaSpecieFoto }, '🔎'))
         : input;
 
       griglia.append(el('label', { class: 'campo' + (c.largo ? ' largo' : ''), for: id },
         c.label, campoInput, c.k === 'prog' ? el('span', { class: 'avviso-campo', id: 'avviso-prog' }) : null,
         c.tipo === 'illustrata' ? el('span', { class: 'avviso-campo', id: 'avviso-' + c.k }) : null,
+        c.k === 'nome' ? el('div', { id: 'gbif-link', style: 'margin-top:2px' }) : null,
         c.aiuto ? el('span', { class: 'campo-aiuto', testo: c.aiuto }) : null));
       if (c.tipo === 'lista') griglia.append(el('datalist', { id: 'dl-' + c.k }, (c.valori || []).map((v) => el('option', { value: v }))));
     }
@@ -917,6 +920,11 @@ function costruisciModulo() {
     }
     if (k === 'prog' || k === 'nome') aggiornaTitoloEditor();
     if (k === 'nome') confrontaConCatalogo();
+    if (k === 'nome') {
+      r.gbifId = ''; // nome cambiato a mano: un eventuale ID GBIF salvato non è più valido
+      clearTimeout(timerGbifDigitando);
+      timerGbifDigitando = setTimeout(() => { if (S.aperta === r) disegnaLinkGbif(); }, 900);
+    }
     if (k === 'problemi') aggiornaSuggerimentiFito(e.target.value);
     if (k === 'altezza' || k === 'grandezza' || k === 'circonferenza') disegnaStima();
     salvaPresto(r);
@@ -1564,14 +1572,46 @@ async function registraSpecieIdentificata(nomeSci, nomeComune, conf, gbifId) {
   aggiornaDatalistNome();
 }
 
-// Piccolo link cliccabile verso la scheda della specie su GBIF, quando la conosciamo.
-function disegnaLinkGbif() {
+// Bottone verso la scheda della specie su GBIF. Se la scheda ha già un ID
+// GBIF salvato (da un'identificazione PlantNet) lo usa subito; altrimenti
+// lo cerca da sola a partire dal nome scientifico scritto — così il
+// pulsante compare anche per un nome preso dalla Guida alle specie, da
+// Wikipedia o scritto a mano, non solo da PlantNet. Il risultato si salva
+// nella scheda, così la ricerca si fa una volta sola.
+const CACHE_GBIF_MATCH = new Map();
+let timerGbifDigitando = null;
+
+async function trovaGbifId(nomeSci) {
+  const chiave = (nomeSci || '').trim().toLowerCase();
+  if (!chiave) return '';
+  if (CACHE_GBIF_MATCH.has(chiave)) return CACHE_GBIF_MATCH.get(chiave);
+  let id = '';
+  try {
+    const risp = await fetch(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(nomeSci)}`);
+    const dati = await risp.json();
+    if (dati.matchType && dati.matchType !== 'NONE' && dati.usageKey) id = String(dati.usageKey);
+  } catch { /* offline o GBIF irraggiungibile: il pulsante resta assente per ora */ }
+  CACHE_GBIF_MATCH.set(chiave, id);
+  return id;
+}
+
+async function disegnaLinkGbif() {
   const cont = $('#gbif-link');
-  if (!cont) return;
   const r = S.aperta;
-  cont.replaceChildren(...(r?.gbifId
-    ? [el('a', { href: `https://www.gbif.org/species/${r.gbifId}`, target: '_blank', rel: 'noopener', style: 'font-size:13px' }, '🔗 Apri la specie su GBIF')]
-    : []));
+  if (!cont || !r) return;
+  const bottone = (id) => el('a', {
+    href: `https://www.gbif.org/species/${id}`, target: '_blank', rel: 'noopener',
+    class: 'btn', style: 'display:inline-flex;min-height:34px;padding:5px 12px;font-size:13px',
+  }, '🔗 Apri la specie su GBIF');
+
+  if (r.gbifId) { cont.replaceChildren(bottone(r.gbifId)); return; }
+  if (!r.nome?.trim()) { cont.replaceChildren(); return; }
+
+  cont.replaceChildren(el('span', { style: 'font-size:12px;color:var(--tenue)' }, '🔗 Cerco il riferimento GBIF…'));
+  const id = await trovaGbifId(r.nome);
+  if (S.aperta !== r) return; // nel frattempo hai aperto un'altra scheda
+  if (id) { r.gbifId = id; salvaPresto(r); cont.replaceChildren(bottone(id)); }
+  else cont.replaceChildren();
 }
 
 // Suggerimenti per "Nome esemplare": nomi già usati nelle schede + catalogo specie
@@ -1853,6 +1893,16 @@ function apriGuidaSpecie(filtroIniziale) {
   $('#dlg-guida-specie').showModal();
 }
 
+// Scorciatoia dal campo "Nome esemplare" (pulsante 🔎): apre la stessa guida
+// ma già sulla modalità "Per foto", per arrivare all'identificazione
+// PlantNet in un tocco invece di passare prima dalla ricerca per nome.
+function apriGuidaSpecieFoto() {
+  if (!S.aperta) return;
+  $('#gs-modo-foto').classList.remove('nascosto');
+  cambiaModoGuidaSpecie('foto');
+  $('#dlg-guida-specie').showModal();
+}
+
 // Tipologia del catalogo -> valore del campo "persistenza" della scheda
 // (il catalogo usa un vocabolario leggermente diverso da quello dell'app).
 const GS_MAPPA_TIPOLOGIA = { caducifoglia: 'caduca', sempreverde: 'sempreverde', 'ex palme': 'sempreverde' };
@@ -1998,6 +2048,7 @@ function usaRisultatoWeb(nomeSci) {
   if (!S.aperta) { $('#dlg-guida-specie').close(); return; }
   const r = S.aperta;
   r.nome = nomeSci;
+  r.gbifId = ''; // nome cambiato: un eventuale ID GBIF salvato in precedenza non è più valido
   // Il RESTO dei campi si compila solo se questo nome è anche tra le 144
   // verificate del catalogo del corso — mai da testo Wikipedia interpretato.
   const specieCatalogo = trovaSpecieGuida(nomeSci);
@@ -2008,6 +2059,7 @@ function usaRisultatoWeb(nomeSci) {
   applicaDipendenze();
   disegnaStima();
   confrontaConCatalogo();
+  disegnaLinkGbif();
   salvaPresto(r);
   $('#dlg-guida-specie').close();
   toast(compilati.length ? `Nome (da Wikipedia) e altri ${compilati.length} campi dal catalogo verificato` : 'Nome aggiornato da Wikipedia (non è tra le 144 del corso)');
@@ -2017,6 +2069,7 @@ function usaNomeDaGuidaSpecie(v) {
   if (!S.aperta) { $('#dlg-guida-specie').close(); return; }
   const r = S.aperta;
   r.nome = v.nomeSci;
+  r.gbifId = ''; // nome cambiato: un eventuale ID GBIF salvato in precedenza non è più valido
   const compilati = compilaCampiDaGuidaSpecie(r, v);
 
   r.modificato = oraISO();
@@ -2025,6 +2078,7 @@ function usaNomeDaGuidaSpecie(v) {
   applicaDipendenze();
   disegnaStima();
   confrontaConCatalogo();
+  disegnaLinkGbif();
   salvaPresto(r);
   $('#dlg-guida-specie').close();
   toast(compilati.length ? `Nome e altri ${compilati.length} campi compilati dalla guida` : 'Nome aggiornato dalla guida specie');
