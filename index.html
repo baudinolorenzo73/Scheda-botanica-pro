@@ -278,8 +278,8 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 .campo-nome-riga input{flex:1;min-width:0}
 
 /* ---------- guida specie: modalità e ricerca per caratteristiche ---------- */
-.gs-modo{display:flex;gap:8px}
-.gs-modo .btn{flex:1;text-align:center;padding:9px 6px}
+.gs-modo{display:flex;flex-wrap:wrap;gap:8px}
+.gs-modo .btn{flex:1 1 30%;min-width:104px;text-align:center;padding:9px 6px;font-size:13px}
 .gs-modo .btn[aria-selected="true"]{background:var(--bosco);border-color:var(--bosco);color:#fff}
 .gs-carat-griglia{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
 .gs-carat-griglia label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--tenue)}
@@ -452,6 +452,9 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 
 <main>
   <div id="vista-schede">
+    <div style="max-width:var(--largo);margin:0 auto;padding:0 12px 8px;display:flex;justify-content:flex-end">
+      <button type="button" class="btn nascosto" id="btn-seleziona-tutte" style="min-height:36px;padding:6px 14px;font-size:13px"></button>
+    </div>
     <div class="elenco" id="elenco"></div>
   </div>
   <div id="vista-mappa" class="nascosto" style="max-width:var(--largo);margin:0 auto;padding:0 12px">
@@ -667,9 +670,20 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
   <div class="gs-modo" role="tablist">
     <button type="button" class="btn" id="gs-modo-nome" aria-selected="true">🔤 Per nome</button>
     <button type="button" class="btn" id="gs-modo-carat" aria-selected="false">🧩 Per caratteristiche</button>
+    <button type="button" class="btn nascosto" id="gs-modo-foto" aria-selected="false">📷 Per foto</button>
   </div>
 
   <input type="search" id="gs-cerca" class="campo-base" style="width:100%;margin:10px 0" placeholder="🔍 Cerca per nome o famiglia…">
+
+  <div id="gs-foto-pannello" class="nascosto" style="margin:10px 0">
+    <p style="font-size:12.5px;color:var(--tenue);margin:0 0 10px">Non sai nemmeno il nome comune? Scegli una foto della pianta (foglia o corteccia ravvicinate funzionano meglio) e prova a riconoscerla con PlantNet — funziona su qualsiasi pianta, non solo le 144 del corso.</p>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn primario" id="gs-btn-scatta" style="flex:1">📷 Scatta</button>
+      <button type="button" class="btn" id="gs-btn-galleria" style="flex:1">🖼 Dalla galleria</button>
+    </div>
+    <input type="file" id="gs-in-scatta" accept="image/*" capture="environment" class="nascosto">
+    <input type="file" id="gs-in-galleria" accept="image/*" class="nascosto">
+  </div>
 
   <div id="gs-carat-pannello" class="nascosto gs-carat-pannello">
     <p style="font-size:12.5px;color:var(--tenue);margin:0 0 8px">Non sai il nome? Imposta quello che vedi — anche solo una o due voci — e la guida propone le specie più probabili. Lascia "—" quello che non hai osservato.</p>
@@ -813,14 +827,24 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     <strong style="margin-top:6px">Formato</strong>
     <label><input type="radio" name="st-tipo" value="schede" checked> Schede A4 (una per pagina)</label>
     <label><input type="radio" name="st-tipo" value="etichette"> Etichette QR 5×5 cm (15 per foglio)</label>
+    <label><input type="radio" name="st-tipo" value="excel"> 📊 Registro Excel (una riga per scheda)</label>
     <div id="st-opz-schede" class="scelte" style="margin-top:6px">
-      <label><input type="checkbox" id="st-qr" checked> Codice QR</label>
-      <label><input type="checkbox" id="st-foto" checked> Foto (solo quelle con “stampa” spuntato)</label>
-      <label>Foto per riga
-        <select id="st-colonne" class="campo-base" style="min-height:36px;padding:4px 8px">
-          <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>
-        </select>
-      </label>
+      <div id="st-opz-pdf">
+        <label><input type="checkbox" id="st-qr" checked> Codice QR</label>
+        <label><input type="checkbox" id="st-foto" checked> Includi le foto (solo quelle con “stampa” spuntato su ciascuna)</label>
+        <label>Foto per riga
+          <select id="st-colonne" class="campo-base" style="min-height:36px;padding:4px 8px">
+            <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>
+          </select>
+        </label>
+        <label>Foto per scheda (al massimo)
+          <select id="st-foto-max" class="campo-base" style="min-height:36px;padding:4px 8px">
+            <option value="0">Tutte quelle spuntate</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="6">6</option>
+          </select>
+        </label>
+      </div>
       <div style="margin-top:8px">
         <strong>Campi da includere</strong>
         <span style="font-size:12px;color:var(--tenue)">
@@ -830,10 +854,10 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
       </div>
     </div>
   </div>
-  <p style="font-size:13px;color:var(--tenue)">Su Android scegli “Salva come PDF” come stampante per ottenere il file.</p>
+  <p id="st-suggerimento" style="font-size:13px;color:var(--tenue)">Su Android scegli “Salva come PDF” come stampante per ottenere il file.</p>
   <div class="azioni">
     <button class="btn" value="annulla">Annulla</button>
-    <button class="btn primario" value="stampa">Stampa</button>
+    <button class="btn primario" value="stampa" id="st-btn-conferma">Stampa</button>
   </div>
 </dialog>
 
