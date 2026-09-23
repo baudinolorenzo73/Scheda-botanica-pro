@@ -50,7 +50,7 @@ const DIPENDENZE_CAMPI = [
 ];
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.10.0';
+const APP_VERSIONE = '3.11.0';
 const DB_VERSIONE = 4;        // v4: aggiunto lo store "specie" (catalogo specie identificate)
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG
@@ -1730,6 +1730,21 @@ function cambiaModoGuidaSpecie(modo) {
   $('#gs-foto-pannello').classList.toggle('nascosto', modo !== 'foto');
   $('#gs-lista').classList.toggle('nascosto', modo === 'foto');
   $('#gs-dettaglio').classList.add('nascosto');
+  if (modo === 'foto') disegnaFotoEsistentiGuida();
+}
+
+// Nella modalità "Per foto", propone anche le foto già scattate per questa
+// scheda (non solo scattarne/sceglierne di nuove): comodo se la foto buona
+// per l'identificazione ce l'hai già.
+async function disegnaFotoEsistentiGuida() {
+  const blocco = $('#gs-foto-esistenti-blocco');
+  const cont = $('#gs-foto-esistenti');
+  const foto = S.aperta?.foto || [];
+  blocco.classList.toggle('nascosto', !foto.length);
+  if (!foto.length) return;
+  cont.replaceChildren(...await Promise.all(foto.map(async (p) =>
+    el('button', { type: 'button', class: 'gs-foto-esistente', 'aria-label': 'Usa questa foto per l\u2019identificazione', onclick: () => { $('#dlg-guida-specie').close(); apriIdentificazione(S.aperta, p); } },
+      el('img', { src: await urlFoto(p.id), alt: '' })))));
 }
 
 function risultatiGuidaSpecie(q) {
@@ -1813,6 +1828,14 @@ function mostraDettaglioGuidaSpecie(v) {
 
 const GS_CAMPI_SCHEDA = ['persistenza', 'formaChioma', 'rami', 'tipoFoglia', 'lamina', 'margine'];
 
+// Copia nei filtri "Per caratteristiche" quello che è già scritto nella
+// scheda aperta — così non tocchi due volte le stesse informazioni.
+function precompilaCaratteristicheDaScheda() {
+  if (!S.aperta) return;
+  for (const k of GS_CAMPI_SCHEDA) $('#gs-c-' + k).value = S.aperta[k] || '';
+  $('#gs-c-grandezza').value = S.aperta.grandezza || '';
+}
+
 function apriGuidaSpecie(filtroIniziale) {
   $('#gs-modo-foto').classList.toggle('nascosto', !S.aperta);
   const schedaHaCaratteristiche = S.aperta && GS_CAMPI_SCHEDA.some((k) => S.aperta[k]);
@@ -1820,8 +1843,7 @@ function apriGuidaSpecie(filtroIniziale) {
     // Aperta dal pulsante nel campo nome, nome ancora vuoto ma altri campi già
     // compilati: precompiliamo la ricerca per caratteristiche con quelli.
     cambiaModoGuidaSpecie('carat');
-    for (const k of GS_CAMPI_SCHEDA) $('#gs-c-' + k).value = S.aperta[k] || '';
-    $('#gs-c-grandezza').value = S.aperta.grandezza || '';
+    precompilaCaratteristicheDaScheda();
     $('#gs-c-altro').value = '';
   } else {
     cambiaModoGuidaSpecie('nome');
@@ -2628,7 +2650,7 @@ async function apriStampa(soloQuesta = null) {
 
   if (tipo === 'excel') {
     stato('Preparo il registro Excel…');
-    esportaRegistroExcel(lista, new Set(campiScelti));
+    await esportaRegistroExcel(lista, new Set(campiScelti));
     stato(`Registro Excel scaricato: ${lista.length} schede`);
     return;
   }
@@ -2651,7 +2673,7 @@ async function apriStampa(soloQuesta = null) {
 // Registro Excel: una riga per scheda, con intestazioni raggruppate per
 // sezione (Osservazioni / Vegetazione / Pedologia / Fitopatologia / Note),
 // nello spirito del modello di registro cartaceo/Excel già in uso.
-function esportaRegistroExcel(lista, campiScelti) {
+async function esportaRegistroExcel(lista, campiScelti) {
   const campi = CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k) && (!campiScelti.size || campiScelti.has(c.k)));
   const colonneTestata = ['N° progressivo', 'Nome esemplare', 'Data'];
   const gruppi = [];
@@ -2659,40 +2681,67 @@ function esportaRegistroExcel(lista, campiScelti) {
     const delGruppo = campi.filter((c) => c.sez === sez.id);
     if (delGruppo.length) gruppi.push({ titolo: sez.titolo, campi: delGruppo });
   }
+  const nCol = colonneTestata.length + campi.length;
 
-  const foglio = [];
-  foglio.push(['SCHEDA DI RILEVAZIONE BOTANICA', ...Array(colonneTestata.length - 1 + campi.length).fill('')]);
-  foglio.push([`Registro esportato da Scheda Botanica PRO il ${dataIT(oraISO())} — ${lista.length} schede`, ...Array(colonneTestata.length - 1 + campi.length).fill('')]);
-  foglio.push([]);
-  const rigaGruppi = [...colonneTestata.map(() => '')];
-  for (const g of gruppi) { rigaGruppi.push(g.titolo); for (let i = 1; i < g.campi.length; i++) rigaGruppi.push(''); }
-  foglio.push(rigaGruppi);
-  foglio.push([...colonneTestata, ...campi.map((c) => (c.etichettaStampa || c.label).replace(/\n/g, ' '))]);
-  for (const r of lista) {
-    const riga = [r.prog ?? '', r.nome || '', dataBreveIT(r.data) || ''];
+  const wb = await XlsxPopulate.fromBlankAsync();
+  const ws = wb.sheet(0).name('Registro rilevazioni');
+
+  const BORDO = { style: 'thin', color: 'CFD6C9' };
+  const bordoTutto = { top: BORDO, bottom: BORDO, left: BORDO, right: BORDO };
+
+  // Riga 1-2: titolo e sottotitolo
+  ws.range(1, 1, 1, nCol).merged(true).value('SCHEDA DI RILEVAZIONE BOTANICA')
+    .style({ bold: true, fontSize: 14, fontColor: 'FFFFFF', fill: '2F5D3A', horizontalAlignment: 'center', verticalAlignment: 'center' });
+  ws.range(2, 1, 2, nCol).merged(true).value(`Registro esportato da Scheda Botanica PRO il ${dataIT(oraISO())} — ${lista.length} schede`)
+    .style({ italic: true, fontColor: '6B6B6B', horizontalAlignment: 'center' });
+  ws.row(1).height(24);
+
+  // Riga 4: intestazioni di gruppo (Osservazioni / Vegetazione / ...)
+  const rigaGruppi = 4;
+  ws.range(rigaGruppi, 1, rigaGruppi, colonneTestata.length).merged(true).value('')
+    .style({ fill: 'E8EDE6', border: bordoTutto });
+  let colOff = colonneTestata.length + 1;
+  for (const g of gruppi) {
+    const fine = colOff + g.campi.length - 1;
+    const cella = g.campi.length > 1 ? ws.range(rigaGruppi, colOff, rigaGruppi, fine).merged(true) : ws.cell(rigaGruppi, colOff);
+    cella.value(g.titolo).style({ bold: true, fontColor: 'FFFFFF', fill: '5C9A69', horizontalAlignment: 'center', verticalAlignment: 'center', border: bordoTutto });
+    colOff = fine + 1;
+  }
+
+  // Riga 5: intestazioni di colonna
+  const rigaTestata = 5;
+  const etichette = [...colonneTestata, ...campi.map((c) => (c.etichettaStampa || c.label).replace(/\n/g, ' '))];
+  etichette.forEach((testo, i) => {
+    ws.cell(rigaTestata, i + 1).value(testo)
+      .style({ bold: true, fill: 'CFD6C9', horizontalAlignment: 'center', verticalAlignment: 'center', wrapText: true, border: bordoTutto });
+  });
+  ws.row(rigaTestata).height(32);
+
+  // Righe dati
+  lista.forEach((r, indice) => {
+    const riga = rigaTestata + 1 + indice;
+    const valori = [r.prog ?? '', r.nome || '', dataBreveIT(r.data) || ''];
     for (const c of campi) {
       let v = r[c.k];
       if (c.tipo === 'scelta') v = v ? (c.valori.find(([x]) => x === v) || [, v])[1] : '';
-      riga.push(v ?? '');
+      valori.push(v ?? '');
     }
-    foglio.push(riga);
-  }
+    const fondoAlternato = indice % 2 ? 'F5F7F3' : 'FFFFFF';
+    valori.forEach((v, i) => {
+      ws.cell(riga, i + 1).value(v)
+        .style({ fill: fondoAlternato, verticalAlignment: 'top', wrapText: true, border: bordoTutto,
+          horizontalAlignment: i === 0 ? 'center' : 'justify' });
+    });
+  });
 
-  const ws = XLSX.utils.aoa_to_sheet(foglio);
-  const nCol = colonneTestata.length + campi.length;
-  ws['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: nCol - 1 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: nCol - 1 } },
-  ];
-  let colOff = colonneTestata.length;
-  for (const g of gruppi) {
-    if (g.campi.length > 1) ws['!merges'].push({ s: { r: 3, c: colOff }, e: { r: 3, c: colOff + g.campi.length - 1 } });
-    colOff += g.campi.length;
-  }
-  ws['!cols'] = [{ wch: 10 }, { wch: 22 }, { wch: 11 }, ...campi.map(() => ({ wch: 16 }))];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Registro rilevazioni');
-  XLSX.writeFile(wb, `registro-botanico-${oggi()}.xlsx`);
+  ws.column(1).width(9);
+  ws.column(2).width(22);
+  ws.column(3).width(11);
+  for (let i = 0; i < campi.length; i++) ws.column(colonneTestata.length + 1 + i).width(15);
+  ws.freezePanes(colonneTestata.length + 1, rigaTestata + 1);
+
+  const blob = await wb.outputAsync();
+  scarica(blob, `registro-botanico-${oggi()}.xlsx`);
 }
 
 const CAMPI_TESTATA = ['prog', 'nome', 'data'];
@@ -3358,7 +3407,7 @@ function collegaEventi() {
   $('#gs-chiudi').onclick = () => $('#dlg-guida-specie').close();
   inizializzaSelectCaratteristiche();
   $('#gs-modo-nome').onclick = () => { cambiaModoGuidaSpecie('nome'); disegnaListaGuidaSpecie(); };
-  $('#gs-modo-carat').onclick = () => { cambiaModoGuidaSpecie('carat'); disegnaListaGuidaSpecie(); };
+  $('#gs-modo-carat').onclick = () => { cambiaModoGuidaSpecie('carat'); precompilaCaratteristicheDaScheda(); disegnaListaGuidaSpecie(); };
   $('#gs-modo-foto').onclick = () => cambiaModoGuidaSpecie('foto');
   $('#gs-btn-scatta').onclick = () => $('#gs-in-scatta').click();
   $('#gs-btn-galleria').onclick = () => $('#gs-in-galleria').click();

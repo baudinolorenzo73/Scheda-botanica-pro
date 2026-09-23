@@ -279,6 +279,8 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 
 /* ---------- guida specie: modalità e ricerca per caratteristiche ---------- */
 .gs-modo{display:flex;flex-wrap:wrap;gap:8px}
+.gs-foto-esistente{padding:0;border:1.5px solid var(--linea);border-radius:var(--r-piccolo);overflow:hidden;aspect-ratio:1;background:var(--carta)}
+.gs-foto-esistente img{width:100%;height:100%;object-fit:cover;display:block}
 .gs-modo .btn{flex:1 1 30%;min-width:104px;text-align:center;padding:9px 6px;font-size:13px}
 .gs-modo .btn[aria-selected="true"]{background:var(--bosco);border-color:var(--bosco);color:#fff}
 .gs-carat-griglia{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
@@ -683,6 +685,10 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
     </div>
     <input type="file" id="gs-in-scatta" accept="image/*" capture="environment" class="nascosto">
     <input type="file" id="gs-in-galleria" accept="image/*" class="nascosto">
+    <div id="gs-foto-esistenti-blocco" class="nascosto" style="margin-top:14px">
+      <strong style="font-size:13px">Oppure usa una foto già scattata per questa scheda</strong>
+      <div id="gs-foto-esistenti" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px"></div>
+    </div>
   </div>
 
   <div id="gs-carat-pannello" class="nascosto gs-carat-pannello">
@@ -870,6 +876,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 <script src="./lib/leaflet.js"></script>
 <script src="./lib/jszip.js"></script>
 <script src="./lib/xlsx.js"></script>
+<script src="./lib/xlsx-populate.js"></script>
 <script src="./icone.js"></script>
 <script src="./data/guida-specie.js"></script>
 <script src="./app.js"></script>
