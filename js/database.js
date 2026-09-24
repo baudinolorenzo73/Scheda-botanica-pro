@@ -17,6 +17,7 @@ const DB = {
         if (!d.objectStoreNames.contains('audio')) d.createObjectStore('audio');
         if (!d.objectStoreNames.contains('traccia')) d.createObjectStore('traccia', { autoIncrement: true });
         if (!d.objectStoreNames.contains('specie')) d.createObjectStore('specie', { keyPath: 'nomeSci' });
+        if (!d.objectStoreNames.contains('guida')) d.createObjectStore('guida', { keyPath: 'id' });
       };
       r.onblocked = () => stato('Chiudi le altre schede dell’app per aggiornare l’archivio.', true);
       r.onsuccess = () => {
@@ -46,9 +47,9 @@ const DB = {
   svuota: (store) => DB.tx(store, 'readwrite', (s) => s.clear()),
   // Sostituisce l'intero archivio con una sola transazione: se una scrittura
   // fallisce, IndexedDB annulla anche le cancellazioni iniziali.
-  sostituisciArchivio({ schede, foto, audio, specie, traccia }, sostituisci = true) {
+  sostituisciArchivio({ schede, foto, audio, specie, traccia, guida = [] }, sostituisci = true) {
     return new Promise((ok, ko) => {
-      const nomi = ['schede', 'foto', 'audio', 'specie', 'traccia'];
+      const nomi = ['schede', 'foto', 'audio', 'specie', 'traccia', 'guida'];
       const t = this.db.transaction(nomi, 'readwrite');
       let errore;
       t.oncomplete = () => ok();
@@ -60,6 +61,7 @@ const DB = {
         for (const f of foto) t.objectStore('foto').put(f.blob, f.id);
         for (const a of audio) t.objectStore('audio').put(a.blob, a.id);
         for (const s of specie) t.objectStore('specie').put(s);
+        for (const voce of guida) t.objectStore('guida').put(voce);
         for (const pt of traccia) t.objectStore('traccia').add(pt);
       } catch (e) {
         errore = e;
@@ -68,4 +70,3 @@ const DB = {
     });
   },
 };
-

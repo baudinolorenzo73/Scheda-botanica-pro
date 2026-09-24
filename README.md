@@ -2,9 +2,9 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.14.0**
+**by Lollo ®2026 — versione 3.17.0**
 
-[Revisione grafica e pulsanti](REVISIONE-3.14.md) · [Correzioni tecniche precedenti](REVISIONE-3.13.md)
+[Catalogo integrabile delle 144 piante](REVISIONE-3.17.md) · [Ricerca specie e pulsanti](REVISIONE-3.16.md) · [Nuovo elenco e ricerca dei nomi](REVISIONE-3.15.md)
 
 ---
 
@@ -31,6 +31,10 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 - **Stima ambientale**: volume della chioma, ombra proiettata, CO₂ stoccata.
 - **Riconoscimento specie** da foto con [PlantNet](https://plantnet.org) (chiave gratuita, opzionale).
 - **Codice QR permanente** per ogni scheda, per ritrovarla senza ambiguità anche dopo l’apertura di un nuovo elenco.
+- **Ricerca immediata del nome** nel catalogo locale delle specie e nei nomi già registrati, utilizzabile anche offline. Il nome può essere inserito liberamente.
+- **Comandi di ricerca della specie** per nome, per caratteristiche dalla guida locale e per foto con PlantNet; schede PlantNet e GBIF consultabili dai rispettivi collegamenti. I dati già osservati non vengono sovrascritti e le discordanze vengono evidenziate.
+- **Catalogo integrabile** in Configurazione: sfoglia le 144 pagine originali, aggiungi le caratteristiche mancanti e registra la fonte; le integrazioni hanno un editor viola distinto dalle schede di rilievo e sono incluse nei backup.
+- **Nuovo elenco** dalla prima schermata: scarica un backup delle schede correnti e le sposta nel cestino, poi riparte dalla scheda numero 1.
 - **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
 - **Stampa** di una o più schede, anche solo come etichette QR.
 - **Backup completo (.zip)** con ripristino protetto di schede, cestino, foto, audio, catalogo e traccia; import/export CSV, GeoJSON, KML e GPX.

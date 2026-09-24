@@ -533,3 +533,70 @@ dialog .azioni .btn{flex:0 1 auto}
   .riepilogo strong{font-size:23px}
   .riepilogo span{font-size:10px;line-height:1.15;overflow-wrap:anywhere}
 }
+
+/* Versione 3.15 — nuovo elenco in home e ricerca nomi locale */
+.strumenti-elenco{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 14px;min-height:68px}
+#btn-nuovo-elenco{background:var(--foglio);border-color:var(--bosco);color:var(--bosco);font-weight:700}
+#btn-nuovo-elenco:hover:not(:disabled){background:var(--concorda-bg)}
+#btn-seleziona-tutte{min-height:48px;font-size:13px}
+.campo-nome{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13px;font-weight:600;color:var(--tenue)}
+.campo-nome > label{cursor:pointer}
+.campo-nome-riga input{background:var(--carta);border:1.5px solid var(--linea);border-radius:var(--r-piccolo);padding:10px 12px;min-height:48px;font:400 16px system-ui,sans-serif;color:var(--inchiostro);width:100%}
+.campo-nome-riga input:focus{background:var(--focus)}
+.nome-risultati{position:fixed;z-index:80;background:var(--foglio);color:var(--inchiostro);border:1.5px solid var(--bosco);border-radius:13px;box-shadow:0 10px 30px #091b1590;overflow-y:auto;overscroll-behavior:contain;padding:5px}
+.nome-opzione{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;border:0;border-radius:9px;background:transparent;text-align:left;padding:10px 12px;min-height:55px;width:100%;color:var(--inchiostro);font-size:15px}
+.nome-opzione + .nome-opzione{border-top:1px solid var(--linea)}
+.nome-opzione strong{font-size:15px;line-height:1.25}
+.nome-opzione span{font-size:11px;color:var(--tenue);font-weight:500}
+.nome-opzione:hover,.nome-opzione[aria-selected="true"]{background:var(--concorda-bg)}
+.nome-nessun-risultato{font-size:13px;color:var(--tenue);line-height:1.35;padding:10px;margin:0;font-weight:400}
+@media(max-width:480px){
+  .strumenti-elenco{flex-wrap:wrap;min-height:0;gap:8px;padding:6px 0 14px}
+  #btn-nuovo-elenco,#btn-seleziona-tutte{min-height:48px;flex:1 1 auto;font-size:12.5px;white-space:nowrap;padding:8px 10px}
+  .nome-opzione{min-height:54px}
+}
+@media print{.strumenti-elenco,.nome-risultati{display:none!important}}
+
+/* Versione 3.16 — azioni specie leggibili e fonti separate */
+.campo-nome-riga{display:block}
+.nome-azioni{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:4px}
+.nome-azioni .btn{min-height:50px;white-space:normal;text-align:center;justify-content:center;font-size:13px;line-height:1.25;padding:8px}
+.nome-fonti{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.nome-fonti .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;font-size:12px}
+.fonte-disabilitata{opacity:.55;cursor:default}
+.nome-conflitti{margin:2px 0;padding:10px;border:1px solid var(--ruggine);border-radius:8px;color:var(--ruggine);font-size:13px;line-height:1.45;font-weight:500}
+@media(max-width:600px){.nome-azioni{grid-template-columns:repeat(2,minmax(0,1fr))}.nome-azioni #nome-cerca-foto{grid-column:1/-1}}
+
+/* Versione 3.17 — catalogo: viola distinto dalle schede di rilievo */
+.menu-titolo{font-size:13px;color:var(--tenue);margin:12px 2px 2px;padding-bottom:5px;border-bottom:1px solid var(--linea)}
+.menu-titolo:first-child{margin-top:0}
+#dlg-completa-guida{--cg-accent:#7650ae;--cg-fondo:#ede7fa;width:min(780px,96vw);max-width:780px;border:2px solid var(--cg-accent);padding:16px}
+#dlg-completa-guida h2,#dlg-completa-guida h3{color:var(--cg-accent)}
+.cg-intro,.cg-legenda{color:var(--tenue);line-height:1.45;font-size:13px;margin:8px 0}
+.cg-contatore{background:var(--cg-fondo);color:#3d2468;border-radius:8px;padding:10px;font-size:13px;font-weight:700}
+.cg-filtri{display:grid;grid-template-columns:1fr auto;gap:8px;margin:10px 0}
+.cg-filtri input{min-width:0}
+.cg-lista{max-height:48vh;overflow-y:auto;display:grid;gap:8px}
+.cg-riga{display:flex;flex-direction:column;gap:3px;border:1px solid var(--linea);border-left:4px solid var(--cg-accent);border-radius:8px;background:var(--foglio);color:var(--inchiostro);text-align:left;min-height:56px;padding:8px 12px}
+.cg-riga span{font-size:12px;color:var(--tenue)}
+.cg-editor{border-top:3px solid var(--cg-accent);margin-top:12px;padding-top:12px}
+.cg-testa,.cg-comandi{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.cg-testa span{font-weight:700;color:var(--cg-accent)}
+#cg-nome{font-size:22px;margin:12px 0 4px}
+#cg-info{font-size:13px;color:var(--tenue);line-height:1.4}
+#cg-slide{width:100%;max-height:320px;object-fit:contain;background:#282828;border-radius:10px;cursor:zoom-in}
+.cg-gruppo{border:1px solid var(--linea);border-radius:10px;margin:14px 0;padding:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cg-gruppo legend{color:var(--cg-accent);font-weight:700;padding:0 5px}
+.cg-campo,.cg-fonte{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;min-width:0}
+.cg-campo input,.cg-campo select,.cg-campo textarea,.cg-fonte select{width:100%;font:400 16px system-ui,sans-serif;min-height:46px;border:1.5px solid var(--linea);border-radius:8px;padding:9px;background:var(--foglio);color:var(--inchiostro)}
+.cg-campo small{font-size:11px;color:var(--tenue);font-weight:400}
+.cg-originale input,.cg-originale select{opacity:1;background:var(--carta);color:var(--tenue)}
+.cg-integrato input,.cg-integrato select{border-color:var(--cg-accent);background:var(--cg-fondo);color:#352057}
+.cg-note textarea{min-height:86px;resize:vertical}
+.cg-note textarea[readonly]{background:var(--carta);color:var(--tenue)}
+.cg-fonte{margin:12px 0}
+#cg-stato{color:var(--cg-accent);font-size:13px;min-height:1.3em}
+.cg-comandi .btn{flex:1 1 auto}
+.cg-salva{background:var(--cg-accent);border-color:var(--cg-accent);color:#fff}
+@media(max-width:600px){.cg-filtri{grid-template-columns:1fr}.cg-gruppo{grid-template-columns:1fr}.cg-comandi .cg-salva{order:-1;flex-basis:100%}}
+@media print{#dlg-completa-guida{display:none!important}}

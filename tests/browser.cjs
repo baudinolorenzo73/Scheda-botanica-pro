@@ -25,7 +25,8 @@ const server = http.createServer((req, res) => {
   const errors = [], failed = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('response', r => { if (r.url().startsWith('http://127.0.0.1') && r.status() >= 400) failed.push(r.url()); });
-  page.on('dialog', d => d.dismiss());
+  let confermaNuovoElenco = false;
+  page.on('dialog', d => confermaNuovoElenco && d.type() === 'confirm' ? d.accept() : d.dismiss());
   // Non si inviano nomi o foto di prova a servizi esterni.
   await context.route(/https:\/\//, r => r.abort());
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -156,6 +157,141 @@ const server = http.createServer((req, res) => {
       await page.evaluate(()=>chiudiEditor());await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'desktop.png'),animations:'disabled',fullPage:true});
       await page.click('#btn-tema');await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'scuro.png'),animations:'disabled',fullPage:true});
     }
+    await test('Ricerca immediata nel catalogo locale e nei nomi registrati',async()=>{
+      await page.setViewportSize({width:390,height:844});
+      await page.evaluate(()=>apriEditor(S.schede.find(s=>s.nome==='Quercus robur').uid));
+      await page.fill('#f-nome','Fagus');
+      const suggerimento = page.locator('#nome-risultati [role=option]').first();
+      assert.equal(await suggerimento.isVisible(),true);
+      assert.match(await suggerimento.textContent(),/Già rilevata/);
+      const misura=await page.locator('#nome-risultati').boundingBox();
+      assert(misura && misura.x>=0 && misura.x+misura.width<=390 && misura.height<=330);
+      if(process.env.SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'ricerca.png'),animations:'disabled'});
+      await page.fill('#f-nome','Larix');
+      assert.match(await page.locator('#nome-risultati').textContent(),/Larix decidua/);
+      await page.press('#f-nome','ArrowDown');
+      await page.press('#f-nome','Enter');
+      assert.equal(await page.inputValue('#f-nome'),'Larix decidua');
+      assert.equal(await page.evaluate(()=>S.aperta.nome),'Larix decidua');
+      await page.fill('#f-nome','Specie inserita a mano');
+      assert.match(await page.locator('#nome-risultati').textContent(),/scriverlo liberamente/);
+      await page.press('#f-nome','Tab');
+      await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
+      assert.equal(await page.evaluate(()=>S.schede.some(s=>s.nome==='Specie inserita a mano')),true);
+    });
+    await test('Catalogo delle 144 piante: integrazione, persistenza e backup',async()=>{
+      await page.click('#btn-menu');
+      await page.click('[data-az="completa-guida"]');
+      assert.equal(await page.locator('#cg-lista .cg-riga').count(),144);
+      await page.locator('#cg-lista .cg-riga').first().click();
+      if(process.env.SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'catalogo-editor.png'),animations:'disabled'});
+      assert.match(await page.locator('#cg-nome').textContent(),/Aesculus hippocastanum/);
+      assert.match(await page.locator('#cg-slide').getAttribute('src'),/slides\/19\.webp/);
+      assert.equal(await page.locator('#cg-form [name="fogliaTipo"]').isDisabled(),true);
+      await page.locator('#cg-form [name="chiomaForma"]').selectOption('globosa');
+      await page.click('#cg-salva');
+      assert.match(await page.locator('#cg-stato').textContent(),/Seleziona la fonte/);
+      await page.selectOption('#cg-fonte','pagina');
+      await page.click('#cg-salva');
+      await page.waitForFunction(()=>S.guida.length===1 || document.querySelector('#cg-stato').textContent.startsWith('Salvataggio non riuscito'));
+      assert.equal(await page.evaluate(()=>S.guida.length===1 && GUIDA_SPECIE[0].chiomaForma==='globosa'),true);
+      await page.click('#cg-chiudi');
+      await page.reload();await page.waitForFunction(()=>DB.db && S.guida.length===1);
+      assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].chiomaForma),'globosa');
+      const download=page.waitForEvent('download');
+      assert.equal(await page.evaluate(()=>esportaZIP()),true);
+      const bytes=fs.readFileSync(await (await download).path());
+      assert.equal(await page.evaluate(async b=>{
+        const zip=await JSZip.loadAsync(new Uint8Array(b));
+        const json=JSON.parse(await zip.file('backup.json').async('string'));
+        return json.guida?.[0]?.campi?.chiomaForma;
+      },[...bytes]),'globosa');
+      await page.click('#btn-menu');await page.click('[data-az="completa-guida"]');
+      await page.locator('#cg-lista .cg-riga').first().click();
+      assert.equal(await page.locator('#cg-form [name="chiomaForma"]').inputValue(),'globosa');
+      await page.selectOption('#cg-form [name="chiomaForma"]','');
+      await page.click('#cg-salva');
+      await page.waitForFunction(()=>S.guida.length===0);
+      assert.equal(await page.evaluate(()=>S.guida.length===0 && !GUIDA_SPECIE[0].chiomaForma),true);
+      await page.click('#cg-chiudi');
+      assert.equal(await page.evaluate(async b=>{
+        const v=await leggiBackupZip(new Blob([new Uint8Array(b)]));
+        await importaDati(v,'sostituisci');
+        document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+        return S.guida.length===1 && GUIDA_SPECIE[0].chiomaForma==='globosa' && S.guida[0].fonte==='pagina';
+      },[...bytes]),true);
+    });
+    await test('Azioni specie: caratteristiche, foto, fonti e dati discordanti',async()=>{
+      await page.evaluate(()=>apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid));
+      if(process.env.SCREENSHOT_DIR){
+        await page.locator('#plantnet-link').scrollIntoViewIfNeeded();
+        await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'azioni-specie.png'),animations:'disabled'});
+      }
+      await page.click('#nome-cerca-caratteristiche');
+      assert.equal(await page.locator('#gs-modo-carat').getAttribute('aria-selected'),'true');
+      await page.click('#gs-chiudi');
+      await page.click('#nome-cerca-foto');
+      assert.equal(await page.locator('#gs-modo-foto').getAttribute('aria-selected'),'true');
+      assert.equal(await page.locator('#gs-foto-esistenti').locator('button').count(),1);
+      await page.click('#gs-chiudi');
+      await page.evaluate(()=>{
+        S.aperta.persistenza='sempreverde';
+        usaNomeDaGuidaSpecie(GUIDA_SPECIE.find(s=>s.nomeSci==='Fagus sylvatica' && !s.varieta));
+      });
+      assert.match(await page.locator('#nome-conflitti').textContent(),/Persistenza foglie/);
+      assert.equal(await page.evaluate(()=>S.aperta.persistenza),'sempreverde');
+      assert.match(await page.locator('#plantnet-link').getAttribute('href'),/identify\.plantnet\.org/);
+      await page.click('#nome-cerca-nome');
+      assert.equal(await page.locator('#gs-modo-nome').getAttribute('aria-selected'),'true');
+      await page.waitForFunction(()=>document.querySelector('#gs-lista').textContent.includes('guida locale'));
+      await page.click('#gs-chiudi');
+      await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
+    });
+    await test('PlantNet: mostra anche specie fuori dalla guida locale',async()=>{
+      await page.evaluate(async()=>{
+        const r=S.schede.find(s=>s.foto.length);
+        apriEditor(r.uid);
+        r.nome=''; document.querySelector('#f-nome').value='';
+        localStorage.setItem('sb-plantnet-key','chiave-simulata');
+        window.fetchPrecedente=window.fetch;
+        window.fetch=(url,options)=>String(url).includes('my-api.plantnet.org')
+          ? Promise.resolve(new Response(JSON.stringify({results:[{score:.91,species:{scientificNameWithoutAuthor:'Ocimum basilicum',scientificName:'Ocimum basilicum L.',commonNames:['Basilico']},gbif:{id:'2927167'}}]}),{status:200}))
+          : window.fetchPrecedente(url,options);
+        await apriIdentificazione(r,r.foto[0]);
+        await eseguiIdentificazione();
+      });
+      assert.match(await page.locator('#ident-risultati').textContent(),/Ocimum basilicum/);
+      assert.equal(await page.locator('#ident-risultati button').count(),1);
+      await page.click('#ident-risultati button');
+      assert.equal(await page.inputValue('#f-nome'),'Ocimum basilicum');
+      assert.match(await page.locator('#plantnet-link').getAttribute('href'),/Ocimum%20basilicum%20L\./);
+      await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;localStorage.removeItem('sb-plantnet-key');});
+      await page.click('#btn-chiudi');
+    });
+    await test('Nuovo elenco in home: backup e archiviazione atomica',async()=>{
+      const n=await page.evaluate(()=>S.schede.length);
+      assert.equal(await page.locator('#btn-nuovo-elenco').isVisible(),true);
+      assert.equal(await page.locator('#dlg-menu #btn-nuovo-elenco').count(),0);
+      confermaNuovoElenco=true;
+      const download=page.waitForEvent('download');
+      await page.click('#btn-nuovo-elenco');
+      const file=await download;
+      assert.match(file.suggestedFilename(),/^scheda-botanica-elenco-.*\.zip$/);
+      const bytes=fs.readFileSync(await file.path());
+      assert(bytes.length>1000);
+      await page.waitForFunction(()=>S.schede.length===0);
+      assert.equal(await page.evaluate((attesi)=>S.cestino.length===attesi && S.cestino.every(r=>!!r.cancellata),n),true);
+      assert.equal(await page.evaluate(async() => {
+        const salvate = await DB.tutte('schede');
+        return S.cestino.every(r => salvate.some(v => v.uid === r.uid && !!v.cancellata));
+      }),true);
+      confermaNuovoElenco=false;
+      await page.click('#btn-nuova');
+      await page.waitForFunction(()=>!!S.aperta);
+      assert.equal(await page.inputValue('#f-prog'),'1');
+    });
     assert.deepEqual(errors,[],'Eccezioni JavaScript');assert.deepEqual(failed,[],'Risorse locali mancanti');
     console.log(`\n${results.length} verifiche superate. Nessuna eccezione JavaScript, nessuna risorsa locale mancante.`);
   } finally {await browser.close();server.close();}
