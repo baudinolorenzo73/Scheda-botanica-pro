@@ -45,6 +45,19 @@ const DB = {
   scrivi: (store, v, k) => DB.tx(store, 'readwrite', (s) => (k === undefined ? s.put(v) : s.put(v, k))),
   cancella: (store, k) => DB.tx(store, 'readwrite', (s) => s.delete(k)),
   svuota: (store) => DB.tx(store, 'readwrite', (s) => s.clear()),
+  sostituisciGuida(voci) {
+    return new Promise((ok, ko) => {
+      const t = this.db.transaction('guida', 'readwrite');
+      const store = t.objectStore('guida');
+      t.oncomplete = () => ok();
+      t.onerror = () => ko(t.error);
+      t.onabort = () => ko(t.error || new Error('Importazione annullata: catalogo precedente conservato'));
+      try {
+        store.clear();
+        for (const voce of voci) store.put(voce);
+      } catch (e) { t.abort(); ko(e); }
+    });
+  },
   // Sostituisce l'intero archivio con una sola transazione: se una scrittura
   // fallisce, IndexedDB annulla anche le cancellazioni iniziali.
   sostituisciArchivio({ schede, foto, audio, specie, traccia, guida = [] }, sostituisci = true) {

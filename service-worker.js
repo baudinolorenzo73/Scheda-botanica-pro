@@ -1,6 +1,6 @@
 'use strict';
 // Cache versionata per percorso: altri progetti sullo stesso dominio restano indipendenti.
-const CACHE_NOME = 'scheda-botanica-app-v25-' + new URL(self.registration.scope).pathname;
+const CACHE_NOME = 'scheda-botanica-app-v27-' + new URL(self.registration.scope).pathname;
 const CACHE_TILE = 'scheda-botanica-tile-v1';
 const FILE_APP_SHELL = [
   './', './index.html', './css/app.css', './manifest.json',

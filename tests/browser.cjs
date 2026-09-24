@@ -26,7 +26,8 @@ const server = http.createServer((req, res) => {
   page.on('pageerror', e => errors.push(e.message));
   page.on('response', r => { if (r.url().startsWith('http://127.0.0.1') && r.status() >= 400) failed.push(r.url()); });
   let confermaNuovoElenco = false;
-  page.on('dialog', d => confermaNuovoElenco && d.type() === 'confirm' ? d.accept() : d.dismiss());
+  let confermaCatalogo = false;
+  page.on('dialog', d => (confermaNuovoElenco || confermaCatalogo) && d.type() === 'confirm' ? d.accept() : d.dismiss());
   // Non si inviano nomi o foto di prova a servizi esterni.
   await context.route(/https:\/\//, r => r.abort());
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -191,12 +192,22 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.locator('#cg-form [name="fogliaTipo"]').isDisabled(),true);
       await page.locator('#cg-form [name="chiomaForma"]').selectOption('globosa');
       await page.click('#cg-salva');
-      assert.match(await page.locator('#cg-stato').textContent(),/Seleziona la fonte/);
+      assert.match(await page.locator('#cg-stato').textContent(),/Salvataggio non eseguito: seleziona la fonte/);
       await page.selectOption('#cg-fonte','pagina');
       await page.click('#cg-salva');
       await page.waitForFunction(()=>S.guida.length===1 || document.querySelector('#cg-stato').textContent.startsWith('Salvataggio non riuscito'));
       assert.equal(await page.evaluate(()=>S.guida.length===1 && GUIDA_SPECIE[0].chiomaForma==='globosa'),true);
+      assert.match(await page.locator('#cg-stato').textContent(),/Salvataggio completato/);
+      const integrazioneDownload=page.waitForEvent('download');
+      await page.click('#cg-esporta');
+      const integrazioneBytes=fs.readFileSync(await (await integrazioneDownload).path());
+      const esportate=JSON.parse(integrazioneBytes.toString());
+      assert.equal(esportate.tipo,'scheda-botanica-guida');
+      assert.equal(esportate.voci.length,1);
+      assert.equal(esportate.voci[0].campi.chiomaForma,'globosa');
+      assert.equal(esportate.schede,undefined);
       await page.click('#cg-chiudi');
+      assert.equal(await page.locator('#dlg-completa-guida').evaluate(d=>d.open),false);
       await page.reload();await page.waitForFunction(()=>DB.db && S.guida.length===1);
       assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].chiomaForma),'globosa');
       const download=page.waitForEvent('download');
@@ -214,6 +225,10 @@ const server = http.createServer((req, res) => {
       await page.click('#cg-salva');
       await page.waitForFunction(()=>S.guida.length===0);
       assert.equal(await page.evaluate(()=>S.guida.length===0 && !GUIDA_SPECIE[0].chiomaForma),true);
+      await page.locator('#cg-file-importa').setInputFiles({name:'integrazioni.json',mimeType:'application/json',buffer:integrazioneBytes});
+      await page.waitForFunction(()=>S.guida.length===1);
+      assert.match(await page.locator('#cg-messaggio').textContent(),/Importazione completata: 1 nuove piante/);
+      assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].chiomaForma),'globosa');
       await page.click('#cg-chiudi');
       assert.equal(await page.evaluate(async b=>{
         const v=await leggiBackupZip(new Blob([new Uint8Array(b)]));
@@ -221,6 +236,37 @@ const server = http.createServer((req, res) => {
         document.querySelectorAll('dialog[open]').forEach(d=>d.close());
         return S.guida.length===1 && GUIDA_SPECIE[0].chiomaForma==='globosa' && S.guida[0].fonte==='pagina';
       },[...bytes]),true);
+    });
+    await test('Catalogo completo: 144 piante, integrità e ripristino senza modificare le schede',async()=>{
+      await page.click('#btn-menu');await page.click('[data-az="completa-guida"]');
+      const download=page.waitForEvent('download');
+      await page.click('#cg-esporta-completo');
+      const bytes=fs.readFileSync(await (await download).path());
+      const completo=JSON.parse(bytes.toString());
+      assert.equal(completo.tipo,'scheda-botanica-catalogo-completo');
+      assert.equal(completo.piante.length,144);
+      assert.equal(completo.integrazioni.length,1);
+      assert.equal(completo.piante[0].chiomaForma,'globosa');
+      const primaSchede=await page.evaluate(()=>JSON.stringify(S.schede));
+      const manomesso=structuredClone(completo);
+      manomesso.piante[0].nomeSci='Pianta errata';
+      await page.locator('#cg-file-completo').setInputFiles({name:'catalogo-errato.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(manomesso))});
+      assert.match(await page.locator('#cg-messaggio').textContent(),/Importazione non riuscita/);
+      assert.equal(await page.evaluate(()=>S.guida.length),1);
+      await page.locator('#cg-lista .cg-riga').first().click();
+      await page.selectOption('#cg-form [name="chiomaForma"]','');
+      await page.click('#cg-salva');
+      await page.waitForFunction(()=>S.guida.length===0);
+      confermaCatalogo=true;
+      try {
+        await page.locator('#cg-file-completo').setInputFiles({name:'catalogo-completo.json',mimeType:'application/json',buffer:bytes});
+        await page.waitForFunction(()=>S.guida.length===1);
+      } finally { confermaCatalogo=false; }
+      assert.match(await page.locator('#cg-messaggio').textContent(),/Catalogo importato: 144 piante e 1 integrazioni/);
+      assert.equal(await page.evaluate(()=>JSON.stringify(S.schede)),primaSchede);
+      await page.click('#cg-chiudi');
+      await page.reload(); await page.waitForFunction(()=>DB.db && S.guida.length===1);
+      assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].chiomaForma),'globosa');
     });
     await test('Azioni specie: caratteristiche, foto, fonti e dati discordanti',async()=>{
       await page.evaluate(()=>apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid));

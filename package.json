@@ -1,6 +1,6 @@
 {
   "name":"scheda-botanica-pro",
-  "version":"3.17.0",
+  "version":"3.19.0",
   "private":true,
   "description":"PWA botanica statica, senza build; dipendenze npm solo per i test",
   "scripts":{"test":"node tests/browser.cjs"},

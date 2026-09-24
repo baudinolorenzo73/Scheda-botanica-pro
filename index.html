@@ -333,6 +333,21 @@
   <h2 id="cg-titolo">Catalogo delle piante</h2>
   <p class="cg-intro">Integrazioni della guida botanica, separate dalle schede di rilievo. Consulta la pagina originale prima di compilare un campo; lascia vuoto ciò che il materiale non indica.</p>
   <p id="cg-contatore" class="cg-contatore" role="status"></p>
+  <p class="cg-trasferimento-titolo">Solo le integrazioni salvate</p>
+  <div class="cg-trasferimento">
+    <button type="button" class="btn" id="cg-esporta">Esporta solo integrazioni</button>
+    <button type="button" class="btn" id="cg-importa">Importa integrazioni</button>
+    <input type="file" id="cg-file-importa" accept=".json,application/json" class="nascosto">
+  </div>
+  <p class="cg-intro">Include tutte le integrazioni salvate, anche nei giorni precedenti. Esclude i dati originali e le modifiche non salvate.</p>
+  <p class="cg-trasferimento-titolo">Catalogo completo delle 144 piante</p>
+  <div class="cg-trasferimento">
+    <button type="button" class="btn" id="cg-esporta-completo">Esporta catalogo completo</button>
+    <button type="button" class="btn" id="cg-importa-completo">Importa catalogo completo</button>
+    <input type="file" id="cg-file-completo" accept=".json,application/json" class="nascosto">
+  </div>
+  <p class="cg-intro">Include i dati originali delle 144 piante e tutte le integrazioni salvate. Non include le immagini delle pagine. L'importazione sostituisce solo le integrazioni del catalogo. Per schede, foto e audio usa «Backup completo» nel menu ⋮.</p>
+  <p id="cg-messaggio" role="status" aria-live="polite"></p>
   <div class="cg-filtri">
     <label class="visually-hidden" for="cg-cerca">Cerca una pianta</label>
     <input id="cg-cerca" type="search" class="campo-base" placeholder="Cerca pianta o famiglia…">
@@ -347,7 +362,7 @@
     <img id="cg-slide" alt="Pagina della guida originale" loading="lazy">
     <p class="cg-legenda">Grigio: dato già presente nella guida originale. Viola: integrazione salvata da te. I campi vuoti attendono la tua verifica.</p>
     <form id="cg-form"></form>
-    <label class="cg-fonte">Fonte delle integrazioni
+    <label class="cg-fonte">Fonte delle integrazioni <strong>(obbligatoria se aggiungi dati)</strong>
       <select id="cg-fonte" class="campo-base"><option value="">Seleziona la fonte…</option><option value="pagina">Pagina illustrata del corso</option><option value="osservazione">Osservazione personale</option><option value="altro">Altra fonte verificata</option></select>
     </label>
     <p id="cg-stato" role="status"></p>

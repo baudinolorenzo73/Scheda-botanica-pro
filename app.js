@@ -1696,6 +1696,8 @@ const CG_SEZIONI = [
 const CG_CHIAVI = new Set([...CG_SEZIONI.flatMap(s => s.campi.map(c => c[0])), 'noteExtra']);
 let cgSpecie = null;
 let cgSporco = false;
+let cgIstantanea = '';
+let cgSalvando = false;
 
 function validaIntegrazioniGuida(elenco) {
   if (!Array.isArray(elenco)) throw new Error('Integrazioni catalogo non valide');
@@ -1746,21 +1748,42 @@ function listaCompletaGuida() {
 }
 
 function apriCompletaGuida() {
-  cgSpecie = null; cgSporco = false;
+  cgSpecie = null; cgSporco = false; cgIstantanea = '';
   $('#cg-editor').classList.add('nascosto');
   $('#cg-lista').classList.remove('nascosto');
   $('#cg-cerca').value = '';
   $('#cg-filtro').value = 'tutte';
+  $('#cg-messaggio').textContent = '';
   listaCompletaGuida();
   $('#dlg-completa-guida').showModal();
 }
 
 function confermaUscitaCatalogo() {
+  if (cgSalvando) return false;
+  aggiornaModificheCatalogo(false);
   return !cgSporco || confirm('Ci sono integrazioni non salvate. Vuoi abbandonarle?');
 }
 
-function apriPiantaCatalogo(id) {
-  if (!confermaUscitaCatalogo()) return;
+function campiInModificaCatalogo() {
+  if (!cgSpecie) return { campi: {}, fonte: '' };
+  const base = GUIDA_ORIGINALE.get(cgSpecie);
+  const campi = {};
+  for (const k of CG_CHIAVI) {
+    if (base[k]) continue;
+    const valore = $('#cg-form').elements.namedItem(k)?.value.trim();
+    if (valore) campi[k] = valore;
+  }
+  return { campi, fonte: $('#cg-fonte').value };
+}
+
+function aggiornaModificheCatalogo(mostraStato = true) {
+  cgSporco = !!cgSpecie && JSON.stringify(campiInModificaCatalogo()) !== cgIstantanea;
+  if (mostraStato) $('#cg-stato').textContent = cgSporco ? 'Modifiche da salvare' : 'Nessuna modifica da salvare';
+  return cgSporco;
+}
+
+function apriPiantaCatalogo(id, dopoSalvataggio = false) {
+  if (!dopoSalvataggio && !confermaUscitaCatalogo()) return;
   const specie = GUIDA_SPECIE.find(v => v.id === id);
   if (!specie) return;
   cgSpecie = id; cgSporco = false;
@@ -1795,21 +1818,23 @@ function apriPiantaCatalogo(id) {
     el('textarea', { readOnly: true, rows: 3 }, base.note || 'Nessuna nota'),
     el('span', { testo: 'Ulteriori note sulla specie' }),
     el('textarea', { name: 'noteExtra', rows: 3, maxlength: 1000, placeholder: 'Solo informazioni verificabili, con la fonte indicata sotto' }, salvata?.campi.noteExtra || '')));
+  cgIstantanea = JSON.stringify(campiInModificaCatalogo());
   $('#cg-editor').scrollIntoView({ block: 'start' });
 }
 
 async function salvaIntegrazioneGuida() {
-  if (!cgSpecie) return;
-  const base = GUIDA_ORIGINALE.get(cgSpecie);
-  const form = $('#cg-form');
-  const campi = {};
-  for (const k of CG_CHIAVI) {
-    if (base[k]) continue;
-    const valore = form.elements.namedItem(k)?.value.trim();
-    if (valore) campi[k] = valore;
+  if (!cgSpecie || cgSalvando) return;
+  const { campi, fonte } = campiInModificaCatalogo();
+  if (Object.keys(campi).length && !fonte) {
+    $('#cg-stato').textContent = 'Salvataggio non eseguito: seleziona la fonte dei dati.';
+    $('#cg-stato').classList.add('cg-errore');
+    $('#cg-fonte').focus(); return;
   }
-  const fonte = $('#cg-fonte').value;
-  if (Object.keys(campi).length && !fonte) { $('#cg-stato').textContent = 'Seleziona la fonte dei dati prima di salvare.'; $('#cg-fonte').focus(); return; }
+  if (!aggiornaModificheCatalogo(false)) { $('#cg-stato').textContent = 'Nessuna nuova modifica da salvare.'; return; }
+  cgSalvando = true;
+  $('#cg-salva').disabled = true;
+  $('#cg-stato').classList.remove('cg-errore');
+  $('#cg-stato').textContent = 'Salvataggio in corso…';
   try {
     const voce = { id: cgSpecie, campi, fonte: fonte || 'pagina', modificato: oraISO() };
     validaIntegrazioniGuida([voce]);
@@ -1819,12 +1844,89 @@ async function salvaIntegrazioneGuida() {
     if (Object.keys(campi).length) S.guida.push(voce);
     applicaIntegrazioniGuida();
     cgSporco = false;
-    $('#cg-stato').textContent = Object.keys(campi).length ? `${Object.keys(campi).length} campi salvati.` : 'Integrazioni rimosse; resta la pagina originale.';
     listaCompletaGuida();
     if (S.aperta) confrontaConCatalogo();
-    // Riapre la stessa pianta per mostrare chiaramente i campi integrati.
-    apriPiantaCatalogo(cgSpecie);
-  } catch (e) { $('#cg-stato').textContent = 'Salvataggio non riuscito: ' + e.message; }
+    apriPiantaCatalogo(cgSpecie, true);
+    $('#cg-stato').textContent = Object.keys(campi).length ? `Salvataggio completato: ${Object.keys(campi).length} campi. Puoi uscire.` : 'Integrazioni rimosse e salvataggio completato. Puoi uscire.';
+  } catch (e) {
+    $('#cg-stato').textContent = 'Salvataggio non riuscito: ' + e.message;
+    $('#cg-stato').classList.add('cg-errore');
+  } finally { cgSalvando = false; $('#cg-salva').disabled = false; }
+}
+
+function esportaIntegrazioniGuida() {
+  if (!S.guida.length) { $('#cg-messaggio').textContent = 'Nessuna integrazione salvata da esportare. Le 144 pagine originali sono già incluse nel progetto.'; return; }
+  const json = { tipo: 'scheda-botanica-guida', versione: 1, esportato: oraISO(), voci: S.guida };
+  scarica(new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }), `scheda-botanica-catalogo-${oggi()}.json`);
+  $('#cg-messaggio').textContent = `${S.guida.length} piante integrate esportate. Incluse tutte le integrazioni salvate anche nelle sessioni precedenti.`;
+}
+
+function esportaCatalogoCompleto() {
+  const json = {
+    tipo: 'scheda-botanica-catalogo-completo', versione: 1, esportato: oraISO(),
+    piante: GUIDA_SPECIE, integrazioni: S.guida,
+  };
+  scarica(new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }), `scheda-botanica-144-piante-${oggi()}.json`);
+  $('#cg-messaggio').textContent = `Esportate ${GUIDA_SPECIE.length} piante e ${S.guida.length} integrazioni salvate. Le immagini delle pagine sono già nell’app.`;
+}
+
+function validaCatalogoCompleto(dato) {
+  if (dato?.tipo !== 'scheda-botanica-catalogo-completo' || dato.versione !== 1 ||
+      !Array.isArray(dato.piante) || dato.piante.length !== GUIDA_ORIGINALE.size)
+    throw new Error('File non valido: servono tutte le 144 piante del catalogo esportato dall’app');
+  const integrazioni = validaIntegrazioniGuida(dato.integrazioni);
+  const perId = new Map(integrazioni.map(v => [v.id, v.campi]));
+  const visti = new Set();
+  for (const pianta of dato.piante) {
+    if (!pianta || typeof pianta !== 'object' || Array.isArray(pianta) ||
+        !GUIDA_ORIGINALE.has(pianta.id) || visti.has(pianta.id))
+      throw new Error('Catalogo incompleto o con piante duplicate');
+    visti.add(pianta.id);
+    const attesa = { ...GUIDA_ORIGINALE.get(pianta.id), ...perId.get(pianta.id) };
+    const chiavi = Object.keys(attesa);
+    if (Object.keys(pianta).length !== chiavi.length || chiavi.some(k => pianta[k] !== attesa[k]))
+      throw new Error(`I dati di ${attesa.nomeSci} non corrispondono alla guida installata o alle integrazioni: importazione annullata`);
+  }
+  return integrazioni;
+}
+
+async function importaCatalogoCompleto(file) {
+  if (!file || !confermaUscitaCatalogo()) return;
+  if (file.size > 5_000_000) { $('#cg-messaggio').textContent = 'File troppo grande per il catalogo delle 144 piante.'; return; }
+  try {
+    const integrazioni = validaCatalogoCompleto(JSON.parse(await file.text()));
+    if (!confirm(`Il catalogo importato contiene 144 piante e ${integrazioni.length} integrazioni. Sostituire le ${S.guida.length} integrazioni attuali? Le schede di rilievo resteranno intatte.`)) return;
+    await DB.sostituisciGuida(integrazioni);
+    S.guida = integrazioni;
+    applicaIntegrazioniGuida();
+    cgSpecie = null; cgSporco = false; cgIstantanea = '';
+    $('#cg-editor').classList.add('nascosto');
+    $('#cg-lista').classList.remove('nascosto');
+    listaCompletaGuida();
+    if (S.aperta) confrontaConCatalogo();
+    $('#cg-messaggio').textContent = `Catalogo importato: 144 piante e ${integrazioni.length} integrazioni salvate. Schede di rilievo inalterate.`;
+  } catch (e) { $('#cg-messaggio').textContent = 'Importazione non riuscita: ' + e.message; }
+}
+
+async function importaIntegrazioniGuida(file) {
+  if (!file) return;
+  if (!confermaUscitaCatalogo()) return;
+  if (file.size > 2_000_000) { $('#cg-messaggio').textContent = 'File troppo grande per il catalogo.'; return; }
+  try {
+    const dato = JSON.parse(await file.text());
+    if (dato?.tipo !== 'scheda-botanica-guida' || dato.versione !== 1) throw new Error('Seleziona un file di integrazioni del catalogo esportato dall’app');
+    const voci = validaIntegrazioniGuida(dato.voci);
+    const esistenti = new Set(S.guida.map(v => v.id));
+    const nuove = voci.filter(v => !esistenti.has(v.id));
+    if (nuove.length) await DB.sostituisciArchivio({ schede: [], foto: [], audio: [], specie: [], traccia: [], guida: nuove }, false);
+    S.guida.push(...nuove);
+    applicaIntegrazioniGuida();
+    cgSpecie = null; cgSporco = false; cgIstantanea = '';
+    $('#cg-editor').classList.add('nascosto');
+    $('#cg-lista').classList.remove('nascosto');
+    listaCompletaGuida();
+    $('#cg-messaggio').textContent = `Importazione completata: ${nuove.length} nuove piante integrate, ${voci.length - nuove.length} già presenti e conservate.`;
+  } catch (e) { $('#cg-messaggio').textContent = 'Importazione non riuscita: ' + e.message; }
 }
 
 function cambiaPiantaCatalogo(passo) {
@@ -3761,11 +3863,23 @@ function collegaEventi() {
   // Catalogo integrabile: editor separato dai rilievi.
   $('#cg-cerca').oninput = listaCompletaGuida;
   $('#cg-filtro').onchange = listaCompletaGuida;
-  $('#cg-form').oninput = () => { cgSporco = true; $('#cg-stato').textContent = 'Modifiche da salvare'; };
-  $('#cg-form').onchange = () => { cgSporco = true; $('#cg-stato').textContent = 'Modifiche da salvare'; };
-  $('#cg-fonte').onchange = () => { cgSporco = true; };
+  $('#cg-form').oninput = () => { $('#cg-stato').classList.remove('cg-errore'); aggiornaModificheCatalogo(); };
+  $('#cg-form').onchange = () => { $('#cg-stato').classList.remove('cg-errore'); aggiornaModificheCatalogo(); };
+  $('#cg-fonte').onchange = () => { $('#cg-stato').classList.remove('cg-errore'); aggiornaModificheCatalogo(); };
   $('#cg-form').onsubmit = (e) => e.preventDefault();
   $('#cg-salva').onclick = salvaIntegrazioneGuida;
+  $('#cg-esporta').onclick = esportaIntegrazioniGuida;
+  $('#cg-esporta-completo').onclick = esportaCatalogoCompleto;
+  $('#cg-importa').onclick = () => $('#cg-file-importa').click();
+  $('#cg-importa-completo').onclick = () => $('#cg-file-completo').click();
+  $('#cg-file-importa').onchange = (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (file) importaIntegrazioniGuida(file);
+  };
+  $('#cg-file-completo').onchange = (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (file) importaCatalogoCompleto(file);
+  };
   $('#cg-indietro').onclick = () => {
     if (!confermaUscitaCatalogo()) return;
     cgSpecie = null; cgSporco = false;

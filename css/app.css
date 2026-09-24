@@ -573,6 +573,10 @@ dialog .azioni .btn{flex:0 1 auto}
 #dlg-completa-guida{--cg-accent:#7650ae;--cg-fondo:#ede7fa;width:min(780px,96vw);max-width:780px;border:2px solid var(--cg-accent);padding:16px}
 #dlg-completa-guida h2,#dlg-completa-guida h3{color:var(--cg-accent)}
 .cg-intro,.cg-legenda{color:var(--tenue);line-height:1.45;font-size:13px;margin:8px 0}
+.cg-trasferimento-titolo{font-size:13px;font-weight:700;color:var(--cg-accent);margin:14px 0 0}
+.cg-trasferimento{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.cg-trasferimento .btn{min-height:46px;flex:1 1 190px;white-space:normal;text-align:center;justify-content:center}
+#cg-messaggio{color:var(--cg-accent);font-size:13px;line-height:1.4;min-height:1em;margin:6px 0}
 .cg-contatore{background:var(--cg-fondo);color:#3d2468;border-radius:8px;padding:10px;font-size:13px;font-weight:700}
 .cg-filtri{display:grid;grid-template-columns:1fr auto;gap:8px;margin:10px 0}
 .cg-filtri input{min-width:0}
@@ -596,6 +600,7 @@ dialog .azioni .btn{flex:0 1 auto}
 .cg-note textarea[readonly]{background:var(--carta);color:var(--tenue)}
 .cg-fonte{margin:12px 0}
 #cg-stato{color:var(--cg-accent);font-size:13px;min-height:1.3em}
+#cg-stato.cg-errore{color:#b44037;font-weight:700}
 .cg-comandi .btn{flex:1 1 auto}
 .cg-salva{background:var(--cg-accent);border-color:var(--cg-accent);color:#fff}
 @media(max-width:600px){.cg-filtri{grid-template-columns:1fr}.cg-gruppo{grid-template-columns:1fr}.cg-comandi .cg-salva{order:-1;flex-basis:100%}}
