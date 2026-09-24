@@ -40,6 +40,16 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>typeof XlsxPopulate.fromBlankAsync), 'function');
       assert.equal(await page.evaluate(()=>typeof JSZip), 'function');
       assert.deepEqual(failed, []);
+      assert.equal(await page.locator('meta[name="viewport"]').getAttribute('content'), 'width=device-width, initial-scale=1, viewport-fit=cover');
+      assert.equal(await page.locator('meta[name="apple-mobile-web-app-capable"]').getAttribute('content'), 'yes');
+      assert.equal(await page.locator('link[rel="manifest"]').getAttribute('href'), 'manifest.json');
+    });
+    await test('Compatibilità mobile e riepilogo spazio locale', async()=>{
+      await page.click('#btn-menu');
+      await page.waitForFunction(()=>document.querySelector('#spazio').textContent.includes('Media locali:'));
+      assert.match(await page.locator('#spazio').textContent(), /foto/);
+      assert.match(await page.locator('#spazio').textContent(), /audio/);
+      await page.click('[data-az="chiudi"]');
     });
     await test('Scheda: misura decimale libera e persistenza al ricaricamento',async()=>{
       await page.click('#btn-nuova');await page.fill('#f-nome','Quercus robur');await page.fill('#f-altezza','12.3');
@@ -91,7 +101,8 @@ const server = http.createServer((req, res) => {
     await test('Backup ZIP: andata e ritorno con foto',async()=>{
       const download=page.waitForEvent('download');assert.equal(await page.evaluate(()=>esportaZIP()),true);
       const bytes=fs.readFileSync(await (await download).path());
-      assert.equal(await page.evaluate(async(b)=>{const v=await leggiBackupZip(new Blob([new Uint8Array(b)]));await importaDati(v,'sostituisci');document.querySelectorAll('dialog[open]').forEach(d=>d.close());return (await DB.tutte('schede')).length===2 && v[1].fotoDaSalvare[0].blob.size>0;},[...bytes]),true);
+      assert.equal(await page.evaluate(async(b)=>{const zip=await JSZip.loadAsync(new Uint8Array(b));const meta=JSON.parse(await zip.file('backup.json').async('string'));const v=await leggiBackupZip(new Blob([new Uint8Array(b)]));await importaDati(v,'sostituisci');document.querySelectorAll('dialog[open]').forEach(d=>d.close());return meta.schemaVersion===1 && (await DB.tutte('schede')).length===2 && v[1].fotoDaSalvare[0].blob.size>0;},[...bytes]),true);
+      assert.equal(await page.evaluate(()=>{try{leggiFormatoBackup({app:'scheda-botanica',schemaVersion:999,schede:[]});return false;}catch(e){return /schema backup non supportato/.test(e.message);}}),true);
     });
     await test('Ricerca, selezione da tastiera e cestino',async()=>{
       await page.fill('#cerca','Quercus');await page.waitForFunction(()=>document.querySelectorAll('#elenco .voce').length===1);

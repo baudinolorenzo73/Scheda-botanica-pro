@@ -2,7 +2,7 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.19.0**
+**by Lollo ®2026 — versione 3.20.0**
 
 [Esportazione completa delle 144 piante](REVISIONE-3.19.md) · [Salvataggio e trasferimento integrazioni](REVISIONE-3.18.md) · [Catalogo integrabile delle 144 piante](REVISIONE-3.17.md)
 
@@ -70,6 +70,7 @@ Nella cartella [`manuali/`](manuali/):
 ├── lib/                     Librerie incluse per mappa, QR, ZIP ed Excel
 ├── manifest.json            Manifest PWA (nome, icone, colori)
 ├── service-worker.js        Cache offline dell'app shell
+├── .github/workflows/       Test automatici a ogni push e pull request
 ├── icons/                   Icone dell'app in varie dimensioni
 ├── manuali/                 Manuale utente e guida rapida (PDF + Word)
 └── screenshot/               Immagini per questo README
@@ -85,9 +86,24 @@ git push
 
 Con **Settings → Pages → Deploy from branch → main / (root)** attivato, GitHub pubblica automaticamente il contenuto del repository all'indirizzo `https://<utente>.github.io/<nome-repo>/` a ogni push.
 
+### Verificare il progetto in locale
+
+Per installare le dipendenze e il browser usato dai test automatici:
+
+```bash
+npm run test:setup
+npm test
+```
+
+Il workflow `.github/workflows/test.yml` ripete automaticamente i controlli su GitHub a ogni push e pull request verso `main` o `master`, usando Chromium su Ubuntu.
+
+Quando si modifica un file incluso nella modalità offline, aggiornare anche
+`APP_SHELL_VERSION` in `service-worker.js`, così i dispositivi che hanno già
+installato la PWA scaricano la nuova app-shell.
+
 ## 🔒 Privacy e dati
 
-L'app non ha un server: i dati (schede, foto, audio) restano **solo sul dispositivo**, in un archivio locale del browser (IndexedDB). La mappa contatta OpenStreetMap; l’identificazione richiesta invia una foto a PlantNet. La ricerca web consulta Wikipedia/Wikidata. Il collegamento tassonomico può consultare GBIF automaticamente dopo l’inserimento o l’apertura del nome di una specie. Questi servizi richiedono internet; l’archivio locale resta utilizzabile offline.
+L'app non ha un server: i dati (schede, foto, audio) restano **solo sul dispositivo**, in un archivio locale del browser (IndexedDB). La mappa contatta OpenStreetMap; l’identificazione richiesta invia una foto a PlantNet. La ricerca web consulta Wikipedia/Wikidata. Il collegamento tassonomico può consultare GBIF automaticamente dopo l'inserimento o l'apertura del nome di una specie. Questi servizi richiedono internet; l'archivio locale resta utilizzabile offline. La chiave PlantNet è salvata nel dispositivo e usata dal browser: non va considerata un segreto se l'app viene distribuita pubblicamente. Per una distribuzione multiutente è preferibile un proxy server-side con rate limiting e una chiave conservata in un secret.
 
 ## 🧑‍💻 Tecnologie
 

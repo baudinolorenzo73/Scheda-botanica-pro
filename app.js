@@ -1856,14 +1856,14 @@ async function salvaIntegrazioneGuida() {
 
 function esportaIntegrazioniGuida() {
   if (!S.guida.length) { $('#cg-messaggio').textContent = 'Nessuna integrazione salvata da esportare. Le 144 pagine originali sono già incluse nel progetto.'; return; }
-  const json = { tipo: 'scheda-botanica-guida', versione: 1, esportato: oraISO(), voci: S.guida };
+  const json = { tipo: 'scheda-botanica-guida', versione: 1, schemaVersion: 1, esportato: oraISO(), voci: S.guida };
   scarica(new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }), `scheda-botanica-catalogo-${oggi()}.json`);
   $('#cg-messaggio').textContent = `${S.guida.length} piante integrate esportate. Incluse tutte le integrazioni salvate anche nelle sessioni precedenti.`;
 }
 
 function esportaCatalogoCompleto() {
   const json = {
-    tipo: 'scheda-botanica-catalogo-completo', versione: 1, esportato: oraISO(),
+    tipo: 'scheda-botanica-catalogo-completo', versione: 1, schemaVersion: 1, esportato: oraISO(),
     piante: GUIDA_SPECIE, integrazioni: S.guida,
   };
   scarica(new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }), `scheda-botanica-144-piante-${oggi()}.json`);
@@ -3194,6 +3194,7 @@ async function paginaScheda(r, opz) {
 /* =====================================================================
    11. BACKUP, IMPORTAZIONE, ESPORTAZIONI
    ===================================================================== */
+const BACKUP_SCHEMA_VERSION = 1;
 async function esportaBackup() {
   await salvaTuttiInSospeso();
   stato('Preparo il backup…');
@@ -3203,7 +3204,7 @@ async function esportaBackup() {
     for (const p of r.foto) { const b = await DB.leggi('foto', p.id); if (!b) throw new Error(`Foto mancante nella scheda ${r.prog}`); foto[p.id] = await blobInDataURL(b); }
     for (const a of r.audio) { const b = await DB.leggi('audio', a.id); if (!b) throw new Error(`Nota vocale mancante nella scheda ${r.prog}`); audio[a.id] = await blobInDataURL(b); }
   }
-  const dati = { app: 'scheda-botanica', versione: 5, esportato: oraISO(), schede: tutteLeSchede, foto, audio, specie: S.specie, guida: S.guida, traccia: S.traccia };
+  const dati = { app: 'scheda-botanica', versione: 5, schemaVersion: BACKUP_SCHEMA_VERSION, esportato: oraISO(), schede: tutteLeSchede, foto, audio, specie: S.specie, guida: S.guida, traccia: S.traccia };
   scarica(new Blob([JSON.stringify(dati)], { type: 'application/json' }), `scheda-botanica-backup-${oggi()}.json`);
   localStorage.setItem('sb-ultimo-backup', oraISO());
   stato(`Backup esportato: ${tutteLeSchede.length} schede, ${Object.keys(foto).length} foto, ${Object.keys(audio).length} audio`);
@@ -3213,6 +3214,8 @@ async function esportaBackup() {
 function leggiFormatoBackup(json) {
   let voci;
   if (json && json.app === 'scheda-botanica' && Array.isArray(json.schede)) {
+    const schema = json.schemaVersion ?? 1;
+    if (schema !== BACKUP_SCHEMA_VERSION) throw new Error(`schema backup non supportato: ${schema}`);
     voci = json.schede.map((s) => {
       const { record } = normalizza(s);
       const fotoDaSalvare = record.foto.filter((p) => json.foto?.[p.id]).map((p) => ({ id: p.id, dataUrl: json.foto[p.id] }));
@@ -3374,6 +3377,8 @@ async function leggiBackupZip(file) {
   if (!dj) throw new Error('questo ZIP non contiene backup.json: è un’esportazione vecchia o non creata dall’app');
   const json = JSON.parse(await dj.async('string'));
   if (json?.app !== 'scheda-botanica' || !Array.isArray(json.schede)) throw new Error('backup.json non è un archivio valido');
+  const schema = json.schemaVersion ?? 1;
+  if (schema !== BACKUP_SCHEMA_VERSION) throw new Error(`schema backup non supportato: ${schema}`);
   const indice = json.file || {};
   const specieFile = zip.file('specie.json');
   const voci = await Promise.all((json.schede || []).map(async (s) => {
@@ -3544,7 +3549,7 @@ async function esportaZIP(modo = 'scarica', opzioni = {}) {
         const f = `audio/${base}_${a.id}.${estensioneAudio(b.type || '')}`; cartAudio.file(f.slice(6), b); indice[a.id] = { percorso: f, tipo: b.type || '' };
       }
     }
-    zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 5, esportato: oraISO(), schede: tutteLeSchede, file: indice, traccia: S.traccia, guida: S.guida }));
+    zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 5, schemaVersion: BACKUP_SCHEMA_VERSION, esportato: oraISO(), schede: tutteLeSchede, file: indice, traccia: S.traccia, guida: S.guida }));
     if (S.specie.length) zip.file('specie.json', JSON.stringify(S.specie));
     const csv = testoCSV(); if (csv) zip.file('rilevazioni.csv', csv);
     const gj = testoGeoJSON(); if (gj) zip.file('rilevazioni.geojson', gj);
@@ -3674,9 +3679,15 @@ async function mostraSpazio() {
   const ultimo = localStorage.getItem('sb-ultimo-backup');
   let t = ultimo ? `Ultimo backup: ${dataIT(ultimo)}.` : 'Nessun backup esportato finora.';
   try {
+    const [foto, audio] = await Promise.all([DB.tutte('foto'), DB.tutte('audio')]);
+    const byteFoto = foto.reduce((totale, blob) => totale + (Number(blob?.size) || 0), 0);
+    const byteAudio = audio.reduce((totale, blob) => totale + (Number(blob?.size) || 0), 0);
+    const formattaMB = (byte) => `${(byte / 1048576).toFixed(1)} MB`;
+    t += ` Media locali: ${foto.length} foto (${formattaMB(byteFoto)}) e ${audio.length} audio (${formattaMB(byteAudio)}).`;
     if (navigator.storage?.estimate) {
       const { usage, quota } = await navigator.storage.estimate();
-      t += ` Spazio usato ${(usage / 1048576).toFixed(1)} MB su ${(quota / 1048576).toFixed(0)} MB disponibili.`;
+      const percentuale = quota ? ` (${Math.round((usage / quota) * 100)}%)` : '';
+      t += ` Spazio usato ${(usage / 1048576).toFixed(1)} MB su ${(quota / 1048576).toFixed(0)} MB disponibili${percentuale}.`;
     }
     if (navigator.storage?.persisted) {
       t += (await navigator.storage.persisted())
