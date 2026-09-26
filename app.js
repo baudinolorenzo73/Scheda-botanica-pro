@@ -708,7 +708,8 @@ function costruisciModulo() {
           el('div', { class: 'nome-azioni' },
             el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-nome', onclick: cercaNomeDaScheda }, 'Cerca per nome'),
             el('button', { type: 'button', class: 'btn', id: 'nome-cerca-caratteristiche', onclick: cercaCaratteristicheDaScheda }, 'Caratteristiche'),
-            el('button', { type: 'button', class: 'btn', id: 'nome-cerca-foto', onclick: apriGuidaSpecieFoto }, 'Cerca con foto')),
+            el('button', { type: 'button', class: 'btn', id: 'nome-cerca-foto', onclick: apriGuidaSpecieFoto }, 'Cerca con foto'),
+            el('button', { type: 'button', class: 'btn', id: 'nome-cerca-zona', onclick: apriRicercaZonaHabitat }, 'Zona d’origine')),
           el('div', { class: 'nome-fonti' },
             el('a', { id: 'plantnet-link', class: 'btn', href: 'https://identify.plantnet.org/it/k-world-flora/identify', target: '_blank', rel: 'noopener' }, '↗ PlantNet'),
             el('div', { id: 'gbif-link' })),
@@ -962,6 +963,27 @@ async function nuovaScheda() {
   if (!(await salvaOra(r))) { S.schede = S.schede.filter((s) => s.uid !== r.uid); return; }
   apriEditor(r.uid);
   $('#f-nome').focus();
+}
+
+async function salvaSchedaVisibile() {
+  if (!S.aperta) return;
+  const nonValido = $('#modulo').querySelector(':invalid');
+  if (nonValido) { nonValido.reportValidity(); nonValido.focus(); return; }
+  await salvaOra(S.aperta);
+}
+
+function apriMeteo3B(url) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function cercaMeteo3B(e) {
+  e.preventDefault();
+  const nome = $('#meteo-luogo').value.trim();
+  if (!nome) { $('#meteo-luogo').focus(); return; }
+  const segmento = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('it').replace(/[^a-z0-9\s-]/g, ' ').trim().replace(/\s+/g, '+');
+  if (!segmento) { $('#meteo-luogo').focus(); return; }
+  apriMeteo3B(`https://www.3bmeteo.com/meteo/${segmento}`);
 }
 
 /* =====================================================================
@@ -1856,14 +1878,14 @@ async function salvaIntegrazioneGuida() {
 
 function esportaIntegrazioniGuida() {
   if (!S.guida.length) { $('#cg-messaggio').textContent = 'Nessuna integrazione salvata da esportare. Le 144 pagine originali sono già incluse nel progetto.'; return; }
-  const json = { tipo: 'scheda-botanica-guida', versione: 1, schemaVersion: 1, esportato: oraISO(), voci: S.guida };
+  const json = { tipo: 'scheda-botanica-guida', versione: 1, esportato: oraISO(), voci: S.guida };
   scarica(new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }), `scheda-botanica-catalogo-${oggi()}.json`);
   $('#cg-messaggio').textContent = `${S.guida.length} piante integrate esportate. Incluse tutte le integrazioni salvate anche nelle sessioni precedenti.`;
 }
 
 function esportaCatalogoCompleto() {
   const json = {
-    tipo: 'scheda-botanica-catalogo-completo', versione: 1, schemaVersion: 1, esportato: oraISO(),
+    tipo: 'scheda-botanica-catalogo-completo', versione: 1, esportato: oraISO(),
     piante: GUIDA_SPECIE, integrazioni: S.guida,
   };
   scarica(new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }), `scheda-botanica-144-piante-${oggi()}.json`);
@@ -2371,7 +2393,13 @@ function usaRisultatoWeb(nomeSci) {
 }
 
 function usaNomeDaGuidaSpecie(v) {
-  if (!S.aperta) { $('#dlg-guida-specie').close(); return; }
+  const chiudiRicerca = () => {
+    for (const id of ['#dlg-guida-specie', '#dlg-zona-habitat']) {
+      const dialogo = $(id);
+      if (dialogo.open) dialogo.close();
+    }
+  };
+  if (!S.aperta) { chiudiRicerca(); return; }
   const r = S.aperta;
   r.nome = nomeCatalogo(v);
   r.gbifId = ''; // nome cambiato: un eventuale ID GBIF salvato in precedenza non è più valido
@@ -2387,8 +2415,54 @@ function usaNomeDaGuidaSpecie(v) {
   confrontaConCatalogo();
   disegnaLinkGbif();
   salvaPresto(r);
-  $('#dlg-guida-specie').close();
+  chiudiRicerca();
   toast(compilati.length ? `Nome e altri ${compilati.length} campi compilati dalla guida` : 'Nome aggiornato dalla guida specie');
+}
+
+// La guida registra la provenienza storica: non indica dove cresce oggi.
+function popolaDatalistZonaHabitat() {
+  const valori = [...new Set(GUIDA_SPECIE.map(v => v.provenienza).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'it'));
+  $('#dl-zh-zona').replaceChildren(...valori.map(v => el('option', { value: v })));
+}
+
+function risultatiPerZona(q) {
+  const cerca = (q || '').trim().toLocaleLowerCase('it');
+  return GUIDA_SPECIE.filter(v => !cerca || (v.provenienza || '').toLocaleLowerCase('it').includes(cerca))
+    .sort((a, b) => a.nomeSci.localeCompare(b.nomeSci, 'it'));
+}
+
+function disegnaListaZonaHabitat() {
+  $('#zh-dettaglio').classList.add('nascosto');
+  const lista = $('#zh-lista');
+  lista.classList.remove('nascosto');
+  const q = $('#zh-cerca').value;
+  const risultati = risultatiPerZona(q);
+  const gia = nomiGiaRilevati();
+  lista.replaceChildren(...(risultati.length ? risultati.map(v =>
+    el('button', { type: 'button', class: 'gs-riga', onclick: () => mostraDettaglioZonaHabitat(v) },
+      el('b', { class: 'specie', testo: nomeCatalogo(v) }),
+      el('span', { style: 'font-size:12px;color:var(--tenue)' },
+        v.provenienza || 'Provenienza non indicata', gia.has(v.nomeSci.toLowerCase()) ? ' · ✓ già rilevata' : null)))
+    : [el('p', { class: 'vuoto' }, `Nessuna specie della guida ha una provenienza che contiene «${q}».`)]));
+}
+
+function mostraDettaglioZonaHabitat(v) {
+  $('#zh-lista').classList.add('nascosto');
+  const dettaglio = $('#zh-dettaglio');
+  dettaglio.classList.remove('nascosto');
+  dettaglio.replaceChildren(
+    el('button', { type: 'button', class: 'btn', style: 'margin-bottom:12px', onclick: disegnaListaZonaHabitat }, '← Elenco'),
+    schedaGuidaSpecie(v),
+    el('a', { class: 'btn', style: 'margin-top:10px;width:100%;display:inline-flex;justify-content:center',
+      href: `https://www.gbif.org/species/search?q=${encodeURIComponent(v.nomeSci)}`,
+      target: '_blank', rel: 'noopener noreferrer' }, '↗ Consulta la specie su GBIF'));
+}
+
+function apriRicercaZonaHabitat() {
+  $('#zh-cerca').value = '';
+  disegnaListaZonaHabitat();
+  $('#dlg-zona-habitat').showModal();
 }
 
 /* =====================================================================
@@ -2778,7 +2852,10 @@ function cambiaVista(tab) {
    indipendente dai punti delle singole schede. Resta salvata offline
    nello store IndexedDB "traccia" finché non la cancelli.
    ===================================================================== */
-const TRK = { watch: null, segmentoCorrente: null, scartati: 0 };
+const TRK = { watch: null, segmentoCorrente: null, scartati: 0,
+  pausa: localStorage.getItem('sb-traccia-pausa') === '1', sessione: 0,
+  coda: Promise.resolve(), inizio: 0, ultimoSegnale: 0, ultimoPunto: 0, nascostaDa: 0,
+  avviso: '', ticker: null };
 let lineaTraccia = null;
 
 function segmentiTraccia() {
@@ -2819,10 +2896,32 @@ function aggiornaInfoTraccia() {
     info.textContent = `${n} punti · ${segmenti} ${segmenti === 1 ? 'tratto' : 'tratti'} · ${formattaDistanza(distanzaTotaleTraccia())} · ${durataMin} min` +
       (TRK.scartati ? ` · ${TRK.scartati} GPS imprecisi ignorati` : '');
   }
-  $('#btn-traccia-avvia').classList.toggle('nascosto', TRK.watch !== null);
-  $('#btn-traccia-ferma').classList.toggle('nascosto', TRK.watch === null);
+  const attiva = TRK.watch !== null;
+  let dettaglio = '';
+  if (attiva) {
+    const senzaSegnale = TRK.ultimoSegnale ? Date.now() - TRK.ultimoSegnale : Infinity;
+    if (document.hidden) dettaglio = 'Pagina in background: il browser può sospendere il GPS';
+    else if (senzaSegnale > 45000 && TRK.ultimoSegnale) dettaglio = 'Nessun segnale GPS recente: riapri l’app o fai Pausa e Riprendi';
+    else if (TRK.avviso) dettaglio = TRK.avviso;
+    else if (!TRK.ultimoSegnale && Date.now() - TRK.inizio > 45000) dettaglio = 'Nessun punto GPS acquisito: controlla i permessi e prova all’aperto';
+    else if (!TRK.ultimoSegnale) dettaglio = 'In attesa del primo segnale GPS';
+    else if (TRK.ultimoPunto) dettaglio = `Ultimo punto salvato alle ${new Date(TRK.ultimoPunto).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+    else dettaglio = 'Segnale ricevuto: in attesa di un punto preciso';
+  } else if (TRK.avviso) dettaglio = TRK.avviso;
+  $('#btn-traccia-avvia').classList.toggle('nascosto', attiva);
+  $('#btn-traccia-avvia').textContent = TRK.pausa ? '▶ Riprendi traccia' : '▶ Inizia traccia';
+  $('#btn-traccia-pausa').classList.toggle('nascosto', !attiva);
+  $('#btn-traccia-ferma').classList.toggle('nascosto', !attiva && !TRK.pausa);
   $('#btn-traccia-gpx').classList.toggle('nascosto', n === 0);
   $('#btn-traccia-cancella').classList.toggle('nascosto', n === 0);
+  $('#home-traccia-avvia').disabled = attiva;
+  $('#home-traccia-avvia').textContent = TRK.pausa ? 'Riprendi' : 'Avvia traccia';
+  $('#home-traccia-pausa').disabled = !attiva;
+  $('#home-traccia-ferma').disabled = !attiva && !TRK.pausa;
+  const statoTraccia = `${attiva ? 'GPS in ascolto' : TRK.pausa ? 'In pausa' : 'Traccia ferma'} · ${n} ${n === 1 ? 'punto' : 'punti'} salvati${n ? ' · ' + formattaDistanza(distanzaTotaleTraccia()) : ''}`;
+  $('#home-traccia-stato').textContent = statoTraccia + (dettaglio ? ' · ' + dettaglio : '');
+  $('#home-traccia-stato').classList.toggle('traccia-allerta', !!dettaglio && /impreciso|Nessun|negato|non riuscito|background|riattivato|scaduto|non disponibile/i.test(dettaglio));
+  $('#traccia-diagnosi').textContent = dettaglio;
 }
 
 function disegnaLineaTraccia() {
@@ -2834,60 +2933,127 @@ function disegnaLineaTraccia() {
   lineaTraccia = L.polyline(linee, { color: '#2f5d3a', weight: 4, opacity: .8 }).addTo(mappa);
 }
 
+function ascoltaTraccia() {
+  if (TRK.watch !== null) navigator.geolocation.clearWatch(TRK.watch);
+  const sessione = ++TRK.sessione;
+  TRK.watch = navigator.geolocation.watchPosition((p) => {
+    if (sessione !== TRK.sessione) return;
+    const c = p.coords;
+    TRK.ultimoSegnale = Date.now();
+    if (!Number.isFinite(c.latitude) || !Number.isFinite(c.longitude) || !Number.isFinite(c.accuracy) || c.accuracy > 50) {
+      TRK.scartati++;
+      TRK.avviso = Number.isFinite(c.accuracy) ? `Segnale impreciso (±${Math.round(c.accuracy)} m): punto ignorato, occorre precisione entro 50 m` : 'Coordinate GPS non valide: punto ignorato';
+      aggiornaInfoTraccia();
+      return;
+    }
+    TRK.avviso = '';
+    // Le chiamate al database devono restare nell'ordine dei fix ricevuti.
+    TRK.coda = TRK.coda.then(async () => {
+      if (sessione !== TRK.sessione) return;
+      const ts = Number.isFinite(p.timestamp) && p.timestamp <= Date.now() + 60000 && p.timestamp > Date.now() - 120000 ? p.timestamp : Date.now();
+      const adesso = new Date(ts).toISOString();
+      const precedente = S.traccia[S.traccia.length - 1];
+      const ultimo = precedente?.segmento === TRK.segmentoCorrente ? precedente : null;
+      const dist = ultimo ? distanzaMetri(ultimo, { lat: c.latitude, lng: c.longitude }) : Infinity;
+      const secondi = ultimo ? Math.max(1, (ts - Date.parse(ultimo.quando)) / 1000) : Infinity;
+      if (ultimo && dist < 3 && secondi < 30) { aggiornaInfoTraccia(); return; }
+      if (ultimo && dist / secondi > 12 && c.accuracy > 15) {
+        TRK.scartati++; TRK.avviso = 'Salto GPS anomalo ignorato'; aggiornaInfoTraccia(); return;
+      }
+      if (ultimo && secondi > 120) TRK.segmentoCorrente++;
+      const punto = { lat: c.latitude, lng: c.longitude, alt: c.altitude, acc: c.accuracy, quando: adesso, segmento: TRK.segmentoCorrente };
+      await DB.scrivi('traccia', punto);
+      S.traccia.push(punto);
+      TRK.ultimoPunto = Date.now();
+      disegnaLineaTraccia();
+      aggiornaInfoTraccia();
+    }).catch((e) => {
+      if (sessione !== TRK.sessione) return;
+      fermaTraccia();
+      TRK.avviso = 'Salvataggio della traccia non riuscito: ' + e.message;
+      aggiornaInfoTraccia();
+      stato(TRK.avviso, true);
+    });
+    aggiornaInfoTraccia();
+  }, (err) => {
+    if (sessione !== TRK.sessione) return;
+    const motivi = { 1: 'Permesso GPS negato: abilita la posizione per il browser', 2: 'Posizione non disponibile: riprova all’aperto', 3: 'Tempo GPS scaduto: fai Pausa e Riprendi' };
+    TRK.avviso = motivi[err.code] || err.message;
+    if (err.code === 1) { fermaTraccia(); TRK.avviso = motivi[1]; }
+    aggiornaInfoTraccia();
+    stato('Traccia: ' + TRK.avviso, true);
+  }, { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+}
+
 function avviaTraccia() {
   if (!navigator.geolocation) return alert('Geolocalizzazione non disponibile su questo dispositivo.');
   if (TRK.watch !== null) return;
   TRK.segmentoCorrente = S.traccia.reduce((max, p) => Math.max(max, Number(p.segmento) || 1), 0) + 1;
   TRK.scartati = 0;
+  TRK.inizio = Date.now();
+  TRK.ultimoSegnale = 0;
+  TRK.ultimoPunto = 0;
+  TRK.avviso = '';
+  const ripresa = TRK.pausa;
+  TRK.pausa = false;
+  localStorage.removeItem('sb-traccia-pausa');
   localStorage.setItem('sb-traccia-attiva', '1');
-  TRK.watch = navigator.geolocation.watchPosition(
-    async (p) => {
-      const c = p.coords;
-      if (!Number.isFinite(c.latitude) || !Number.isFinite(c.longitude) || !Number.isFinite(c.accuracy) || c.accuracy > 50) {
-        TRK.scartati++;
-        aggiornaInfoTraccia();
-        return;
-      }
-      const adesso = oraISO();
-      const precedente = S.traccia[S.traccia.length - 1];
-      const ultimo = precedente?.segmento === TRK.segmentoCorrente ? precedente : null;
-      const dist = ultimo ? distanzaMetri(ultimo, { lat: c.latitude, lng: c.longitude }) : Infinity;
-      const secondi = ultimo ? Math.max(1, (Date.parse(adesso) - Date.parse(ultimo.quando)) / 1000) : Infinity;
-      if (ultimo && dist < 3 && secondi < 30) return; // riduce il tremolio da fermo
-      if (ultimo && dist / secondi > 12 && c.accuracy > 15) { // salto incompatibile con un percorso a piedi
-        TRK.scartati++;
-        aggiornaInfoTraccia();
-        return;
-      }
-      if (ultimo && secondi > 120) TRK.segmentoCorrente++;
-      const punto = { lat: c.latitude, lng: c.longitude, alt: c.altitude, acc: c.accuracy, quando: adesso, segmento: TRK.segmentoCorrente };
-      try { await DB.scrivi('traccia', punto); }
-      catch (e) { fermaTraccia(); stato('Traccia non salvata: ' + e.message, true); return; }
-      S.traccia.push(punto);
-      disegnaLineaTraccia();
-      aggiornaInfoTraccia();
-    },
-    (err) => {
-      const motivi = { 1: 'permesso negato (abilita la posizione per il browser)', 2: 'posizione non disponibile', 3: 'tempo scaduto' };
-      if (err.code === 1) fermaTraccia();
-      stato('Traccia: ' + (motivi[err.code] || err.message), true);
-    },
-    { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+  try { ascoltaTraccia(); }
+  catch (e) { localStorage.removeItem('sb-traccia-attiva'); TRK.avviso = 'GPS non avviato: ' + e.message; aggiornaInfoTraccia(); return; }
+  clearInterval(TRK.ticker);
+  TRK.ticker = setInterval(aggiornaInfoTraccia, 15000);
   aggiornaInfoTraccia();
-  stato('Traccia avviata');
+  stato(ripresa ? 'Traccia ripresa: nuovo tratto' : 'Traccia avviata');
+}
+
+function pausaTraccia() {
+  if (TRK.watch === null) return;
+  navigator.geolocation.clearWatch(TRK.watch);
+  TRK.sessione++;
+  TRK.watch = null;
+  clearInterval(TRK.ticker); TRK.ticker = null;
+  TRK.pausa = true;
+  TRK.avviso = '';
+  localStorage.removeItem('sb-traccia-attiva');
+  localStorage.setItem('sb-traccia-pausa', '1');
+  aggiornaInfoTraccia();
+  stato('Traccia in pausa. I punti già registrati restano salvati.');
 }
 
 function fermaTraccia() {
   if (TRK.watch !== null) navigator.geolocation.clearWatch(TRK.watch);
+  TRK.sessione++;
   TRK.watch = null;
+  clearInterval(TRK.ticker); TRK.ticker = null;
+  TRK.pausa = false;
+  TRK.avviso = '';
   localStorage.removeItem('sb-traccia-attiva');
+  localStorage.removeItem('sb-traccia-pausa');
   aggiornaInfoTraccia();
-  stato('Traccia fermata');
+  stato('Traccia fermata. I punti restano salvati e puoi esportarli dalla Mappa.');
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (TRK.watch === null) return;
+  if (document.hidden) { TRK.nascostaDa = Date.now(); aggiornaInfoTraccia(); return; }
+  const durata = Date.now() - TRK.nascostaDa;
+  TRK.nascostaDa = 0;
+  if (durata > 10000) {
+    const ultimo = S.traccia[S.traccia.length - 1];
+    if (!ultimo || Date.now() - Date.parse(ultimo.quando) > 30000)
+      TRK.segmentoCorrente = S.traccia.reduce((max, p) => Math.max(max, Number(p.segmento) || 1), 0) + 1;
+    TRK.avviso = 'App riaperta: GPS riattivato; controlla se manca un tratto';
+    TRK.ultimoSegnale = 0;
+    try { ascoltaTraccia(); }
+    catch (e) { fermaTraccia(); TRK.avviso = 'Riattivazione GPS non riuscita: ' + e.message; }
+  }
+  aggiornaInfoTraccia();
+});
 
 async function cancellaTraccia() {
   if (!confirm(`Cancellare la traccia registrata (${S.traccia.length} punti)? Non si può annullare.`)) return;
   fermaTraccia();
+  await TRK.coda;
   await DB.svuota('traccia');
   S.traccia = [];
   disegnaLineaTraccia();
@@ -3194,7 +3360,6 @@ async function paginaScheda(r, opz) {
 /* =====================================================================
    11. BACKUP, IMPORTAZIONE, ESPORTAZIONI
    ===================================================================== */
-const BACKUP_SCHEMA_VERSION = 1;
 async function esportaBackup() {
   await salvaTuttiInSospeso();
   stato('Preparo il backup…');
@@ -3204,7 +3369,7 @@ async function esportaBackup() {
     for (const p of r.foto) { const b = await DB.leggi('foto', p.id); if (!b) throw new Error(`Foto mancante nella scheda ${r.prog}`); foto[p.id] = await blobInDataURL(b); }
     for (const a of r.audio) { const b = await DB.leggi('audio', a.id); if (!b) throw new Error(`Nota vocale mancante nella scheda ${r.prog}`); audio[a.id] = await blobInDataURL(b); }
   }
-  const dati = { app: 'scheda-botanica', versione: 5, schemaVersion: BACKUP_SCHEMA_VERSION, esportato: oraISO(), schede: tutteLeSchede, foto, audio, specie: S.specie, guida: S.guida, traccia: S.traccia };
+  const dati = { app: 'scheda-botanica', versione: 5, esportato: oraISO(), schede: tutteLeSchede, foto, audio, specie: S.specie, guida: S.guida, traccia: S.traccia };
   scarica(new Blob([JSON.stringify(dati)], { type: 'application/json' }), `scheda-botanica-backup-${oggi()}.json`);
   localStorage.setItem('sb-ultimo-backup', oraISO());
   stato(`Backup esportato: ${tutteLeSchede.length} schede, ${Object.keys(foto).length} foto, ${Object.keys(audio).length} audio`);
@@ -3214,8 +3379,6 @@ async function esportaBackup() {
 function leggiFormatoBackup(json) {
   let voci;
   if (json && json.app === 'scheda-botanica' && Array.isArray(json.schede)) {
-    const schema = json.schemaVersion ?? 1;
-    if (schema !== BACKUP_SCHEMA_VERSION) throw new Error(`schema backup non supportato: ${schema}`);
     voci = json.schede.map((s) => {
       const { record } = normalizza(s);
       const fotoDaSalvare = record.foto.filter((p) => json.foto?.[p.id]).map((p) => ({ id: p.id, dataUrl: json.foto[p.id] }));
@@ -3377,8 +3540,6 @@ async function leggiBackupZip(file) {
   if (!dj) throw new Error('questo ZIP non contiene backup.json: è un’esportazione vecchia o non creata dall’app');
   const json = JSON.parse(await dj.async('string'));
   if (json?.app !== 'scheda-botanica' || !Array.isArray(json.schede)) throw new Error('backup.json non è un archivio valido');
-  const schema = json.schemaVersion ?? 1;
-  if (schema !== BACKUP_SCHEMA_VERSION) throw new Error(`schema backup non supportato: ${schema}`);
   const indice = json.file || {};
   const specieFile = zip.file('specie.json');
   const voci = await Promise.all((json.schede || []).map(async (s) => {
@@ -3549,7 +3710,7 @@ async function esportaZIP(modo = 'scarica', opzioni = {}) {
         const f = `audio/${base}_${a.id}.${estensioneAudio(b.type || '')}`; cartAudio.file(f.slice(6), b); indice[a.id] = { percorso: f, tipo: b.type || '' };
       }
     }
-    zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 5, schemaVersion: BACKUP_SCHEMA_VERSION, esportato: oraISO(), schede: tutteLeSchede, file: indice, traccia: S.traccia, guida: S.guida }));
+    zip.file('backup.json', JSON.stringify({ app: 'scheda-botanica', versione: 5, esportato: oraISO(), schede: tutteLeSchede, file: indice, traccia: S.traccia, guida: S.guida }));
     if (S.specie.length) zip.file('specie.json', JSON.stringify(S.specie));
     const csv = testoCSV(); if (csv) zip.file('rilevazioni.csv', csv);
     const gj = testoGeoJSON(); if (gj) zip.file('rilevazioni.geojson', gj);
@@ -3679,15 +3840,9 @@ async function mostraSpazio() {
   const ultimo = localStorage.getItem('sb-ultimo-backup');
   let t = ultimo ? `Ultimo backup: ${dataIT(ultimo)}.` : 'Nessun backup esportato finora.';
   try {
-    const [foto, audio] = await Promise.all([DB.tutte('foto'), DB.tutte('audio')]);
-    const byteFoto = foto.reduce((totale, blob) => totale + (Number(blob?.size) || 0), 0);
-    const byteAudio = audio.reduce((totale, blob) => totale + (Number(blob?.size) || 0), 0);
-    const formattaMB = (byte) => `${(byte / 1048576).toFixed(1)} MB`;
-    t += ` Media locali: ${foto.length} foto (${formattaMB(byteFoto)}) e ${audio.length} audio (${formattaMB(byteAudio)}).`;
     if (navigator.storage?.estimate) {
       const { usage, quota } = await navigator.storage.estimate();
-      const percentuale = quota ? ` (${Math.round((usage / quota) * 100)}%)` : '';
-      t += ` Spazio usato ${(usage / 1048576).toFixed(1)} MB su ${(quota / 1048576).toFixed(0)} MB disponibili${percentuale}.`;
+      t += ` Spazio usato ${(usage / 1048576).toFixed(1)} MB su ${(quota / 1048576).toFixed(0)} MB disponibili.`;
     }
     if (navigator.storage?.persisted) {
       t += (await navigator.storage.persisted())
@@ -3765,11 +3920,20 @@ function collegaEventi() {
   for (const id of ['#filtro-problemi', '#filtro-senza-foto', '#filtro-senza-gps']) $(id).onchange = disegnaElenco;
   $('#btn-filtri-azzera').onclick = azzeraFiltriAvanzati;
   $('#btn-nuova').onclick = () => { cambiaVista('schede'); nuovaScheda(); };
+  $('#home-nuova').onclick = () => { cambiaVista('schede'); nuovaScheda(); };
+  $('#home-traccia-avvia').onclick = avviaTraccia;
+  $('#home-traccia-pausa').onclick = pausaTraccia;
+  $('#home-traccia-ferma').onclick = fermaTraccia;
+  $('#home-meteo').onclick = () => $('#dlg-meteo').showModal();
+  $('#meteo-form').onsubmit = cercaMeteo3B;
+  $('#meteo-gps').onclick = () => apriMeteo3B('https://www.3bmeteo.com/');
+  $('#meteo-chiudi').onclick = () => $('#dlg-meteo').close();
   $('#btn-stampa').onclick = () => apriStampa();
   $('#st-campi-tutti').onclick = (e) => { e.preventDefault(); document.querySelectorAll('input[name=st-campo]').forEach((c) => { c.checked = true; }); };
   $('#st-campi-nessuno').onclick = (e) => { e.preventDefault(); document.querySelectorAll('input[name=st-campo]').forEach((c) => { c.checked = false; }); };
 
   $('#btn-chiudi').onclick = () => chiudiEditor();
+  $('#btn-salva-scheda').onclick = salvaSchedaVisibile;
   $('#btn-elimina').onclick = eliminaScheda;
   $('#btn-stampa-una').onclick = async () => { await salvaOra(S.aperta); apriStampa(S.aperta); };
   $('#btn-scatta').onclick = () => $('#in-scatta').click();
@@ -3849,6 +4013,9 @@ function collegaEventi() {
   $('#btn-aiuto').onclick = () => { $('#aiuto-versione').textContent = `Versione dell'app: ${APP_VERSIONE}`; $('#dlg-aiuto').showModal(); };
   $('#gs-cerca').oninput = disegnaListaGuidaSpecie;
   $('#gs-chiudi').onclick = () => $('#dlg-guida-specie').close();
+  popolaDatalistZonaHabitat();
+  $('#zh-cerca').oninput = disegnaListaZonaHabitat;
+  $('#zh-chiudi').onclick = () => $('#dlg-zona-habitat').close();
   inizializzaSelectCaratteristiche();
   $('#gs-modo-nome').onclick = () => { cambiaModoGuidaSpecie('nome'); disegnaListaGuidaSpecie(); };
   $('#gs-modo-carat').onclick = () => { cambiaModoGuidaSpecie('carat'); precompilaCaratteristicheDaScheda(); disegnaListaGuidaSpecie(); };
@@ -3925,6 +4092,7 @@ function collegaEventi() {
 
   // traccia GPS (percorso)
   $('#btn-traccia-avvia').onclick = avviaTraccia;
+  $('#btn-traccia-pausa').onclick = pausaTraccia;
   $('#btn-traccia-ferma').onclick = fermaTraccia;
   $('#btn-traccia-gpx').onclick = esportaTracciaGPX;
   $('#btn-traccia-cancella').onclick = cancellaTraccia;
@@ -4122,6 +4290,7 @@ async function avvio() {
   await purgaCestinoScaduto();
 
   S.traccia = (await DB.tutte('traccia')).map((p) => ({ ...p, segmento: Number(p.segmento) || 1 }));
+  aggiornaInfoTraccia();
   S.specie = await DB.tutte('specie');
   S.guida = validaIntegrazioniGuida(await DB.tutte('guida'));
   applicaIntegrazioniGuida();

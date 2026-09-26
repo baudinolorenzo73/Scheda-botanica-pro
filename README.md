@@ -2,9 +2,9 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.20.0**
+**by Lollo ®2026 — versione 3.22.0**
 
-[Esportazione completa delle 144 piante](REVISIONE-3.19.md) · [Salvataggio e trasferimento integrazioni](REVISIONE-3.18.md) · [Catalogo integrabile delle 144 piante](REVISIONE-3.17.md)
+[Unione con Drive Up](REVISIONE-3.22.md) · [Affidabilità traccia GPS](REVISIONE-3.21.md) · [Comandi in prima pagina](REVISIONE-3.20.md) · [Esportazione completa delle 144 piante](REVISIONE-3.19.md)
 
 ---
 
@@ -32,8 +32,9 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 - **Riconoscimento specie** da foto con [PlantNet](https://plantnet.org) (chiave gratuita, opzionale).
 - **Codice QR permanente** per ogni scheda, per ritrovarla senza ambiguità anche dopo l’apertura di un nuovo elenco.
 - **Ricerca immediata del nome** nel catalogo locale delle specie e nei nomi già registrati, utilizzabile anche offline. Il nome può essere inserito liberamente.
-- **Comandi di ricerca della specie** per nome, per caratteristiche dalla guida locale e per foto con PlantNet; schede PlantNet e GBIF consultabili dai rispettivi collegamenti. I dati già osservati non vengono sovrascritti e le discordanze vengono evidenziate.
+- **Comandi di ricerca della specie** per nome, per caratteristiche dalla guida locale, per foto con PlantNet e per zona d’origine indicata nella guida; la ricerca per zona consente di consultare la specie su GBIF per verificarne la distribuzione attuale. La provenienza non dimostra la presenza locale. Schede PlantNet e GBIF sono consultabili dai rispettivi collegamenti. I dati già osservati non vengono sovrascritti e le discordanze vengono evidenziate.
 - **Catalogo integrabile** in Configurazione: sfoglia le 144 pagine originali, aggiungi le caratteristiche mancanti e registra la fonte; le integrazioni hanno un editor viola distinto dalle schede di rilievo. Trasferisci solo le integrazioni o il catalogo completo delle 144 piante in JSON, oppure includi le integrazioni nel backup ZIP di schede, foto e audio.
+- **Azioni in prima pagina**: nuova scheda con salvataggio, avvio/pausa/stop della traccia GPS, e ricerca della località su 3B Meteo. La traccia mantiene i punti durante la pausa e dopo lo stop; il meteo si apre sul sito esterno e richiede Internet.
 - **Nuovo elenco** dalla prima schermata: scarica un backup delle schede correnti e le sposta nel cestino, poi riparte dalla scheda numero 1.
 - **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
 - **Stampa** di una o più schede, anche solo come etichette QR.
@@ -64,13 +65,13 @@ Nella cartella [`manuali/`](manuali/):
 ├── css/app.css              Stili e layout responsive
 ├── js/                      Configurazione, utilità e database
 ├── tests/                   Prove automatiche nel browser
+├── .github/workflows/       Verifica automatica su GitHub
 ├── app.js                   Logica, archivio, GPS, backup e importazioni
 ├── icone.js                 Disegni dei campi botanici
 ├── data/                    Guida locale alle specie
 ├── lib/                     Librerie incluse per mappa, QR, ZIP ed Excel
 ├── manifest.json            Manifest PWA (nome, icone, colori)
 ├── service-worker.js        Cache offline dell'app shell
-├── .github/workflows/       Test automatici a ogni push e pull request
 ├── icons/                   Icone dell'app in varie dimensioni
 ├── manuali/                 Manuale utente e guida rapida (PDF + Word)
 └── screenshot/               Immagini per questo README
@@ -86,24 +87,9 @@ git push
 
 Con **Settings → Pages → Deploy from branch → main / (root)** attivato, GitHub pubblica automaticamente il contenuto del repository all'indirizzo `https://<utente>.github.io/<nome-repo>/` a ogni push.
 
-### Verificare il progetto in locale
-
-Per installare le dipendenze e il browser usato dai test automatici:
-
-```bash
-npm run test:setup
-npm test
-```
-
-Il workflow `.github/workflows/test.yml` ripete automaticamente i controlli su GitHub a ogni push e pull request verso `main` o `master`, usando Chromium su Ubuntu.
-
-Quando si modifica un file incluso nella modalità offline, aggiornare anche
-`APP_SHELL_VERSION` in `service-worker.js`, così i dispositivi che hanno già
-installato la PWA scaricano la nuova app-shell.
-
 ## 🔒 Privacy e dati
 
-L'app non ha un server: i dati (schede, foto, audio) restano **solo sul dispositivo**, in un archivio locale del browser (IndexedDB). La mappa contatta OpenStreetMap; l’identificazione richiesta invia una foto a PlantNet. La ricerca web consulta Wikipedia/Wikidata. Il collegamento tassonomico può consultare GBIF automaticamente dopo l'inserimento o l'apertura del nome di una specie. Questi servizi richiedono internet; l'archivio locale resta utilizzabile offline. La chiave PlantNet è salvata nel dispositivo e usata dal browser: non va considerata un segreto se l'app viene distribuita pubblicamente. Per una distribuzione multiutente è preferibile un proxy server-side con rate limiting e una chiave conservata in un secret.
+L'app non ha un server: i dati (schede, foto, audio) restano **solo sul dispositivo**, in un archivio locale del browser (IndexedDB). La mappa contatta OpenStreetMap; l’identificazione richiesta invia una foto a PlantNet. La ricerca web consulta Wikipedia/Wikidata. Il collegamento tassonomico può consultare GBIF automaticamente dopo l’inserimento o l’apertura del nome di una specie. Questi servizi richiedono internet; l’archivio locale resta utilizzabile offline.
 
 ## 🧑‍💻 Tecnologie
 

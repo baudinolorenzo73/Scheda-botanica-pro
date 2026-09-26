@@ -559,13 +559,13 @@ dialog .azioni .btn{flex:0 1 auto}
 
 /* Versione 3.16 — azioni specie leggibili e fonti separate */
 .campo-nome-riga{display:block}
-.nome-azioni{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:4px}
+.nome-azioni{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:4px}
 .nome-azioni .btn{min-height:50px;white-space:normal;text-align:center;justify-content:center;font-size:13px;line-height:1.25;padding:8px}
 .nome-fonti{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px}
 .nome-fonti .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;font-size:12px}
 .fonte-disabilitata{opacity:.55;cursor:default}
 .nome-conflitti{margin:2px 0;padding:10px;border:1px solid var(--ruggine);border-radius:8px;color:var(--ruggine);font-size:13px;line-height:1.45;font-weight:500}
-@media(max-width:600px){.nome-azioni{grid-template-columns:repeat(2,minmax(0,1fr))}.nome-azioni #nome-cerca-foto{grid-column:1/-1}}
+@media(max-width:700px){.nome-azioni{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Versione 3.17 — catalogo: viola distinto dalle schede di rilievo */
 .menu-titolo{font-size:13px;color:var(--tenue);margin:12px 2px 2px;padding-bottom:5px;border-bottom:1px solid var(--linea)}
@@ -605,3 +605,18 @@ dialog .azioni .btn{flex:0 1 auto}
 .cg-salva{background:var(--cg-accent);border-color:var(--cg-accent);color:#fff}
 @media(max-width:600px){.cg-filtri{grid-template-columns:1fr}.cg-gruppo{grid-template-columns:1fr}.cg-comandi .cg-salva{order:-1;flex-basis:100%}}
 @media print{#dlg-completa-guida{display:none!important}}
+
+/* Versione 3.20 — comandi di campo accessibili dalla schermata iniziale */
+.azioni-home{background:var(--foglio);border:1px solid var(--linea);border-radius:var(--r-grande);padding:14px;margin:12px 0 16px}
+.azioni-home h2{font:600 18px Georgia,serif;margin:0 0 10px;color:var(--bosco)}
+.azioni-home-griglia{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.azioni-home-griglia .btn{min-height:54px;white-space:normal;line-height:1.2;padding:10px 8px}
+#home-traccia-stato{font-size:13px;color:var(--tenue);margin:10px 2px 0}
+#home-traccia-stato.traccia-allerta{color:var(--ruggine);font-weight:700}
+.azioni-home-nota{font-size:11.5px;line-height:1.35;color:var(--tenue);margin:4px 2px 0}
+#meteo-form{display:grid;gap:9px}
+#meteo-form .btn,#meteo-gps{width:100%}
+#meteo-gps{margin-top:10px}
+.meteo-spiega{font-size:13px;line-height:1.5;color:var(--tenue)}
+#editor .testata h1{min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:700px){.azioni-home-griglia #home-nuova,.azioni-home-griglia #home-meteo{grid-column:1/-1}.azioni-home-griglia .btn{font-size:13px}}

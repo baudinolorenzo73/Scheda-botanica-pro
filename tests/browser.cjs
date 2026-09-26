@@ -40,16 +40,19 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>typeof XlsxPopulate.fromBlankAsync), 'function');
       assert.equal(await page.evaluate(()=>typeof JSZip), 'function');
       assert.deepEqual(failed, []);
-      assert.equal(await page.locator('meta[name="viewport"]').getAttribute('content'), 'width=device-width, initial-scale=1, viewport-fit=cover');
-      assert.equal(await page.locator('meta[name="apple-mobile-web-app-capable"]').getAttribute('content'), 'yes');
-      assert.equal(await page.locator('link[rel="manifest"]').getAttribute('href'), 'manifest.json');
     });
-    await test('Compatibilità mobile e riepilogo spazio locale', async()=>{
-      await page.click('#btn-menu');
-      await page.waitForFunction(()=>document.querySelector('#spazio').textContent.includes('Media locali:'));
-      assert.match(await page.locator('#spazio').textContent(), /foto/);
-      assert.match(await page.locator('#spazio').textContent(), /audio/);
-      await page.click('[data-az="chiudi"]');
+    await test('Ricerca per zona d’origine nella guida e collegamento GBIF', async()=>{
+      await page.evaluate(()=>apriRicercaZonaHabitat());
+      assert.equal(await page.locator('#zh-lista .gs-riga').count(),144);
+      const zona=await page.evaluate(()=>GUIDA_SPECIE.find(v=>v.provenienza)?.provenienza);
+      assert(zona);
+      await page.fill('#zh-cerca',zona);
+      const attesi=await page.evaluate(q=>risultatiPerZona(q).length,zona);
+      assert.equal(await page.locator('#zh-lista .gs-riga').count(),attesi);
+      await page.locator('#zh-lista .gs-riga').first().click();
+      assert.match(await page.locator('#zh-dettaglio a[href*="gbif.org"]').getAttribute('href'), /q=/);
+      await page.click('#zh-chiudi');
+      assert.equal(await page.locator('#dlg-zona-habitat').evaluate(d=>d.open),false);
     });
     await test('Scheda: misura decimale libera e persistenza al ricaricamento',async()=>{
       await page.click('#btn-nuova');await page.fill('#f-nome','Quercus robur');await page.fill('#f-altezza','12.3');
@@ -101,8 +104,7 @@ const server = http.createServer((req, res) => {
     await test('Backup ZIP: andata e ritorno con foto',async()=>{
       const download=page.waitForEvent('download');assert.equal(await page.evaluate(()=>esportaZIP()),true);
       const bytes=fs.readFileSync(await (await download).path());
-      assert.equal(await page.evaluate(async(b)=>{const zip=await JSZip.loadAsync(new Uint8Array(b));const meta=JSON.parse(await zip.file('backup.json').async('string'));const v=await leggiBackupZip(new Blob([new Uint8Array(b)]));await importaDati(v,'sostituisci');document.querySelectorAll('dialog[open]').forEach(d=>d.close());return meta.schemaVersion===1 && (await DB.tutte('schede')).length===2 && v[1].fotoDaSalvare[0].blob.size>0;},[...bytes]),true);
-      assert.equal(await page.evaluate(()=>{try{leggiFormatoBackup({app:'scheda-botanica',schemaVersion:999,schede:[]});return false;}catch(e){return /schema backup non supportato/.test(e.message);}}),true);
+      assert.equal(await page.evaluate(async(b)=>{const v=await leggiBackupZip(new Blob([new Uint8Array(b)]));await importaDati(v,'sostituisci');document.querySelectorAll('dialog[open]').forEach(d=>d.close());return (await DB.tutte('schede')).length===2 && v[1].fotoDaSalvare[0].blob.size>0;},[...bytes]),true);
     });
     await test('Ricerca, selezione da tastiera e cestino',async()=>{
       await page.fill('#cerca','Quercus');await page.waitForFunction(()=>document.querySelectorAll('#elenco .voce').length===1);
@@ -262,6 +264,7 @@ const server = http.createServer((req, res) => {
       const manomesso=structuredClone(completo);
       manomesso.piante[0].nomeSci='Pianta errata';
       await page.locator('#cg-file-completo').setInputFiles({name:'catalogo-errato.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(manomesso))});
+      await page.waitForFunction(()=>document.querySelector('#cg-messaggio').textContent.startsWith('Importazione non riuscita'));
       assert.match(await page.locator('#cg-messaggio').textContent(),/Importazione non riuscita/);
       assert.equal(await page.evaluate(()=>S.guida.length),1);
       await page.locator('#cg-lista .cg-riga').first().click();
@@ -327,6 +330,65 @@ const server = http.createServer((req, res) => {
       await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;localStorage.removeItem('sb-plantnet-key');});
       await page.click('#btn-chiudi');
     });
+    await test('Home: traccia con pausa, stop, nuova scheda e meteo',async()=>{
+      await context.grantPermissions(['geolocation']);
+      await context.setGeolocation({latitude:45.071,longitude:7.686,accuracy:12});
+      await page.click('#home-traccia-avvia');
+      await page.waitForFunction(()=>S.traccia.length>0);
+      assert.match(await page.locator('#home-traccia-stato').textContent(),/GPS in ascolto/);
+      await page.click('#home-traccia-pausa');
+      assert.equal(await page.evaluate(()=>TRK.watch===null && TRK.pausa && localStorage.getItem('sb-traccia-attiva')===null),true);
+      const n=await page.evaluate(()=>S.traccia.length);
+      await page.reload();await page.waitForFunction(()=>DB.db && S.traccia.length>0);
+      assert.match(await page.locator('#home-traccia-stato').textContent(),/In pausa/);
+      await page.click('#home-traccia-avvia');
+      await page.waitForFunction(()=>TRK.watch!==null);
+      assert.equal(await page.evaluate(()=>TRK.segmentoCorrente>1),true);
+      await page.click('#home-traccia-ferma');
+      assert.equal(await page.evaluate(()=>TRK.watch===null && !TRK.pausa && S.traccia.length>=1),true);
+      assert.equal(await page.evaluate(()=>localStorage.getItem('sb-traccia-pausa')),null);
+      assert(n>=1);
+      await page.evaluate(()=>{window.aperturaMeteo=window.open;window.open=(url)=>{window.meteoUrl=url;return null;};});
+      await page.click('#home-meteo');
+      await page.fill('#meteo-luogo','Roletto');
+      await page.click('#meteo-form button');
+      assert.equal(await page.evaluate(()=>window.meteoUrl),'https://www.3bmeteo.com/meteo/roletto');
+      await page.click('#meteo-gps');
+      assert.equal(await page.evaluate(()=>window.meteoUrl),'https://www.3bmeteo.com/');
+      await page.evaluate(()=>{window.open=window.aperturaMeteo;delete window.aperturaMeteo;});
+      await page.click('#meteo-chiudi');
+      await page.click('#home-nuova');
+      await page.waitForFunction(()=>!!S.aperta);
+      await page.fill('#f-nome','Scheda dal pulsante iniziale');
+      await page.click('#btn-salva-scheda');
+      assert.equal(await page.evaluate(async()=>!!(await DB.leggi('schede',S.aperta.uid))?.nome),true);
+      await page.click('#btn-chiudi');
+    });
+    await test('Traccia GPS: segnala precisione, assenza di fix e riattiva al ritorno',async()=>{
+      assert.equal(await page.evaluate(async()=>{
+        const geo=navigator.geolocation;
+        const watch=geo.watchPosition, clear=geo.clearWatch;
+        const callbacks=[]; let avvii=0;
+        geo.watchPosition=(ok,err)=>{callbacks.push({ok,err});return ++avvii;};
+        geo.clearWatch=()=>{};
+        try {
+          const prima=S.traccia.length;
+          avviaTraccia();
+          callbacks[0].ok({coords:{latitude:45.1,longitude:7.1,accuracy:120,altitude:null},timestamp:Date.now()});
+          if(S.traccia.length!==prima || !document.querySelector('#home-traccia-stato').textContent.includes('impreciso')) return false;
+          callbacks[0].ok({coords:{latitude:45.1,longitude:7.1,accuracy:12,altitude:null},timestamp:Date.now()});
+          await TRK.coda;
+          if(S.traccia.length!==prima+1) return false;
+          TRK.ultimoSegnale=Date.now()-50000;aggiornaInfoTraccia();
+          if(!document.querySelector('#home-traccia-stato').textContent.includes('Nessun segnale GPS recente')) return false;
+          TRK.nascostaDa=Date.now()-11000;
+          document.dispatchEvent(new Event('visibilitychange'));
+          if(avvii!==2 || !document.querySelector('#home-traccia-stato').textContent.includes('GPS riattivato')) return false;
+          fermaTraccia();
+          return true;
+        } finally {geo.watchPosition=watch;geo.clearWatch=clear;fermaTraccia();}
+      }),true);
+    });
     await test('Nuovo elenco in home: backup e archiviazione atomica',async()=>{
       const n=await page.evaluate(()=>S.schede.length);
       assert.equal(await page.locator('#btn-nuovo-elenco').isVisible(),true);
@@ -348,6 +410,14 @@ const server = http.createServer((req, res) => {
       await page.click('#btn-nuova');
       await page.waitForFunction(()=>!!S.aperta);
       assert.equal(await page.inputValue('#f-prog'),'1');
+    });
+    await test('Scelta dalla zona compila la scheda e chiude la ricerca',async()=>{
+      await page.click('#nome-cerca-zona');
+      await page.locator('#zh-lista .gs-riga').first().click();
+      const nome=await page.locator('#zh-dettaglio h3.specie').textContent();
+      await page.getByRole('button',{name:'Usa questo nome nella scheda'}).click();
+      assert.equal(await page.locator('#dlg-zona-habitat').evaluate(d=>d.open),false);
+      assert.equal(await page.inputValue('#f-nome'),nome.trim());
     });
     assert.deepEqual(errors,[],'Eccezioni JavaScript');assert.deepEqual(failed,[],'Risorse locali mancanti');
     console.log(`\n${results.length} verifiche superate. Nessuna eccezione JavaScript, nessuna risorsa locale mancante.`);

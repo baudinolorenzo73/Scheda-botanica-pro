@@ -114,6 +114,18 @@
     <div><strong id="riepilogo-foto">0</strong><span>Fotografie</span></div>
   </section>
   <div id="vista-schede">
+    <section class="azioni-home" aria-label="Azioni rapide sul campo">
+      <h2>Azioni sul campo</h2>
+      <div class="azioni-home-griglia">
+        <button type="button" class="btn primario" id="home-nuova">Nuova scheda botanica</button>
+        <button type="button" class="btn primario" id="home-traccia-avvia">Avvia traccia</button>
+        <button type="button" class="btn" id="home-traccia-pausa" disabled>Pausa</button>
+        <button type="button" class="btn" id="home-traccia-ferma" disabled>Stop</button>
+        <button type="button" class="btn" id="home-meteo">Meteo · 3B Meteo</button>
+      </div>
+      <p id="home-traccia-stato" role="status" aria-live="polite">Traccia ferma</p>
+      <p class="azioni-home-nota">Su alcuni telefoni il browser sospende il GPS a schermo spento: controlla i punti registrati nella Mappa.</p>
+    </section>
     <div class="strumenti-elenco">
       <button type="button" class="btn" id="btn-nuovo-elenco" title="Salva un backup e inizia un nuovo elenco"> <svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Nuovo elenco</span></button>
       <button type="button" class="btn nascosto" id="btn-seleziona-tutte"></button>
@@ -123,8 +135,10 @@
   <div id="vista-mappa" class="nascosto" style="max-width:var(--largo);margin:0 auto;padding:0 12px">
     <div class="traccia-barra" id="traccia-barra" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 2px 10px">
       <button type="button" class="btn primario" id="btn-traccia-avvia">▶ Inizia traccia</button>
-      <button type="button" class="btn pericolo nascosto" id="btn-traccia-ferma">⏹ Ferma traccia</button>
+      <button type="button" class="btn nascosto" id="btn-traccia-pausa">Ⅱ Pausa</button>
+      <button type="button" class="btn pericolo nascosto" id="btn-traccia-ferma">■ Stop</button>
       <span id="traccia-info" style="color:var(--tenue);font-size:13px"></span>
+      <span id="traccia-diagnosi" role="status" style="color:var(--ruggine);font-size:13px;flex-basis:100%"></span>
       <button type="button" class="btn nascosto" id="btn-traccia-gpx">⭳ Esporta traccia GPX</button>
       <button type="button" class="btn pericolo nascosto" id="btn-traccia-cancella">🗑 Cancella traccia</button>
     </div>
@@ -152,6 +166,7 @@
   <header class="testata">
     <button class="btn-icona" id="btn-chiudi" aria-label="Torna all'elenco"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-back"></use></svg></button>
     <h1 id="ed-titolo">Scheda <small id="ed-stato">—</small></h1>
+    <button class="btn-icona" id="btn-salva-scheda" title="Salva la scheda" aria-label="Salva la scheda">✓</button>
     <button class="btn-icona" id="btn-stampa-una" title="Stampa questa scheda" aria-label="Stampa questa scheda"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg></button>
   </header>
   <form class="modulo" id="modulo" autocomplete="off" onsubmit="return false">
@@ -215,6 +230,19 @@
 </section>
 
 <!-- ================= DIALOGHI ================= -->
+<dialog id="dlg-meteo" aria-labelledby="meteo-titolo">
+  <h2 id="meteo-titolo">Meteo · 3B Meteo</h2>
+  <p class="meteo-spiega">Per cercare una località, scrivi il nome qui sotto. La previsione si apre su 3B Meteo e richiede Internet.</p>
+  <form id="meteo-form">
+    <label for="meteo-luogo">Località</label>
+    <input type="search" id="meteo-luogo" class="campo-base" placeholder="Es. Roletto o Pian della Mussa" autocomplete="off" required maxlength="90">
+    <button type="submit" class="btn primario">Cerca su 3B Meteo ↗</button>
+  </form>
+  <button type="button" class="btn" id="meteo-gps">Apri 3B Meteo e usa la posizione</button>
+  <p class="meteo-spiega">Se hai il GPS attivo, autorizza la posizione anche su 3B Meteo: il permesso dato a questa app non passa automaticamente al loro sito. Verifica la località proposta, soprattutto in montagna.</p>
+  <div class="azioni"><button type="button" class="btn" id="meteo-chiudi">Chiudi</button></div>
+</dialog>
+
 <dialog id="dlg-menu">
   <h2>Configurazione e backup</h2>
   <div class="menu-lista">
@@ -420,6 +448,17 @@
   <div class="azioni"><button type="button" class="btn" id="gs-chiudi">Chiudi</button></div>
 </dialog>
 
+<dialog id="dlg-zona-habitat">
+  <h2>Cerca per zona d’origine</h2>
+  <p style="font-size:13px;color:var(--tenue)">Filtra le 144 piante secondo la provenienza riportata nella guida. La zona d’origine non equivale alla distribuzione attuale o al luogo del rilievo: verifica la specie su GBIF.</p>
+  <label for="zh-cerca">Provenienza</label>
+  <input type="search" id="zh-cerca" class="campo-base" list="dl-zh-zona" style="width:100%;margin:8px 0 12px" placeholder="Es. Europa, Asia…" autocomplete="off">
+  <datalist id="dl-zh-zona"></datalist>
+  <div id="zh-lista" style="max-height:48vh;overflow:auto;display:flex;flex-direction:column;gap:6px"></div>
+  <div id="zh-dettaglio" class="nascosto" style="max-height:55vh;overflow:auto"></div>
+  <div class="azioni"><button type="button" class="btn" id="zh-chiudi">Chiudi</button></div>
+</dialog>
+
 <dialog id="dlg-plantnet">
   <h2>Identificazione specie — PlantNet</h2>
   <p style="font-size:13px">PlantNet è un servizio online <b>gratuito fino a 500 identificazioni al giorno</b>, creato da un consorzio di istituti di ricerca (CIRAD, INRAE, Cirad, Tela Botanica e altri). Le foto vengono inviate ai loro server solo quando tocchi "Identifica" su una foto — mai automaticamente.</p>
@@ -484,7 +523,7 @@
     <li><b>GPS preciso</b>: sotto gli alberi il segnale è debole, quindi l'app ascolta i satelliti per qualche secondo e tiene la posizione migliore, mostrando la precisione mentre migliora. Puoi fermarla prima toccando di nuovo 📍. Accanto alle coordinate vedi anche una valutazione (ottimo/buono/scarso) e se al momento del rilievo eri online o offline.</li>
     <li><b>Due numerazioni diverse</b>: "N° progressivo" identifica la scheda nell’elenco corrente; "N° nel giorno" riparte da 1 ogni volta che scegli una nuova data. Il QR usa invece un identificativo interno permanente, quindi resta univoco anche quando inizi un nuovo elenco.</li>
     <li><b>Scegli dalla mappa</b>: se non riesci a rilevare il GPS (o vuoi correggerlo dopo), nella sezione Posizione GPS c'è anche "Scegli dalla mappa": tocchi il punto giusto sulla cartina invece di aspettare il satellite.</li>
-    <li><b>Traccia (percorso)</b>: nella vista Mappa, "Inizia traccia" registra il percorso fatto a piedi finché non tocchi "Ferma traccia". I punti con precisione peggiore di 50 m e i salti anomali vengono ignorati; una pausa lunga crea un nuovo tratto senza collegamenti falsi. La traccia si esporta in GPX e viene inclusa nel backup completo.</li>
+    <li><b>Traccia (percorso)</b>: dalla prima pagina o dalla Mappa, "Avvia traccia" registra il percorso fatto a piedi. "Pausa" sospende il GPS e "Riprendi" crea un nuovo tratto; "Stop" termina la registrazione senza cancellare i punti. I punti con precisione peggiore di 50 m e i salti anomali vengono ignorati. La traccia si esporta in GPX dalla Mappa ed è inclusa nel backup completo. Su alcuni telefoni il browser può sospendere il GPS a schermo spento.</li>
     <li><b>Cestino</b>: eliminando una scheda (dall'elenco o dall'editor) non sparisce subito, va nel cestino (icona 🗑 in alto): da lì puoi ripristinarla o eliminarla per sempre. Dopo il numero di giorni che scegli tu (di default 30), le schede nel cestino vengono eliminate da sole.</li>
     <li>I campi con icona (persistenza, forma della chioma, rami, crescita, tipologia di estensione, tipo di foglia, lamina, margine) si scelgono toccando il riquadro: si apre una schermata con un disegno e una spiegazione per ogni valore, così anche chi è alle prime armi riconosce cosa sta osservando. Se nessuna voce corrisponde, si può scrivere un valore libero in "Altro".</li>
     <li><b>Foto</b>: "Scatta" apre subito la fotocamera, "Dalla galleria" ne permette di scegliere più di una insieme. Le foto vengono ridotte automaticamente per occupare meno spazio.</li>
