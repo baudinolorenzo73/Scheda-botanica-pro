@@ -2,9 +2,9 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.22.0**
+**by Lollo ®2026 — versione 3.23.0**
 
-[Unione con Drive Up](REVISIONE-3.22.md) · [Affidabilità traccia GPS](REVISIONE-3.21.md) · [Comandi in prima pagina](REVISIONE-3.20.md) · [Esportazione completa delle 144 piante](REVISIONE-3.19.md)
+[Excel più leggero](REVISIONE-3.23.md) · [Unione con Drive Up](REVISIONE-3.22.md) · [Affidabilità traccia GPS](REVISIONE-3.21.md) · [Comandi in prima pagina](REVISIONE-3.20.md)
 
 ---
 
@@ -38,7 +38,7 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 - **Nuovo elenco** dalla prima schermata: scarica un backup delle schede correnti e le sposta nel cestino, poi riparte dalla scheda numero 1.
 - **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
 - **Stampa** di una o più schede, anche solo come etichette QR.
-- **Backup completo (.zip)** con ripristino protetto di schede, cestino, foto, audio, catalogo e traccia; import/export CSV, GeoJSON, KML e GPX.
+- **Backup completo (.zip)** con ripristino protetto di schede, cestino, foto, audio, catalogo e traccia; import/export CSV, GeoJSON, KML e GPX. Importa file `.xlsx` e `.csv` e produce un registro `.xlsx` formattato; per importare un vecchio `.xls` salvalo prima come `.xlsx`. La libreria Excel si attiva soltanto quando occorre.
 - **100% offline-first**: tutti i dati restano sul dispositivo (IndexedDB), archivio locale; alcune funzioni consultano servizi esterni.
 
 ## 🖼️ Screenshot

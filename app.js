@@ -3207,6 +3207,7 @@ async function apriStampa(soloQuesta = null) {
 // sezione (Osservazioni / Vegetazione / Pedologia / Fitopatologia / Note),
 // nello spirito del modello di registro cartaceo/Excel già in uso.
 async function esportaRegistroExcel(lista, campiScelti) {
+  const XlsxPopulate = await caricaLibreriaExcel();
   const campi = CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k) && (!campiScelti.size || campiScelti.has(c.k)));
   const colonneTestata = ['N° progressivo', 'Nome esemplare', 'Data'];
   const gruppi = [];
@@ -3793,12 +3794,58 @@ function mappaColonneExcel(rigaIntestazione) {
   return mappa;
 }
 
+function leggiRigheCSV(testo) {
+  const contenuto = testo.replace(/^\uFEFF/, '');
+  let separatore = ';', campo = '', riga = [], righe = [], virgolette = false;
+  let virgole = 0, puntiVirgola = 0, dentro = false;
+  for (let i = 0; i < contenuto.length; i++) {
+    const c = contenuto[i];
+    if (c === '"') {
+      if (dentro && contenuto[i + 1] === '"') i++;
+      else dentro = !dentro;
+    } else if (!dentro) {
+      if (c === '\r' || c === '\n') break;
+      if (c === ',') virgole++;
+      if (c === ';') puntiVirgola++;
+    }
+  }
+  if (virgole > puntiVirgola) separatore = ',';
+  for (let i = 0; i < contenuto.length; i++) {
+    const c = contenuto[i];
+    if (c === '"') {
+      if (virgolette && contenuto[i + 1] === '"') { campo += '"'; i++; }
+      else virgolette = !virgolette;
+    } else if (c === separatore && !virgolette) { riga.push(campo); campo = ''; }
+    else if ((c === '\n' || c === '\r') && !virgolette) {
+      if (c === '\r' && contenuto[i + 1] === '\n') i++;
+      riga.push(campo); righe.push(riga); riga = []; campo = '';
+    } else campo += c;
+  }
+  if (virgolette) throw new Error('CSV non valido: virgolette non chiuse');
+  if (riga.length || campo) { riga.push(campo); righe.push(riga); }
+  return righe;
+}
+
+async function leggiRigheExcel(file) {
+  const nome = file.name.toLowerCase();
+  if (nome.endsWith('.csv')) return { righe: leggiRigheCSV(await file.text()), date1904: false };
+  if (!nome.endsWith('.xlsx')) throw new Error('Formato non supportato: usa .xlsx o .csv. Per un vecchio .xls, salvalo prima come .xlsx.');
+  const XlsxPopulate = await caricaLibreriaExcel();
+  const buf = await file.arrayBuffer();
+  const cartella = await XlsxPopulate.fromDataAsync(buf);
+  const foglio = cartella.sheet(0);
+  const righe = foglio.usedRange()?.value() || [];
+  // Manteniamo la compatibilità con i fogli Excel che usano il calendario 1904.
+  const zip = await JSZip.loadAsync(buf);
+  const xml = await zip.file('xl/workbook.xml')?.async('text');
+  const proprieta = xml ? new DOMParser().parseFromString(xml, 'application/xml').getElementsByTagName('workbookPr')[0] : null;
+  const date1904 = /^(1|true)$/i.test(proprieta?.getAttribute('date1904') || '');
+  return { righe, date1904 };
+}
+
 async function importaExcelDaFile(file) {
   try {
-    const buf = await file.arrayBuffer();
-    const cartella = XLSX.read(buf, { type: 'array' });
-    const foglio = cartella.Sheets[cartella.SheetNames[0]];
-    const righe = XLSX.utils.sheet_to_json(foglio, { header: 1, defval: '' });
+    const { righe, date1904 } = await leggiRigheExcel(file);
     let indiceIntest = -1;
     for (let i = 0; i < Math.min(10, righe.length); i++) {
       const t = (righe[i] || []).join(' ').toLowerCase();
@@ -3813,7 +3860,7 @@ async function importaExcelDaFile(file) {
       CAMPI.forEach((c) => {
         const i = mappa[c.k];
         const valore = i >= 0 && cols[i] !== undefined ? cols[i] : '';
-        obj[c.k] = c.tipo === 'data' ? normalizzaData(valore, !!cartella.Workbook?.WBProps?.date1904) : String(valore);
+        obj[c.k] = c.tipo === 'data' ? normalizzaData(valore, date1904) : String(valore ?? '');
       });
       return normalizza(obj);
     });

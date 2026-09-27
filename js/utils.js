@@ -121,9 +121,12 @@ function normalizzaData(valore, date1904 = false) {
   if (valore === '' || valore == null) return '';
   let y, m, d;
   if (typeof valore === 'number') {
-    const data = XLSX.SSF.parse_date_code(valore, { date1904 });
-    if (!data) return '';
-    ({ y, m, d } = data);
+    if (!Number.isFinite(valore) || valore < (date1904 ? 0 : 1) || (!date1904 && Math.floor(valore) === 60)) return '';
+    const giorni = Math.floor(valore);
+    const data = new Date(Date.UTC(date1904 ? 1904 : 1899, date1904 ? 0 : 11,
+      (date1904 ? 1 : 31) + giorni - (!date1904 && giorni >= 61 ? 1 : 0)));
+    if (!Number.isFinite(data.getTime())) return '';
+    y = data.getUTCFullYear(); m = data.getUTCMonth() + 1; d = data.getUTCDate();
   } else {
     const testo = String(valore).trim();
     let match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(testo);
@@ -138,4 +141,21 @@ function normalizzaData(valore, date1904 = false) {
   data.setUTCFullYear(Number(y), Number(m) - 1, Number(d));
   if (data.getUTCFullYear() !== Number(y) || data.getUTCMonth() + 1 !== Number(m) || data.getUTCDate() !== Number(d)) return '';
   return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+// Il file Excel resta disponibile offline nella cache dell'app, ma lo script
+// viene eseguito soltanto al primo uso. Le chiamate simultanee condividono
+// il caricamento e un errore consente un nuovo tentativo.
+let caricamentoExcel = null;
+function caricaLibreriaExcel() {
+  if (window.XlsxPopulate) return Promise.resolve(window.XlsxPopulate);
+  if (caricamentoExcel) return caricamentoExcel;
+  caricamentoExcel = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = './lib/xlsx-populate.js';
+    script.onload = () => window.XlsxPopulate ? resolve(window.XlsxPopulate) : reject(new Error('Libreria Excel non disponibile'));
+    script.onerror = () => { script.remove(); reject(new Error('Impossibile caricare la libreria Excel')); };
+    document.head.append(script);
+  }).catch((errore) => { caricamentoExcel = null; throw errore; });
+  return caricamentoExcel;
 }

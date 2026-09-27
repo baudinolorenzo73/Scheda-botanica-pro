@@ -37,7 +37,8 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(() => DB.db && document.querySelector('#elenco').children.length > 0);
     await page.evaluate(() => localStorage.setItem('sb-backup-auto','0'));
     await test('Avvio e librerie locali', async()=>{
-      assert.equal(await page.evaluate(()=>typeof XlsxPopulate.fromBlankAsync), 'function');
+      assert.equal(await page.evaluate(()=>typeof window.XlsxPopulate),'undefined');
+      assert.equal(await page.evaluate(()=>typeof window.XLSX),'undefined');
       assert.equal(await page.evaluate(()=>typeof JSZip), 'function');
       assert.deepEqual(failed, []);
     });
@@ -99,7 +100,22 @@ const server = http.createServer((req, res) => {
       await page.evaluate(()=>esportaRegistroExcel(S.schede,new Set()));
       const file=await download; const bytes=fs.readFileSync(await file.path());
       assert(bytes.length>1000);assert.equal(bytes.slice(0,2).toString(),'PK');
-      assert.equal(await page.evaluate(async(b)=>{const book=XLSX.read(new Uint8Array(b),{type:'array'});return book.Sheets[book.SheetNames[0]].B6.v;},[...bytes]),'Quercus robur');
+      assert.equal(await page.evaluate(async(b)=>{
+        const f=new File([new Uint8Array(b)],'registro.xlsx');
+        const v=await leggiRigheExcel(f);
+        return v.righe[5][1];
+      },[...bytes]),'Quercus robur');
+      assert.equal(await page.evaluate(()=>document.querySelectorAll('script[src*="xlsx-populate"]').length),1);
+      assert.equal(await page.evaluate(()=>typeof window.XLSX),'undefined');
+    });
+    await test('Importazione CSV con testo tra virgolette e lettura Excel 1904',async()=>{
+      assert.deepEqual(await page.evaluate(()=>leggiRigheCSV('\uFEFFProg.;Data;Nome esemplare\r\n1;24/09/2026;"Fagus; ""sylvatica"""\r\n')),
+        [['Prog.','Data','Nome esemplare'],['1','24/09/2026','Fagus; "sylvatica"']]);
+      assert.deepEqual(await page.evaluate(()=>leggiRigheCSV('"Prog., n",Data,Nome\n1,24/09/2026,"Fagus, sylvatica"')),
+        [['Prog., n','Data','Nome'],['1','24/09/2026','Fagus, sylvatica']]);
+      assert.equal(await page.evaluate(()=>normalizzaData(0,true)),'1904-01-01');
+      assert.equal(await page.evaluate(()=>normalizzaData(60,false)),'');
+      assert.equal(await page.evaluate(()=>normalizzaData(61,false)),'1900-03-01');
     });
     await test('Backup ZIP: andata e ritorno con foto',async()=>{
       const download=page.waitForEvent('download');assert.equal(await page.evaluate(()=>esportaZIP()),true);
@@ -158,7 +174,8 @@ const server = http.createServer((req, res) => {
       await page.waitForFunction(()=>navigator.serviceWorker.controller);
       const n=await page.evaluate(()=>S.schede.length);
       await context.setOffline(true);await page.reload();await page.waitForFunction((atteso)=>S.schede.length===atteso,n);
-      assert.equal(await page.evaluate(()=>typeof XlsxPopulate.fromBlankAsync),'function');
+      assert.equal(await page.evaluate(()=>typeof window.XlsxPopulate),'undefined');
+      assert.equal(await page.evaluate(async()=>typeof (await caricaLibreriaExcel()).fromBlankAsync),'function');
       assert.equal(await page.locator('#stato-rete').textContent().then(s=>s.includes('offline')),true);
       await context.setOffline(false);
     });

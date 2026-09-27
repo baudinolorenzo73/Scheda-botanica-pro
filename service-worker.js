@@ -1,13 +1,13 @@
 'use strict';
 // Cache versionata per percorso: altri progetti sullo stesso dominio restano indipendenti.
-const CACHE_NOME = 'scheda-botanica-app-v30-' + new URL(self.registration.scope).pathname;
+const CACHE_NOME = 'scheda-botanica-app-v31-' + new URL(self.registration.scope).pathname;
 const CACHE_TILE = 'scheda-botanica-tile-v1';
 const FILE_APP_SHELL = [
   './', './index.html', './css/app.css', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
   './app.js', './js/config.js', './js/utils.js', './js/database.js', './icone.js',
   './data/guida-specie.js', './lib/leaflet.js', './lib/leaflet.css',
-  './lib/jszip.js', './lib/xlsx.js', './lib/xlsx-populate.js', './lib/qrcode-generator.js',
+  './lib/jszip.js', './lib/xlsx-populate.js', './lib/qrcode-generator.js',
 ];
 const HOST_TILE = ['tile.openstreetmap.org', 'a.tile.openstreetmap.org', 'b.tile.openstreetmap.org', 'c.tile.openstreetmap.org'];
 self.addEventListener('install', (event) => {
