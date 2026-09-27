@@ -650,6 +650,14 @@ body[data-interfaccia="125"]{zoom:1.25}
 #meteo-gps{margin-top:10px}
 .meteo-spiega{font-size:13px;line-height:1.5;color:var(--tenue)}
 #editor .testata h1{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.editor-comandi{position:sticky;top:0;z-index:31;background:var(--foglio);box-shadow:0 4px 14px #0002}
+#editor .editor-comandi .testata,#editor .editor-comandi .azioni-rapide{position:relative;top:auto}
+#editor .editor-comandi .azioni-rapide{grid-template-columns:repeat(4,minmax(0,1fr));box-shadow:none}
+#editor .editor-comandi .azioni-rapide button{min-width:0;padding-inline:3px;line-height:1.15}
+#editor .editor-comandi .azioni-rapide .azione-nuova{background:var(--bosco);border-color:var(--bosco);color:#fff}
+#editor .editor-comandi .azione-nuova .icona{color:#fff}
+#editor .editor-comandi .azioni-rapide .azione-nuova:hover{background:var(--bosco-scuro);color:#fff}
+#editor fieldset,#editor .nav-editor a{scroll-margin-top:155px}
 @media(max-width:700px){
   .azioni-home{margin:12px 12px 8px}
   .azioni-home-griglia{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -659,3 +667,4 @@ body[data-interfaccia="125"]{zoom:1.25}
   .barra{grid-template-columns:1fr}
   .barra .cerca-box,.barra select{grid-column:1/-1}
 }
+@media(max-width:480px){#editor .editor-comandi .azioni-rapide button{font-size:11px}#editor .editor-comandi .azioni-rapide{gap:5px;padding-inline:6px}}

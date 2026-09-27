@@ -884,7 +884,7 @@ function aggiornaTitoloEditor() {
   $('#ed-titolo').firstChild.textContent = `N° ${r.prog || '?'}${r.nome ? ' – ' + r.nome : ''} `;
 }
 
-function apriEditor(uid) {
+function apriEditor(uid, sostituisciCronologia = false) {
   const r = S.schede.find((s) => s.uid === uid);
   if (!r) return;
   S.aperta = r;
@@ -920,7 +920,8 @@ function apriEditor(uid) {
   ed.classList.remove('nascosto');
   ed.scrollTop = 0;
   document.body.style.overflow = 'hidden';
-  history.pushState({ editor: true }, '');
+  if (sostituisciCronologia) history.replaceState({ editor: true }, '');
+  else history.pushState({ editor: true }, '');
 }
 
 function nascondiEditor() {
@@ -961,6 +962,25 @@ async function nuovaScheda() {
   if (!(await salvaOra(r))) { S.schede = S.schede.filter((s) => s.uid !== r.uid); return; }
   apriEditor(r.uid);
   $('#f-nome').focus();
+}
+
+async function nuovaSchedaDaEditor() {
+  const corrente = S.aperta;
+  if (!corrente) return;
+  const nonValido = $('#modulo').querySelector(':invalid');
+  if (nonValido) { nonValido.reportValidity(); nonValido.focus(); return; }
+  const bottone = $('#ar-nuova');
+  bottone.disabled = true;
+  try {
+    if (REG.attiva && REG.riga === corrente) fermaRegistrazione();
+    if (GPSR.watch !== null && GPSR.riga === corrente) fermaGPS(true);
+    if (!(await salvaOra(corrente))) return;
+    const nuova = schedaVuota();
+    if (!(await salvaOra(nuova))) return;
+    S.schede.push(nuova);
+    apriEditor(nuova.uid, true);
+    $('#f-nome').focus();
+  } finally { bottone.disabled = false; }
 }
 
 async function salvaSchedaVisibile() {
@@ -4331,6 +4351,7 @@ function collegaEventi() {
 
   // barra azioni rapide
   $('#ar-foto').onclick = () => { scorriA('#foto-griglia'); $('#in-scatta').click(); };
+  $('#ar-nuova').onclick = nuovaSchedaDaEditor;
   $('#ar-gps').onclick = () => { scorriA('#gps-box'); rilevaGPS(); };
   $('#ar-audio').onclick = () => {
     if (REG.attiva && REG.riga === S.aperta) fermaRegistrazione();

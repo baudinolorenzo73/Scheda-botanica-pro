@@ -157,17 +157,20 @@
 
 <!-- ================= EDITOR ================= -->
 <section id="editor" class="nascosto" aria-label="Modifica scheda">
+  <div class="editor-comandi">
   <header class="testata">
     <button class="btn-icona" id="btn-chiudi" aria-label="Torna all'elenco"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-back"></use></svg></button>
     <h1 id="ed-titolo">Scheda <small id="ed-stato">—</small></h1>
     <button class="btn-icona" id="btn-salva-scheda" title="Salva la scheda" aria-label="Salva la scheda">✓</button>
     <button class="btn-icona" id="btn-stampa-una" title="Stampa questa scheda" aria-label="Stampa questa scheda"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg></button>
   </header>
-  <nav class="azioni-rapide" aria-label="Foto, posizione e note vocali">
+  <nav class="azioni-rapide" aria-label="Nuova scheda, foto, posizione e note vocali">
+    <button type="button" id="ar-nuova" class="azione-nuova"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><b>Nuova scheda</b></button>
     <button type="button" id="ar-foto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-camera"></use></svg><span>Foto</span></button>
     <button type="button" id="ar-gps"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-pin"></use></svg><b id="ar-gps-testo">GPS</b></button>
     <button type="button" id="ar-audio"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-mic"></use></svg><b id="ar-audio-testo">Nota vocale</b></button>
   </nav>
+  </div>
   <form class="modulo" id="modulo" autocomplete="off" onsubmit="return false">
     <nav class="nav-editor" aria-label="Sezioni scheda">
       <a href="#sez-oss">Dati</a><a href="#sez-veg">Foglie</a><a href="#sez-ped">Terreno</a><a href="#sez-fit">Salute</a><a href="#sez-not">Note</a>

@@ -536,6 +536,23 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.locator('#dlg-zona-habitat').evaluate(d=>d.open),false);
       assert.equal(await page.inputValue('#f-nome'),nome.trim());
     });
+    await test('Comandi fissi e nuova scheda salva la precedente',async()=>{
+      const prima=await page.evaluate(()=>({uid:S.aperta.uid,nome:S.aperta.nome}));
+      await page.evaluate(()=>document.querySelector('#editor').scrollTop=650);
+      assert.equal(await page.evaluate(()=>{
+        const barra=document.querySelector('.editor-comandi').getBoundingClientRect();
+        return barra.top>=-1 && barra.bottom>0 && ['ar-nuova','ar-foto','ar-gps','ar-audio'].every(id=>{
+          const b=document.getElementById(id).getBoundingClientRect();
+          return b.top>=barra.top && b.bottom<=barra.bottom;
+        });
+      }),true);
+      await page.click('#ar-nuova');
+      await page.waitForFunction(uid=>S.aperta?.uid!==uid,prima.uid);
+      assert.equal(await page.evaluate(async({uid,nome})=>{
+        const record=await DB.leggi('schede',uid);
+        return record?.nome===nome && S.schede.length===2 && history.state?.editor===true;
+      },prima),true);
+    });
     assert.deepEqual(errors,[],'Eccezioni JavaScript');assert.deepEqual(failed,[],'Risorse locali mancanti');
     console.log(`\n${results.length} verifiche superate. Nessuna eccezione JavaScript, nessuna risorsa locale mancante.`);
   } finally {await browser.close();server.close();}
