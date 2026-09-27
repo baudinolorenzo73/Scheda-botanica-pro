@@ -553,6 +553,24 @@ const server = http.createServer((req, res) => {
         return record?.nome===nome && S.schede.length===2 && history.state?.editor===true;
       },prima),true);
     });
+    await test('Nuova scheda non perde dati se il salvataggio fallisce',async()=>{
+      assert.equal(await page.evaluate(async()=>{
+        const corrente=S.aperta;
+        const numero=S.schede.length;
+        const originale=DB.scrivi;
+        DB.scrivi=async(archivio,record)=>{
+          if(archivio==='schede' && record.uid===corrente.uid) throw new Error('Memoria piena simulata');
+          return originale(archivio,record);
+        };
+        try {
+          await nuovaSchedaDaEditor();
+          return S.aperta===corrente && S.schede.length===numero && !document.querySelector('#ar-nuova').disabled;
+        } finally {
+          DB.scrivi=originale;
+          await salvaOra(corrente);
+        }
+      }),true);
+    });
     assert.deepEqual(errors,[],'Eccezioni JavaScript');assert.deepEqual(failed,[],'Risorse locali mancanti');
     console.log(`\n${results.length} verifiche superate. Nessuna eccezione JavaScript, nessuna risorsa locale mancante.`);
   } finally {await browser.close();server.close();}
