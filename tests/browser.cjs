@@ -422,6 +422,7 @@ const server = http.createServer((req, res) => {
       }), /Nessuna pianta verificata per «lupo»/);
       await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;document.querySelector('#dlg-guida-specie').close();});
       await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null && !history.state?.editor);
     });
     await test('PlantNet: mostra anche specie fuori dalla guida locale',async()=>{
       await page.evaluate(async()=>{
