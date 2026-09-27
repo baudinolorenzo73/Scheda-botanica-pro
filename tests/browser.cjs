@@ -38,6 +38,9 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(() => DB.db && document.querySelector('#elenco').children.length > 0);
     await page.evaluate(() => localStorage.setItem('sb-backup-auto','0'));
     await test('Avvio e librerie locali', async()=>{
+      const pubblicata=JSON.parse(fs.readFileSync(path.join(root,'versione.json'),'utf8')).versione;
+      assert.equal(await page.evaluate(()=>APP_VERSIONE),pubblicata,'Versione interna diversa da versione.json');
+      assert.equal(require(path.join(root,'package.json')).version,pubblicata,'Versione npm diversa da versione.json');
       assert.equal(await page.evaluate(()=>typeof window.XlsxPopulate),'undefined');
       assert.equal(await page.evaluate(()=>typeof window.XLSX),'undefined');
       assert.equal(await page.evaluate(()=>typeof JSZip), 'function');

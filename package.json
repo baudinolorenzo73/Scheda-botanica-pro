@@ -1,8 +1,12 @@
 {
-  "name":"scheda-botanica-pro",
-  "version":"3.26.0",
-  "private":true,
-  "description":"PWA botanica statica, senza build; dipendenze npm solo per i test",
-  "scripts":{"test":"node tests/browser.cjs"},
-  "devDependencies":{"playwright":"1.62.1"}
+  "name": "scheda-botanica-pro",
+  "version": "3.26.2",
+  "private": true,
+  "description": "PWA botanica statica, senza build; dipendenze npm solo per i test",
+  "scripts": {
+    "test": "node tests/browser.cjs && node tests/resilience.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
 }
