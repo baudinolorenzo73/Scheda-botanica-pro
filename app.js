@@ -485,12 +485,6 @@ async function disegnaElenco() {
   const vis = schedeVisibili();
   const dup = progDuplicati();
   const dupZona = numeroZonaDuplicati();
-  const nFoto = S.schede.reduce((n, r) => n + r.foto.length, 0);
-  $('#riepilogo-schede').textContent = S.schede.length;
-  $('#riepilogo-specie').textContent = new Set(S.schede.map((r) => r.nome.trim().toLocaleLowerCase('it')).filter(Boolean)).size;
-  $('#riepilogo-gps').textContent = S.schede.filter((r) => r.gps).length;
-  $('#riepilogo-foto').textContent = nFoto;
-  $('#conteggio').textContent = `${S.schede.length} schede, ${nFoto} foto`;
 
   const elenco = $('#elenco');
   aggiornaBottoneSelezionaTutte(vis);
@@ -706,13 +700,17 @@ function costruisciModulo() {
           campoInput,
           el('div', { id: 'nome-risultati', class: 'nome-risultati nascosto', role: 'listbox', 'aria-label': 'Nomi trovati nell’archivio e nella guida' }),
           el('div', { class: 'nome-azioni' },
-            el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-nome', onclick: cercaNomeDaScheda }, 'Cerca per nome'),
-            el('button', { type: 'button', class: 'btn', id: 'nome-cerca-caratteristiche', onclick: cercaCaratteristicheDaScheda }, 'Caratteristiche'),
-            el('button', { type: 'button', class: 'btn', id: 'nome-cerca-foto', onclick: apriGuidaSpecieFoto }, 'Cerca con foto'),
-            el('button', { type: 'button', class: 'btn', id: 'nome-cerca-zona', onclick: apriRicercaZonaHabitat }, 'Zona d’origine')),
-          el('div', { class: 'nome-fonti' },
-            el('a', { id: 'plantnet-link', class: 'btn', href: 'https://identify.plantnet.org/it/k-world-flora/identify', target: '_blank', rel: 'noopener' }, '↗ PlantNet'),
-            el('div', { id: 'gbif-link' })),
+            el('details', { id: 'nome-ricerca', class: 'nome-ricerca' },
+              el('summary', { class: 'btn' }, 'Cerca'),
+              el('div', { class: 'nome-ricerca-opzioni' },
+                el('button', { type: 'button', class: 'btn', id: 'nome-cerca-nome', onclick: cercaNomeDaScheda }, 'Wikipedia / Wikidata'),
+                el('a', { id: 'plantnet-link', class: 'btn', href: 'https://identify.plantnet.org/it/k-world-flora/identify', target: '_blank', rel: 'noopener' }, '↗ PlantNet'),
+                el('div', { id: 'gbif-link', class: 'nome-fonte-gbif' }),
+                el('button', { type: 'button', class: 'btn', id: 'nome-cerca-foto', onclick: apriGuidaSpecieFoto }, 'Cerca da foto'),
+                el('button', { type: 'button', class: 'btn', id: 'nome-cerca-caratteristiche', onclick: cercaCaratteristicheDaScheda }, 'Cerca da caratteristiche'),
+                el('button', { type: 'button', class: 'btn', id: 'nome-cerca-zona', onclick: apriRicercaZonaHabitat }, 'Zona d’origine'))),
+            el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-auto', onclick: cercaAutoDaScheda }, 'Cerca auto')),
+          el('p', { class: 'nome-auto-nota' }, 'La ricerca auto consulta servizi online. Se hai già salvato una foto e la chiave PlantNet, invia quella foto per l’identificazione.'),
           el('p', { id: 'nome-conflitti', class: 'nome-conflitti nascosto', role: 'status' })));
       } else {
         griglia.append(el('label', { class: 'campo' + (c.largo ? ' largo' : ''), for: id },
@@ -2196,6 +2194,152 @@ function cercaCaratteristicheDaScheda() {
   disegnaListaGuidaSpecie();
 }
 
+const AUTO_RICERCA = { serie: 0 };
+
+async function jsonAuto(url, opzioni = {}) {
+  const controllo = new AbortController();
+  const attesa = setTimeout(() => controllo.abort(), 8000);
+  try {
+    const risposta = await fetch(url, { ...opzioni, signal: controllo.signal });
+    if (!risposta.ok) throw new Error(`servizio non disponibile (${risposta.status})`);
+    return await risposta.json();
+  } finally { clearTimeout(attesa); }
+}
+
+// P225 identifica un taxon, ma può riferirsi anche ad animali o funghi.
+// Il controllo esplicito del regno evita di proporre risultati fuori botanica.
+async function primoRisultatoWikipediaBotanico(q) {
+  const risultati = await jsonAuto(`https://it.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=5&format=json&origin=*`);
+  let serviziFalliti = false;
+  for (const voce of (risultati?.query?.search || []).slice(0, 5)) {
+    try {
+      const titolo = voce.title;
+      if (!titolo) continue;
+      const pagine = await jsonAuto(`https://it.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(titolo)}&prop=pageprops&format=json&origin=*`);
+      const qid = Object.values(pagine?.query?.pages || {})[0]?.pageprops?.wikibase_item;
+      if (!/^Q\d+$/.test(qid || '')) continue;
+      const dati = await jsonAuto(`https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`);
+      const nome = dati?.entities?.[qid]?.claims?.P225?.[0]?.mainsnak?.datavalue?.value;
+      if (typeof nome !== 'string' || !nome.trim()) continue;
+      const gbif = await jsonAuto(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(nome.trim())}&kingdom=Plantae`);
+      if (gbif.kingdom === 'Plantae' && gbif.matchType === 'EXACT' && gbif.confidence >= 90 &&
+          ['SPECIES', 'SUBSPECIES', 'VARIETY', 'FORM', 'GENUS'].includes(gbif.rank)) {
+        return { titolo, nomeSci: nome.trim() };
+      }
+    } catch { serviziFalliti = true; }
+  }
+  if (serviziFalliti) throw new Error('classificazione botanica non disponibile');
+  return null;
+}
+
+async function nomeWikipediaAuto(q) {
+  return (await primoRisultatoWikipediaBotanico(q))?.nomeSci || null;
+}
+
+async function fotoPlantNetAuto(foto) {
+  const blob = await DB.leggi('foto', foto.id);
+  if (!blob) throw new Error('foto non disponibile nel dispositivo');
+  const form = new FormData();
+  form.append('images', blob, 'foto.jpg');
+  form.append('organs', 'auto');
+  const dati = await jsonAuto(`https://my-api.plantnet.org/v2/identify/all?api-key=${encodeURIComponent(chiavePlantNet())}&lang=it&include-related-images=false`, { method: 'POST', body: form });
+  return (dati?.results || []).slice(0, 5).map(r => ({
+    nome: r.species?.scientificNameWithoutAuthor || r.species?.scientificName,
+    nomeCompleto: r.species?.scientificName || '',
+    percentuale: Math.round(Math.max(0, Math.min(1, Number(r.score) || 0)) * 100),
+    gbifId: r.gbif?.id || '',
+  })).filter(r => r.nome);
+}
+
+function disegnaRisultatiAuto(candidati) {
+  const ordinati = [...candidati.values()].sort((a, b) =>
+    (b.foto ?? -1) - (a.foto ?? -1) || (b.locale?.punti ?? -1) - (a.locale?.punti ?? -1) || a.nome.localeCompare(b.nome, 'it')).slice(0, 8);
+  $('#auto-risultati').replaceChildren(...(ordinati.length ? ordinati.map(c => {
+    const indizi = [];
+    if (c.foto != null) indizi.push(`Foto PlantNet: ${c.foto}% di confidenza del modello`);
+    if (c.locale?.totale >= 2) indizi.push(`Guida locale: ${Math.round(c.locale.punti / c.locale.totale * 100)}% dei ${c.locale.totale} caratteri inseriti concorda${c.locale.punti === 1 ? '' : 'no'} (${c.locale.punti}/${c.locale.totale})`);
+    else if (c.locale?.totale === 1) indizi.push(`Guida locale: ${c.locale.punti}/1 carattere concordante; troppo poco per stimare una compatibilità.`);
+    else if (c.guida) indizi.push('Presente nella guida delle 144 piante');
+    if (c.wikipedia) indizi.push('Nome del taxon su Wikidata, trovato tramite Wikipedia');
+    if (c.gbif != null) indizi.push(`GBIF: corrispondenza del nome ${c.gbif}% (non identificazione della pianta)`);
+    if (c.scritto && !c.guida && !c.wikipedia && c.gbif == null && c.foto == null) indizi.push('Nome inserito nella scheda: ancora da verificare.');
+    return el('div', { class: 'auto-carta' },
+      el('h3', { class: 'specie', testo: c.nome }),
+      ...indizi.map(s => el('p', {}, s)),
+      el('button', { type: 'button', class: 'btn primario', onclick: () => usaRisultatoAuto(c) }, 'Usa questo nome'));
+  }) : [el('p', { class: 'vuoto' }, 'Nessuna proposta verificabile. Inserisci qualche caratteristica, un nome o una foto e riprova.')]));
+}
+
+function usaRisultatoAuto(c) {
+  const r = S.aperta;
+  if (!r) return;
+  if (r.nome.trim() && r.nome.trim().toLowerCase() !== c.nome.toLowerCase() &&
+      !confirm(`Sostituire «${r.nome}» con «${c.nome}»? I dati già inseriti negli altri campi saranno conservati.`)) return;
+  if (c.guida) usaNomeDaGuidaSpecie(c.guida);
+  else usaRisultatoWeb(c.nome);
+  if (c.gbifId) r.gbifId = String(c.gbifId);
+  if (c.nomeCompleto) r.plantnetNome = c.nomeCompleto;
+  salvaPresto(r);
+  $('#dlg-cerca-auto').close();
+}
+
+async function cercaAutoDaScheda() {
+  const r = S.aperta;
+  if (!r) return;
+  const serie = ++AUTO_RICERCA.serie;
+  const nome = $('#f-nome').value.trim();
+  const foto = r.foto?.[0];
+  const campi = Object.fromEntries(GS_CAMPI_SCHEDA.map(k => [k, r[k] || '']));
+  const filtri = { campi, grandezza: r.grandezza || '', altro: '' };
+  const haCaratteri = Object.values(campi).some(Boolean) || !!filtri.grandezza;
+  const candidati = new Map();
+  const aggiungi = (nomeSci, nuovi) => {
+    const chiave = (nomeSci || '').trim().toLocaleLowerCase('it');
+    if (!chiave) return;
+    const precedente = candidati.get(chiave) || { nome: nomeSci.trim(), guida: trovaSpecieGuida(nomeSci) };
+    candidati.set(chiave, { ...precedente, ...nuovi });
+  };
+  const locali = GUIDA_SPECIE.map(v => ({ v, ...punteggioCaratteristiche(v, filtri) }))
+    .filter(x => (haCaratteri && x.punti >= Math.max(1, Math.ceil(x.totale / 2))) ||
+      (nome && nomeCatalogo(x.v).toLowerCase().includes(nome.toLowerCase())))
+    .sort((a, b) => b.punti - a.punti).slice(0, 8);
+  for (const x of locali) aggiungi(nomeCatalogo(x.v), { guida: x.v, locale: haCaratteri ? { punti: x.punti, totale: x.totale } : null });
+  if (/^\S+\s+\S+/.test(nome)) aggiungi(nome, { scritto: true });
+  $('#auto-stato').textContent = 'Confronto locale completato. Verifico le fonti disponibili…';
+  disegnaRisultatiAuto(candidati);
+  $('#dlg-cerca-auto').showModal();
+
+  const prove = [];
+  if (nome && navigator.onLine) prove.push(nomeWikipediaAuto(nome).then(v => v && aggiungi(v, { wikipedia: true })));
+  if (foto && chiavePlantNet() && navigator.onLine) prove.push(fotoPlantNetAuto(foto).then(lista => {
+    for (const v of lista) aggiungi(v.nome, { foto: v.percentuale, nomeCompleto: v.nomeCompleto, gbifId: v.gbifId });
+  }));
+  const esiti = await Promise.allSettled(prove);
+  if (serie !== AUTO_RICERCA.serie || S.aperta !== r) return;
+  const nomiGbif = [...candidati.values()].filter(c => /^\S+\s+\S+/.test(c.nome))
+    .sort((a, b) => Number(!!b.wikipedia) - Number(!!a.wikipedia) ||
+      Number(b.nome.toLowerCase() === nome.toLowerCase()) - Number(a.nome.toLowerCase() === nome.toLowerCase()) ||
+      (b.foto ?? -1) - (a.foto ?? -1) || (b.locale?.punti ?? -1) - (a.locale?.punti ?? -1))
+    .slice(0, 2);
+  if (navigator.onLine) await Promise.allSettled(nomiGbif.map(async c => {
+    const dati = await jsonAuto(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(c.nome)}&kingdom=Plantae`);
+    if (dati.kingdom === 'Plantae' && dati.matchType === 'EXACT' && dati.rank === 'SPECIES' && dati.confidence >= 90 && dati.usageKey) {
+      c.gbif = dati.confidence;
+      c.gbifId = dati.usageKey;
+    }
+  }));
+  if (serie !== AUTO_RICERCA.serie || S.aperta !== r) return;
+  for (const [chiave, c] of candidati) {
+    if (c.scritto && !c.guida && !c.wikipedia && c.gbif == null && c.foto == null) candidati.delete(chiave);
+  }
+  disegnaRisultatiAuto(candidati);
+  const errori = esiti.filter(e => e.status === 'rejected').length;
+  const avvisoFoto = !foto ? 'Nessuna foto salvata: prova fotografica saltata. · '
+    : !chiavePlantNet() ? 'Foto non analizzata: manca la chiave PlantNet. · ' : '';
+  const conteggio = candidati.size > 8 ? `Prime 8 di ${candidati.size} proposte` : `${candidati.size} proposte`;
+  $('#auto-stato').textContent = `${conteggio} · ${avvisoFoto}${!navigator.onLine ? 'Offline: solo guida locale.' : errori ? `${errori} servizio/i non disponibili; gli altri risultati restano utilizzabili.` : 'Verifica completata.'}`;
+}
+
 // Scorciatoia dal campo "Nome esemplare" (pulsante 🔎): apre la stessa guida
 // ma già sulla modalità "Per foto", per arrivare all'identificazione
 // PlantNet in un tocco invece di passare prima dalla ricerca per nome.
@@ -2310,29 +2454,12 @@ async function cercaSulWeb(q) {
   if (!q) return;
   $('#gs-lista').replaceChildren(el('p', { class: 'vuoto' }, '⏳ Cerco su Wikipedia…'));
   try {
-    const rSearch = await fetch(`https://it.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=1&format=json&origin=*`);
-    const datiSearch = await rSearch.json();
-    const titolo = datiSearch?.query?.search?.[0]?.title;
-    if (!titolo) { mostraRicercaLocaleDopoWeb(`Nessun risultato su Wikipedia per "${q}".`); return; }
-
-    const rPag = await fetch(`https://it.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(titolo)}&prop=extracts|pageimages|pageprops&exintro=1&explaintext=1&piprop=thumbnail&pithumbsize=500&format=json&origin=*`);
-    const datiPag = await rPag.json();
+    const botanico = await primoRisultatoWikipediaBotanico(q);
+    if (!botanico) { mostraRicercaLocaleDopoWeb(`Nessuna pianta verificata per «${q}» nei primi risultati di Wikipedia. Prova un nome più preciso o consulta la guida locale.`); return; }
+    const datiPag = await jsonAuto(`https://it.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(botanico.titolo)}&prop=extracts|pageimages|pageprops&exintro=1&explaintext=1&piprop=thumbnail&pithumbsize=500&format=json&origin=*`);
     const pagina = Object.values(datiPag?.query?.pages || {})[0];
-    if (!pagina || pagina.missing !== undefined) { mostraRicercaLocaleDopoWeb(`Nessun risultato su Wikipedia per "${q}".`); return; }
-
-    // Nome scientifico preciso da Wikidata (proprietà P225 "nome del taxon"),
-    // se la pagina è collegata a un'entità — un dato strutturato, non testo
-    // da interpretare. Se manca, resta il titolo della pagina Wikipedia.
-    let nomeSci = '';
-    const qid = pagina.pageprops?.wikibase_item;
-    if (qid) {
-      try {
-        const rWD = await fetch(`https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`);
-        const datiWD = await rWD.json();
-        const p225 = datiWD?.entities?.[qid]?.claims?.P225?.[0]?.mainsnak?.datavalue?.value;
-        if (p225) nomeSci = p225;
-      } catch { /* non presentare il titolo come nome scientifico verificato */ }
-    }
+    if (!pagina || pagina.missing !== undefined) { mostraRicercaLocaleDopoWeb(`Pagina Wikipedia non disponibile per «${q}».`); return; }
+    const nomeSci = botanico.nomeSci;
 
     let estratto = (pagina.extract || '').trim();
     if (estratto.length > 700) estratto = estratto.slice(0, 700) + '…';
@@ -2388,7 +2515,7 @@ function usaRisultatoWeb(nomeSci) {
   confrontaConCatalogo();
   disegnaLinkGbif();
   salvaPresto(r);
-  $('#dlg-guida-specie').close();
+  if ($('#dlg-guida-specie').open) $('#dlg-guida-specie').close();
   toast(compilati.length ? `Nome (da Wikipedia) e altri ${compilati.length} campi dal catalogo verificato` : 'Nome aggiornato da Wikipedia (non è tra le 144 del corso)');
 }
 
@@ -2908,10 +3035,6 @@ function aggiornaInfoTraccia() {
     else if (TRK.ultimoPunto) dettaglio = `Ultimo punto salvato alle ${new Date(TRK.ultimoPunto).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
     else dettaglio = 'Segnale ricevuto: in attesa di un punto preciso';
   } else if (TRK.avviso) dettaglio = TRK.avviso;
-  $('#btn-traccia-avvia').classList.toggle('nascosto', attiva);
-  $('#btn-traccia-avvia').textContent = TRK.pausa ? '▶ Riprendi traccia' : '▶ Inizia traccia';
-  $('#btn-traccia-pausa').classList.toggle('nascosto', !attiva);
-  $('#btn-traccia-ferma').classList.toggle('nascosto', !attiva && !TRK.pausa);
   $('#btn-traccia-gpx').classList.toggle('nascosto', n === 0);
   $('#btn-traccia-cancella').classList.toggle('nascosto', n === 0);
   $('#home-traccia-avvia').disabled = attiva;
@@ -3926,6 +4049,13 @@ function applicaTema(t) {
   document.querySelector('meta[name=theme-color]').content = t === 'scuro' ? '#1c241f' : '#2f5d3a';
 }
 
+function applicaDimensioneInterfaccia(valore) {
+  const scelto = ['auto', '110', '125'].includes(valore) ? valore : 'auto';
+  document.body.dataset.interfaccia = scelto;
+  $('#sel-dimensione-interfaccia').value = scelto;
+  localStorage.setItem('sb-dimensione-interfaccia', scelto);
+}
+
 function collegaEventi() {
   $('.nav-editor').onclick = (e) => { const link = e.target.closest('a'); if (link) { e.preventDefault(); $(link.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
   $('#btn-tema').onclick = () => {
@@ -3967,7 +4097,6 @@ function collegaEventi() {
   for (const id of ['#filtro-problemi', '#filtro-senza-foto', '#filtro-senza-gps']) $(id).onchange = disegnaElenco;
   $('#btn-filtri-azzera').onclick = azzeraFiltriAvanzati;
   $('#btn-nuova').onclick = () => { cambiaVista('schede'); nuovaScheda(); };
-  $('#home-nuova').onclick = () => { cambiaVista('schede'); nuovaScheda(); };
   $('#home-traccia-avvia').onclick = avviaTraccia;
   $('#home-traccia-pausa').onclick = pausaTraccia;
   $('#home-traccia-ferma').onclick = fermaTraccia;
@@ -4003,8 +4132,13 @@ function collegaEventi() {
     $('#sel-backup-auto-giorni').value = localStorage.getItem('sb-backup-auto-giorni') || '1';
     $('#chk-notifica-backup').checked = localStorage.getItem('sb-notifica-backup') === '1';
     aggiornaStatoNotificaBackup();
+    $('#aggiornamento-stato').textContent = `Versione installata: ${APP_VERSIONE}`;
     $('#dlg-menu').showModal();
+    if (navigator.onLine) verificaAggiornamenti();
   };
+  $('#btn-controlla-aggiornamenti').onclick = () => verificaAggiornamenti(true);
+  $('#btn-applica-aggiornamento').onclick = applicaAggiornamento;
+  $('#sel-dimensione-interfaccia').onchange = (e) => applicaDimensioneInterfaccia(e.target.value);
   $('#chk-backup-auto').onchange = (e) => localStorage.setItem('sb-backup-auto', e.target.checked ? '1' : '0');
   $('#sel-backup-auto-giorni').onchange = (e) => localStorage.setItem('sb-backup-auto-giorni', e.target.value);
   $('#chk-notifica-backup').onchange = async (e) => {
@@ -4059,6 +4193,8 @@ function collegaEventi() {
   // aiuto
   $('#btn-aiuto').onclick = () => { $('#aiuto-versione').textContent = `Versione dell'app: ${APP_VERSIONE}`; $('#dlg-aiuto').showModal(); };
   $('#gs-cerca').oninput = disegnaListaGuidaSpecie;
+  $('#auto-chiudi').onclick = () => { AUTO_RICERCA.serie++; $('#dlg-cerca-auto').close(); };
+  $('#dlg-cerca-auto').addEventListener('cancel', () => { AUTO_RICERCA.serie++; });
   $('#gs-chiudi').onclick = () => $('#dlg-guida-specie').close();
   popolaDatalistZonaHabitat();
   $('#zh-cerca').oninput = disegnaListaZonaHabitat;
@@ -4138,9 +4274,6 @@ function collegaEventi() {
   $('#tab-timeline').onclick = () => cambiaVista('timeline');
 
   // traccia GPS (percorso)
-  $('#btn-traccia-avvia').onclick = avviaTraccia;
-  $('#btn-traccia-pausa').onclick = pausaTraccia;
-  $('#btn-traccia-ferma').onclick = fermaTraccia;
   $('#btn-traccia-gpx').onclick = esportaTracciaGPX;
   $('#btn-traccia-cancella').onclick = cancellaTraccia;
 
@@ -4302,6 +4435,7 @@ function controllaPromemoriaBackup() {
 
 async function avvio() {
   applicaTema(localStorage.getItem('sb-tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'scuro' : 'chiaro'));
+  applicaDimensioneInterfaccia(localStorage.getItem('sb-dimensione-interfaccia') || 'auto');
   aggiornaDispositivo();
   costruisciModulo();
   collegaEventi();
@@ -4403,13 +4537,112 @@ async function aggiornaStatoOffline() {
   aggiornaStatoRete();
 }
 
+let aggiornamentoRichiesto = false;
+let ultimoControlloAggiornamenti = 0;
+
+function confrontaVersioni(a, b) {
+  const parti = (v) => String(v).split('.').map(n => Number(n) || 0);
+  const x = parti(a), y = parti(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) ? 1 : -1;
+  }
+  return 0;
+}
+
+function mostraAggiornamentoPronto(reg, versione = '') {
+  const pronto = !!reg?.waiting && !!navigator.serviceWorker.controller;
+  $('#btn-applica-aggiornamento').classList.toggle('nascosto', !pronto);
+  if (pronto) $('#aggiornamento-stato').textContent = `Versione installata: ${APP_VERSIONE}. Aggiornamento${versione ? ` ${versione}` : ''} pronto: puoi applicarlo ora.`;
+  return pronto;
+}
+
+async function verificaAggiornamenti(forza = false) {
+  const statoVersione = $('#aggiornamento-stato');
+  const bottone = $('#btn-controlla-aggiornamenti');
+  if (!forza && Date.now() - ultimoControlloAggiornamenti < 60000) return;
+  if (!('serviceWorker' in navigator) || location.protocol === 'file:') {
+    statoVersione.textContent = `Versione installata: ${APP_VERSIONE}. Aggiornamenti automatici disponibili solo dal sito HTTPS.`;
+    return;
+  }
+  if (!navigator.onLine) {
+    statoVersione.textContent = `Versione installata: ${APP_VERSIONE}. Sei offline: riprova quando hai rete.`;
+    return;
+  }
+  ultimoControlloAggiornamenti = Date.now();
+  bottone.disabled = true;
+  statoVersione.textContent = `Versione installata: ${APP_VERSIONE}. Controllo la versione pubblicata…`;
+  try {
+    const risposta = await fetch(`./versione.json?controllo=${Date.now()}`, { cache: 'no-store' });
+    if (!risposta.ok) throw new Error('file della versione non disponibile sul sito');
+    const pubblicata = (await risposta.json()).versione;
+    if (!/^\d+\.\d+\.\d+$/.test(pubblicata || '')) throw new Error('versione pubblicata non valida');
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) throw new Error('installazione dell’app offline non ancora pronta: riapri la pagina');
+    if (mostraAggiornamentoPronto(reg, pubblicata)) return;
+    if (confrontaVersioni(pubblicata, APP_VERSIONE) <= 0) {
+      statoVersione.textContent = `Versione installata: ${APP_VERSIONE}. Nessun aggiornamento disponibile.`;
+      return;
+    }
+    statoVersione.textContent = `Versione installata: ${APP_VERSIONE}. Versione ${pubblicata} pubblicata; preparo l’aggiornamento…`;
+    const attesa = new Promise(resolve => {
+      const termine = () => { clearTimeout(timer); reg.removeEventListener('updatefound', osserva); resolve(); };
+      const osserva = () => {
+        const worker = reg.installing;
+        worker?.addEventListener('statechange', () => {
+          if (worker.state === 'installed' || worker.state === 'activated' || worker.state === 'redundant')
+            setTimeout(termine, 0);
+        });
+      };
+      const timer = setTimeout(termine, 20000);
+      reg.addEventListener('updatefound', osserva);
+      if (reg.installing) osserva();
+    });
+    await reg.update();
+    if (!reg.waiting) await attesa;
+    if (!mostraAggiornamentoPronto(reg, pubblicata))
+      statoVersione.textContent = `Versione ${pubblicata} pubblicata, ma il download non è ancora pronto. Riprova tra poco.`;
+  } catch (e) {
+    statoVersione.textContent = `Versione installata: ${APP_VERSIONE}. Controllo non riuscito: ${e.message}.`;
+    ultimoControlloAggiornamenti = 0;
+  } finally { bottone.disabled = false; }
+}
+
+async function applicaAggiornamento() {
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg?.waiting) { await verificaAggiornamenti(true); return; }
+  if (TRK.watch !== null || REG.attiva || GPSR.watch !== null) {
+    $('#aggiornamento-stato').textContent = 'Ferma traccia GPS, rilevamento GPS e nota vocale prima di aggiornare.';
+    return;
+  }
+  if (S.aperta && $('#modulo').querySelector(':invalid')) {
+    $('#aggiornamento-stato').textContent = 'Correggi i campi non validi nella scheda prima di aggiornare.';
+    return;
+  }
+  if (S.aperta && !(await salvaOra(S.aperta))) return;
+  if (!(await salvaTuttiInSospeso())) return;
+  aggiornamentoRichiesto = true;
+  $('#aggiornamento-stato').textContent = 'Aggiornamento in corso…';
+  reg.waiting.postMessage({ tipo: 'ATTIVA_AGGIORNAMENTO' });
+  setTimeout(() => {
+    if (aggiornamentoRichiesto) $('#aggiornamento-stato').textContent = 'Aggiornamento in attesa: chiudi le altre finestre dell’app e riprova.';
+  }, 10000);
+}
+
 // Registrazione del service worker: rende l'app installabile e utilizzabile offline
 // dopo la prima visita. Se il file non è servito da un vero server (es. aperto
 // come file locale) l'app funziona comunque, solo senza installazione PWA.
 if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (aggiornamentoRichiesto) { aggiornamentoRichiesto = false; location.reload(); }
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').then((reg) => {
-      const avvisa = () => { if (reg.waiting && navigator.serviceWorker.controller) toast('Aggiornamento pronto. Chiudi tutte le finestre dell’app e riaprila per applicarlo.', null, null, 12000); };
+    navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' }).then((reg) => {
+      const avvisa = () => {
+        if (reg.waiting && navigator.serviceWorker.controller) {
+          mostraAggiornamentoPronto(reg);
+          toast('Aggiornamento pronto: apri Configurazione e tocca «Aggiorna ora».', null, null, 12000);
+        }
+      };
       avvisa();
       reg.addEventListener('updatefound', () => reg.installing?.addEventListener('statechange', avvisa));
       aggiornaStatoOffline();

@@ -2,9 +2,9 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.23.0**
+**by Lollo ®2026 — versione 3.25.0**
 
-[Excel più leggero](REVISIONE-3.23.md) · [Unione con Drive Up](REVISIONE-3.22.md) · [Affidabilità traccia GPS](REVISIONE-3.21.md) · [Comandi in prima pagina](REVISIONE-3.20.md)
+[Editor e ricerca automatica](REVISIONE-3.25.md) · [Prima pagina e dimensione interfaccia](REVISIONE-3.24.md) · [Excel più leggero](REVISIONE-3.23.md) · [Unione con Drive Up](REVISIONE-3.22.md)
 
 ---
 
@@ -32,9 +32,11 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 - **Riconoscimento specie** da foto con [PlantNet](https://plantnet.org) (chiave gratuita, opzionale).
 - **Codice QR permanente** per ogni scheda, per ritrovarla senza ambiguità anche dopo l’apertura di un nuovo elenco.
 - **Ricerca immediata del nome** nel catalogo locale delle specie e nei nomi già registrati, utilizzabile anche offline. Il nome può essere inserito liberamente.
-- **Comandi di ricerca della specie** per nome, per caratteristiche dalla guida locale, per foto con PlantNet e per zona d’origine indicata nella guida; la ricerca per zona consente di consultare la specie su GBIF per verificarne la distribuzione attuale. La provenienza non dimostra la presenza locale. Schede PlantNet e GBIF sono consultabili dai rispettivi collegamenti. I dati già osservati non vengono sovrascritti e le discordanze vengono evidenziate.
+- **Comandi di ricerca della specie** raccolti sotto «Cerca» nel campo nome: Wikipedia/Wikidata, PlantNet, GBIF, foto, caratteristiche e zona d’origine. La ricerca Wikipedia considera i primi cinque risultati e mostra solo nomi tassonomici strutturati su Wikidata che GBIF classifica nel regno Plantae; se GBIF non risponde, non propone nomi non verificati. «Cerca auto» combina la guida locale con la verifica del nome e, se c’è una foto e la chiave PlantNet, l’identificazione da foto; mostra la provenienza e il significato di ogni percentuale senza sintetizzarle in una probabilità fittizia. La provenienza d’origine non dimostra la presenza locale. I dati già osservati non vengono sovrascritti e le discordanze vengono evidenziate.
+- **Aggiornamenti:** da Configurazione vedi la versione installata, controlli quella pubblicata e puoi toccare «Aggiorna ora» quando il download è pronto. L’app salva le schede in sospeso prima di ricaricarsi; durante una traccia GPS o una registrazione vocale chiede prima di fermarle. A ogni nuova pubblicazione aggiorna insieme `js/config.js`, `versione.json` e la versione della cache in `service-worker.js`.
+- **Foto, GPS e nota vocale** sempre accessibili in alto nell’editor, anche mentre scorri la scheda.
 - **Catalogo integrabile** in Configurazione: sfoglia le 144 pagine originali, aggiungi le caratteristiche mancanti e registra la fonte; le integrazioni hanno un editor viola distinto dalle schede di rilievo. Trasferisci solo le integrazioni o il catalogo completo delle 144 piante in JSON, oppure includi le integrazioni nel backup ZIP di schede, foto e audio.
-- **Azioni in prima pagina**: nuova scheda con salvataggio, avvio/pausa/stop della traccia GPS, e ricerca della località su 3B Meteo. La traccia mantiene i punti durante la pausa e dopo lo stop; il meteo si apre sul sito esterno e richiede Internet.
+- **Azioni in prima pagina**: «Nuova scheda» resta sempre visibile nella barra inferiore; avvio/pausa/stop della traccia GPS nel riquadro «Sul campo»; «+ Opzioni» raccoglie meteo 3B Meteo, QR, stampa, nuovo elenco, backup, cestino, guida e tema. In Configurazione si può scegliere la dimensione dell’interfaccia (adatta allo schermo, 110% o 125%). La traccia mantiene i punti durante la pausa e dopo lo stop; il meteo richiede Internet.
 - **Nuovo elenco** dalla prima schermata: scarica un backup delle schede correnti e le sposta nel cestino, poi riparte dalla scheda numero 1.
 - **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
 - **Stampa** di una o più schede, anche solo come etichette QR.

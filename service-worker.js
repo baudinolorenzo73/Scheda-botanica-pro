@@ -1,9 +1,9 @@
 'use strict';
 // Cache versionata per percorso: altri progetti sullo stesso dominio restano indipendenti.
-const CACHE_NOME = 'scheda-botanica-app-v31-' + new URL(self.registration.scope).pathname;
+const CACHE_NOME = 'scheda-botanica-app-v35-' + new URL(self.registration.scope).pathname;
 const CACHE_TILE = 'scheda-botanica-tile-v1';
 const FILE_APP_SHELL = [
-  './', './index.html', './css/app.css', './manifest.json',
+  './', './index.html', './css/app.css', './manifest.json', './versione.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
   './app.js', './js/config.js', './js/utils.js', './js/database.js', './icone.js',
   './data/guida-specie.js', './lib/leaflet.js', './lib/leaflet.css',
@@ -30,10 +30,15 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim();
   })());
 });
+self.addEventListener('message', (event) => {
+  if (event.data?.tipo === 'ATTIVA_AGGIORNAMENTO') self.skipWaiting();
+});
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // La versione pubblicata deve essere letta dalla rete, non dalla cache offline.
+  if (url.origin === self.location.origin && url.pathname === new URL('versione.json', self.registration.scope).pathname) return;
   const tile = HOST_TILE.includes(url.hostname);
   if (!tile && (url.origin !== self.location.origin || !url.pathname.startsWith(new URL(self.registration.scope).pathname))) return;
   event.respondWith((async () => {

@@ -44,20 +44,36 @@
 </svg>
 
 <header class="testata">
-  <div class="marchio-app"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-leaf"></use></svg><h1>Scheda Botanica <small id="conteggio">—</small><small id="stato-rete" title="Stato della connessione"></small></h1></div>
-  <div class="testata-azioni" aria-label="Strumenti">
-    <button type="button" class="btn-icona" id="btn-tema" title="Cambia tema" aria-label="Cambia tema"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg></button>
-    <button type="button" class="btn-icona" id="btn-aiuto" title="Guida" aria-label="Guida"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-help"></use></svg></button>
-    <button type="button" class="btn-icona" id="btn-cestino" title="Cestino" aria-label="Cestino"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-trash"></use></svg><span id="cestino-badge" class="badge-cestino nascosto"></span></button>
-    <button type="button" class="btn-icona" id="btn-menu" title="Backup e impostazioni" aria-label="Backup e impostazioni"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg></button>
-  </div>
+  <div class="marchio-app"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-leaf"></use></svg><h1>Scheda Botanica <small id="stato-rete" title="Stato della connessione"></small></h1></div>
 </header>
+
+<section class="azioni-home" aria-label="Azioni sul campo">
+  <h2>Sul campo</h2>
+  <div class="azioni-home-griglia">
+    <button type="button" class="btn primario" id="home-traccia-avvia">Avvia traccia</button>
+    <button type="button" class="btn" id="home-traccia-pausa" disabled>Pausa</button>
+    <button type="button" class="btn" id="home-traccia-ferma" disabled>Stop</button>
+  </div>
+  <p id="home-traccia-stato" role="status" aria-live="polite">Traccia ferma</p>
+  <details id="opzioni-home" class="opzioni-home">
+    <summary>+ Opzioni</summary>
+    <div class="opzioni-griglia">
+      <button type="button" class="btn" id="btn-scansiona" aria-label="Trova scheda con QR"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-qr"></use></svg><span>Scansiona QR</span></button>
+      <button type="button" class="btn" id="home-meteo">Meteo · 3B Meteo</button>
+      <button type="button" class="btn" id="btn-stampa" aria-label="Stampa schede"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg><span>Stampa</span></button>
+      <button type="button" class="btn" id="btn-nuovo-elenco" title="Salva un backup e inizia un nuovo elenco"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Nuovo elenco</span></button>
+      <button type="button" class="btn" id="btn-menu"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg><span>Backup e configurazione</span></button>
+      <button type="button" class="btn" id="btn-cestino" title="Cestino" aria-label="Cestino"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-trash"></use></svg><span>Cestino</span><span id="cestino-badge" class="badge-cestino nascosto"></span></button>
+      <button type="button" class="btn" id="btn-aiuto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-help"></use></svg><span>Guida</span></button>
+      <button type="button" class="btn" id="btn-tema"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><span>Tema chiaro/scuro</span></button>
+    </div>
+  </details>
+  <p class="azioni-home-nota">Su alcuni telefoni il browser sospende il GPS a schermo spento: controlla i punti registrati nella Mappa.</p>
+</section>
 
 <div class="barra">
   <label class="cerca-box"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg><span class="visually-hidden">Cerca nelle schede</span><input type="search" id="cerca" class="campo-base" placeholder="Nome, numero, note…" aria-label="Cerca nelle schede"></label>
   <select id="filtro-data" class="campo-base" aria-label="Filtra per data"></select>
-  <button type="button" class="btn" id="btn-scansiona" aria-label="Trova scheda con QR"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-qr"></use></svg><span>Scansiona QR</span></button>
-  <button type="button" class="btn" id="btn-stampa" aria-label="Stampa schede"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg><span>Stampa</span></button>
 </div>
 <div style="max-width:var(--largo);margin:0 auto;padding:0 12px 6px">
   <button type="button" class="btn" id="btn-filtri-avanzati" aria-controls="pannello-filtri" aria-expanded="false" ><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-filter"></use></svg><span>Filtri</span><span id="filtri-avanzati-conteggio"></span></button>
@@ -107,36 +123,14 @@
 </div>
 
 <main>
-  <section class="riepilogo" aria-label="Riepilogo archivio">
-    <div><strong id="riepilogo-schede">0</strong><span>Schede</span></div>
-    <div><strong id="riepilogo-specie">0</strong><span>Nomi rilevati</span></div>
-    <div><strong id="riepilogo-gps">0</strong><span>Con GPS</span></div>
-    <div><strong id="riepilogo-foto">0</strong><span>Fotografie</span></div>
-  </section>
   <div id="vista-schede">
-    <section class="azioni-home" aria-label="Azioni rapide sul campo">
-      <h2>Azioni sul campo</h2>
-      <div class="azioni-home-griglia">
-        <button type="button" class="btn primario" id="home-nuova">Nuova scheda botanica</button>
-        <button type="button" class="btn primario" id="home-traccia-avvia">Avvia traccia</button>
-        <button type="button" class="btn" id="home-traccia-pausa" disabled>Pausa</button>
-        <button type="button" class="btn" id="home-traccia-ferma" disabled>Stop</button>
-        <button type="button" class="btn" id="home-meteo">Meteo · 3B Meteo</button>
-      </div>
-      <p id="home-traccia-stato" role="status" aria-live="polite">Traccia ferma</p>
-      <p class="azioni-home-nota">Su alcuni telefoni il browser sospende il GPS a schermo spento: controlla i punti registrati nella Mappa.</p>
-    </section>
     <div class="strumenti-elenco">
-      <button type="button" class="btn" id="btn-nuovo-elenco" title="Salva un backup e inizia un nuovo elenco"> <svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Nuovo elenco</span></button>
       <button type="button" class="btn nascosto" id="btn-seleziona-tutte"></button>
     </div>
     <div class="elenco" id="elenco"></div>
   </div>
   <div id="vista-mappa" class="nascosto" style="max-width:var(--largo);margin:0 auto;padding:0 12px">
     <div class="traccia-barra" id="traccia-barra" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 2px 10px">
-      <button type="button" class="btn primario" id="btn-traccia-avvia">▶ Inizia traccia</button>
-      <button type="button" class="btn nascosto" id="btn-traccia-pausa">Ⅱ Pausa</button>
-      <button type="button" class="btn pericolo nascosto" id="btn-traccia-ferma">■ Stop</button>
       <span id="traccia-info" style="color:var(--tenue);font-size:13px"></span>
       <span id="traccia-diagnosi" role="status" style="color:var(--ruggine);font-size:13px;flex-basis:100%"></span>
       <button type="button" class="btn nascosto" id="btn-traccia-gpx">⭳ Esporta traccia GPX</button>
@@ -169,6 +163,11 @@
     <button class="btn-icona" id="btn-salva-scheda" title="Salva la scheda" aria-label="Salva la scheda">✓</button>
     <button class="btn-icona" id="btn-stampa-una" title="Stampa questa scheda" aria-label="Stampa questa scheda"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg></button>
   </header>
+  <nav class="azioni-rapide" aria-label="Foto, posizione e note vocali">
+    <button type="button" id="ar-foto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-camera"></use></svg><span>Foto</span></button>
+    <button type="button" id="ar-gps"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-pin"></use></svg><b id="ar-gps-testo">GPS</b></button>
+    <button type="button" id="ar-audio"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-mic"></use></svg><b id="ar-audio-testo">Nota vocale</b></button>
+  </nav>
   <form class="modulo" id="modulo" autocomplete="off" onsubmit="return false">
     <nav class="nav-editor" aria-label="Sezioni scheda">
       <a href="#sez-oss">Dati</a><a href="#sez-veg">Foglie</a><a href="#sez-ped">Terreno</a><a href="#sez-fit">Salute</a><a href="#sez-not">Note</a>
@@ -222,14 +221,16 @@
 
     <button type="button" class="btn pericolo" id="btn-elimina">Elimina scheda</button>
   </form>
-  <nav class="azioni-rapide" aria-label="Azioni rapide">
-    <button type="button" id="ar-foto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-camera"></use></svg><span>Foto</span></button>
-    <button type="button" id="ar-gps"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-pin"></use></svg><b id="ar-gps-testo">GPS</b></button>
-    <button type="button" id="ar-audio"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-mic"></use></svg><b id="ar-audio-testo">Nota vocale</b></button>
-  </nav>
 </section>
 
 <!-- ================= DIALOGHI ================= -->
+<dialog id="dlg-cerca-auto" aria-labelledby="auto-titolo">
+  <h2 id="auto-titolo">Risultati della ricerca automatica</h2>
+  <p class="auto-spiega">Confronta i caratteri con la guida locale, verifica il nome su Wikipedia/Wikidata e GBIF. Se la scheda ha una foto e una chiave PlantNet, invia la prima foto a PlantNet. Le percentuali delle diverse fonti hanno significati diversi e non sono una certezza d’identificazione.</p>
+  <p id="auto-stato" role="status" aria-live="polite"></p>
+  <div id="auto-risultati"></div>
+  <div class="azioni"><button type="button" class="btn" id="auto-chiudi">Chiudi</button></div>
+</dialog>
 <dialog id="dlg-meteo" aria-labelledby="meteo-titolo">
   <h2 id="meteo-titolo">Meteo · 3B Meteo</h2>
   <p class="meteo-spiega">Per cercare una località, scrivi il nome qui sotto. La previsione si apre su 3B Meteo e richiede Internet.</p>
@@ -249,6 +250,18 @@
     <h3 class="menu-titolo">Configurazione</h3>
     <button class="btn" data-az="completa-guida"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-book"></use></svg><span>Completa catalogo delle 144 piante</span></button>
     <button class="btn" data-az="plantnet"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg><span>Chiave PlantNet</span></button>
+    <label class="dimensione-interfaccia" for="sel-dimensione-interfaccia">Dimensione interfaccia
+      <select id="sel-dimensione-interfaccia" class="campo-base">
+        <option value="auto">Adatta allo schermo</option>
+        <option value="110">Ingrandita · 110%</option>
+        <option value="125">Molto ingrandita · 125%</option>
+      </select>
+    </label>
+    <div class="aggiornamento-app">
+      <p id="aggiornamento-stato" role="status" aria-live="polite">Versione installata: —</p>
+      <button type="button" class="btn" id="btn-controlla-aggiornamenti">Controlla aggiornamenti</button>
+      <button type="button" class="btn primario nascosto" id="btn-applica-aggiornamento">Aggiorna ora</button>
+    </div>
     <h3 class="menu-titolo">Backup ed esportazioni</h3>
     <button class="btn primario" data-az="zip"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Backup completo, con foto e audio</span></button>
     <button class="btn" data-az="zip-condividi"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Condividi backup</span></button>
@@ -523,7 +536,7 @@
     <li><b>GPS preciso</b>: sotto gli alberi il segnale è debole, quindi l'app ascolta i satelliti per qualche secondo e tiene la posizione migliore, mostrando la precisione mentre migliora. Puoi fermarla prima toccando di nuovo 📍. Accanto alle coordinate vedi anche una valutazione (ottimo/buono/scarso) e se al momento del rilievo eri online o offline.</li>
     <li><b>Due numerazioni diverse</b>: "N° progressivo" identifica la scheda nell’elenco corrente; "N° nel giorno" riparte da 1 ogni volta che scegli una nuova data. Il QR usa invece un identificativo interno permanente, quindi resta univoco anche quando inizi un nuovo elenco.</li>
     <li><b>Scegli dalla mappa</b>: se non riesci a rilevare il GPS (o vuoi correggerlo dopo), nella sezione Posizione GPS c'è anche "Scegli dalla mappa": tocchi il punto giusto sulla cartina invece di aspettare il satellite.</li>
-    <li><b>Traccia (percorso)</b>: dalla prima pagina o dalla Mappa, "Avvia traccia" registra il percorso fatto a piedi. "Pausa" sospende il GPS e "Riprendi" crea un nuovo tratto; "Stop" termina la registrazione senza cancellare i punti. I punti con precisione peggiore di 50 m e i salti anomali vengono ignorati. La traccia si esporta in GPX dalla Mappa ed è inclusa nel backup completo. Su alcuni telefoni il browser può sospendere il GPS a schermo spento.</li>
+    <li><b>Traccia (percorso)</b>: il comando "Avvia traccia" nella prima pagina resta accessibile anche quando guardi la Mappa. "Pausa" sospende il GPS e "Riprendi" crea un nuovo tratto; "Stop" termina la registrazione senza cancellare i punti. I punti con precisione peggiore di 50 m e i salti anomali vengono ignorati. La traccia si esporta in GPX dalla Mappa ed è inclusa nel backup completo. Su alcuni telefoni il browser può sospendere il GPS a schermo spento.</li>
     <li><b>Cestino</b>: eliminando una scheda (dall'elenco o dall'editor) non sparisce subito, va nel cestino (icona 🗑 in alto): da lì puoi ripristinarla o eliminarla per sempre. Dopo il numero di giorni che scegli tu (di default 30), le schede nel cestino vengono eliminate da sole.</li>
     <li>I campi con icona (persistenza, forma della chioma, rami, crescita, tipologia di estensione, tipo di foglia, lamina, margine) si scelgono toccando il riquadro: si apre una schermata con un disegno e una spiegazione per ogni valore, così anche chi è alle prime armi riconosce cosa sta osservando. Se nessuna voce corrisponde, si può scrivere un valore libero in "Altro".</li>
     <li><b>Foto</b>: "Scatta" apre subito la fotocamera, "Dalla galleria" ne permette di scegliere più di una insieme. Le foto vengono ridotte automaticamente per occupare meno spazio.</li>
@@ -536,7 +549,8 @@
   <p>Ogni specie confermata resta anche in un piccolo <b>catalogo sul dispositivo</b>, che cresce da solo: da quel momento il campo "Nome esemplare" la propone tra i suggerimenti anche <b>senza connessione</b>, senza dover richiamare PlantNet. Il catalogo viaggia anche dentro il backup completo, così si arricchisce con il lavoro di tutto il gruppo. Ogni specie porta con sé anche l'<b>ID GBIF</b> (il database naturalistico più usato al mondo): compare nella scheda come link "Apri la specie su GBIF", nel report per il cliente e nelle esportazioni CSV/GeoJSON/KML — utile per collegare i tuoi dati a un riferimento tassonomico riconosciuto ovunque.</p>
 
   <h3>Guida alle specie (144 alberi del corso)</h3>
-  <p>Sotto «Nome esemplare» trovi «Cerca per nome», che consulta Wikipedia/Wikidata e offre la guida locale; «Caratteristiche», che confronta i campi osservati con le 144 specie e varietà del corso; e «Cerca con foto», che usa PlantNet con una foto nuova o già nella scheda. Solo i dati strutturati presenti nella guida locale possono riempire campi ancora vuoti; eventuali osservazioni discordanti restano intatte e vengono segnalate. I pulsanti PlantNet e GBIF aprono le rispettive pagine: se manca una corrispondenza verificata, aprono la ricerca del servizio.</p>
+  <p>Sotto «Nome esemplare» trovi «Cerca» con Wikipedia/Wikidata, PlantNet, GBIF, ricerca da foto, da caratteristiche e per zona d’origine. Wikipedia propone solo nomi scientifici confermati come piante da GBIF; se la verifica non è disponibile, il risultato non viene suggerito. «Cerca auto» confronta subito i caratteri della scheda con la guida locale, controlla il nome sui servizi disponibili e, se hai una foto già salvata e la chiave PlantNet, invia la prima foto per ottenere proposte. Le percentuali indicano cosa ha misurato ciascuna fonte: la confidenza della foto non è la stessa cosa della corrispondenza del nome su GBIF o dei caratteri della guida. Scegli tu se applicare un risultato. I dati già osservati non vengono sovrascritti e le discordanze vengono segnalate.</p>
+  <p>In «Configurazione e backup» trovi la versione installata e il pulsante «Controlla aggiornamenti». Quando una versione nuova è pronta, «Aggiorna ora» salva le schede e ricarica l’app. Ferma prima una traccia GPS o una nota vocale in corso.</p>
   <p>Non sai ancora il nome? Nella guida tocca "🧩 Per caratteristiche": imposta quello che vedi (persistenza, forma chioma, rami, foglia…) e la guida propone le specie più probabili, ordinate per quante corrispondono. Se apri la guida dal campo "Nome esemplare" quando è ancora vuoto ma hai già compilato altri campi della scheda, parte già precompilata con quelli.</p>
   <p><button type="button" class="btn" onclick="this.closest('dialog').close(); apriGuidaSpecie()">📖 Apri la guida alle specie</button></p>
 

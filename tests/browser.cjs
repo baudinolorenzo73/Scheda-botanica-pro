@@ -20,7 +20,7 @@ const server = http.createServer((req, res) => {
 (async () => {
   await new Promise(ok => server.listen(0, '127.0.0.1', ok));
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox','--disable-dev-shm-usage'], headless: true });
-  const context = await browser.newContext({viewport:{width:390,height:844}, reducedMotion:'reduce'});
+  const context = await browser.newContext({viewport:{width:390,height:844}, deviceScaleFactor:2, reducedMotion:'reduce'});
   const page = await context.newPage();
   const errors = [], failed = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -32,6 +32,7 @@ const server = http.createServer((req, res) => {
   await context.route(/https:\/\//, r => r.abort());
   const base = `http://127.0.0.1:${server.address().port}`;
   const test = async (nome, fn) => { await fn(); results.push(nome); console.log('OK', nome); };
+  const apriOpzioni = async () => { if (!await page.locator('#opzioni-home').evaluate(e => e.open)) await page.locator('#opzioni-home summary').click(); };
   try {
     await page.goto(base);
     await page.waitForFunction(() => DB.db && document.querySelector('#elenco').children.length > 0);
@@ -140,6 +141,7 @@ const server = http.createServer((req, res) => {
     });
     await test('Pulsanti mobili: navigazione, filtri, menu, stampa e nuova scheda',async()=>{
       await page.setViewportSize({width:390,height:844});
+      await apriOpzioni();
       const targets=await page.evaluate(()=>['#tab-schede','#tab-mappa','#btn-nuova','#btn-menu','#btn-filtri-avanzati'].map(sel=>{
         const box=document.querySelector(sel).getBoundingClientRect();return [sel,box.width,box.height];
       }));
@@ -164,6 +166,27 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>document.documentElement.dataset.tema==='scuro'),true);
       await page.click('#btn-tema');
     });
+    await test('Prima pagina: opzioni raccolte e ingrandimento configurabile',async()=>{
+      assert.equal(await page.locator('.riepilogo').count(),0);
+      assert.equal(await page.locator('#home-nuova').count(),0);
+      assert.equal(await page.locator('#btn-nuova').count(),1);
+      assert.match(await page.locator('#opzioni-home summary').textContent(),/\+ Opzioni/);
+      await apriOpzioni();await page.click('#btn-menu');
+      await page.selectOption('#sel-dimensione-interfaccia','125');
+      assert.equal(await page.evaluate(()=>localStorage.getItem('sb-dimensione-interfaccia')),'125');
+      await page.locator('#dlg-menu [data-az=chiudi]').click();
+      for(const width of [390,768]){
+        await page.setViewportSize({width,height:900});
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true);
+        assert.equal(await page.locator('#btn-nuova').isVisible(),true);
+      }
+      await page.reload();await page.waitForFunction(()=>DB.db);
+      assert.equal(await page.evaluate(()=>document.body.dataset.interfaccia),'125');
+      await apriOpzioni();await page.click('#btn-menu');
+      await page.selectOption('#sel-dimensione-interfaccia','auto');
+      await page.locator('#dlg-menu [data-az=chiudi]').click();
+      await page.setViewportSize({width:390,height:844});
+    });
     await test('Errore di salvataggio: editor resta aperto e recuperabile',async()=>{
       await page.evaluate(()=>apriEditor(S.schede[0].uid));
       assert.equal(await page.evaluate(async()=>{const prima=DB.scrivi;DB.scrivi=async()=>{throw new Error('Quota simulata');};await chiudiEditor();const aperta=!!S.aperta;DB.scrivi=prima;await chiudiEditor();return aperta&&!S.aperta;}),true);
@@ -186,7 +209,7 @@ const server = http.createServer((req, res) => {
       await page.evaluate(()=>apriEditor(S.schede.find(s=>s.nome==='Quercus robur').uid));await page.evaluate(()=>document.querySelector('#editor').scrollTop=0);
       await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'editor.png'),animations:'disabled'});
       await page.evaluate(()=>chiudiEditor());await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'desktop.png'),animations:'disabled',fullPage:true});
-      await page.click('#btn-tema');await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'scuro.png'),animations:'disabled',fullPage:true});
+      await apriOpzioni();await page.click('#btn-tema');await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'scuro.png'),animations:'disabled',fullPage:true});
     }
     await test('Ricerca immediata nel catalogo locale e nei nomi registrati',async()=>{
       await page.setViewportSize({width:390,height:844});
@@ -212,7 +235,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>S.schede.some(s=>s.nome==='Specie inserita a mano')),true);
     });
     await test('Catalogo delle 144 piante: integrazione, persistenza e backup',async()=>{
-      await page.click('#btn-menu');
+      await apriOpzioni();await page.click('#btn-menu');
       await page.click('[data-az="completa-guida"]');
       assert.equal(await page.locator('#cg-lista .cg-riga').count(),144);
       await page.locator('#cg-lista .cg-riga').first().click();
@@ -248,7 +271,7 @@ const server = http.createServer((req, res) => {
         const json=JSON.parse(await zip.file('backup.json').async('string'));
         return json.guida?.[0]?.campi?.chiomaForma;
       },[...bytes]),'globosa');
-      await page.click('#btn-menu');await page.click('[data-az="completa-guida"]');
+      await apriOpzioni();await page.click('#btn-menu');await page.click('[data-az="completa-guida"]');
       await page.locator('#cg-lista .cg-riga').first().click();
       assert.equal(await page.locator('#cg-form [name="chiomaForma"]').inputValue(),'globosa');
       await page.selectOption('#cg-form [name="chiomaForma"]','');
@@ -268,7 +291,7 @@ const server = http.createServer((req, res) => {
       },[...bytes]),true);
     });
     await test('Catalogo completo: 144 piante, integrità e ripristino senza modificare le schede',async()=>{
-      await page.click('#btn-menu');await page.click('[data-az="completa-guida"]');
+      await apriOpzioni();await page.click('#btn-menu');await page.click('[data-az="completa-guida"]');
       const download=page.waitForEvent('download');
       await page.click('#cg-esporta-completo');
       const bytes=fs.readFileSync(await (await download).path());
@@ -301,6 +324,7 @@ const server = http.createServer((req, res) => {
     });
     await test('Azioni specie: caratteristiche, foto, fonti e dati discordanti',async()=>{
       await page.evaluate(()=>apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid));
+      await page.locator('#nome-ricerca summary').click();
       if(process.env.SCREENSHOT_DIR){
         await page.locator('#plantnet-link').scrollIntoViewIfNeeded();
         await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'azioni-specie.png'),animations:'disabled'});
@@ -325,6 +349,79 @@ const server = http.createServer((req, res) => {
       await page.click('#gs-chiudi');
       await page.click('#btn-chiudi');
       await page.waitForFunction(()=>S.aperta===null);
+    });
+    await test('Editor: barra rapida in alto e ricerca auto con fonti distinte',async()=>{
+      await page.evaluate(()=>{
+        apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid);
+        S.aperta.persistenza='sempreverde';
+        localStorage.setItem('sb-plantnet-key','chiave-test');
+        window.fetchPrecedente=window.fetch;
+        window.fetch=(url)=>{
+          const u=String(url);
+          const data=u.includes('list=search')?{query:{search:[{title:'Fagus sylvatica'}]}}:
+            u.includes('prop=pageprops')?{query:{pages:{'1':{pageprops:{wikibase_item:'Q1'}}}}}:
+            u.includes('Special:EntityData')?{entities:{Q1:{claims:{P225:[{mainsnak:{datavalue:{value:'Fagus sylvatica'}}}]}}}}:
+            u.includes('my-api.plantnet.org')?{results:[{score:.78,species:{scientificNameWithoutAuthor:'Fagus sylvatica',scientificName:'Fagus sylvatica L.'}},{score:.16,species:{scientificNameWithoutAuthor:'Quercus robur'}}]}:
+            u.includes('api.gbif.org')?{kingdom:'Plantae',matchType:'EXACT',rank:'SPECIES',confidence:98,usageKey:123}:{};
+          return Promise.resolve(new Response(JSON.stringify(data),{status:200}));
+        };
+      });
+      assert.equal(await page.evaluate(()=>document.querySelector('#ar-foto').getBoundingClientRect().top < document.querySelector('#f-nome').getBoundingClientRect().top),true);
+      if(process.env.SCREENSHOT_DIR){
+        await page.evaluate(()=>{document.querySelector('.toast')?.remove();document.querySelector('#ed-titolo').firstChild.textContent='N° 1 – Fagus sylvatica ';document.querySelector('#f-prog').value='1';document.querySelector('#f-data').value='2026-09-27';});
+        await page.locator('#f-nome').scrollIntoViewIfNeeded();
+        await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'editor-top.png'),animations:'disabled'});
+      }
+      await page.evaluate(()=>document.querySelector('#editor').scrollTop=350);
+      assert.equal(await page.evaluate(()=>document.querySelector('.azioni-rapide').getBoundingClientRect().top>=-1),true);
+      await page.click('#nome-cerca-auto');
+      await page.waitForFunction(()=>document.querySelector('#auto-stato').textContent.includes('Verifica completata'));
+      assert.match(await page.locator('#auto-risultati').textContent(),/Foto PlantNet: 78%/);
+      assert.match(await page.locator('#auto-risultati').textContent(),/GBIF: corrispondenza del nome 98%/);
+      assert.match(await page.locator('#auto-risultati').textContent(),/Wikidata/);
+      if(process.env.SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'auto-risultati.png'),animations:'disabled'});
+      assert.equal(await page.evaluate(()=>S.aperta.persistenza),'sempreverde');
+      await page.locator('.auto-carta').filter({hasText:'Fagus sylvatica'}).first().getByRole('button',{name:'Usa questo nome'}).click();
+      assert.equal(await page.locator('#dlg-cerca-auto').evaluate(e=>e.open),false);
+      assert.equal(await page.evaluate(()=>S.aperta.persistenza),'sempreverde');
+      assert.match(await page.locator('#nome-conflitti').textContent(),/Persistenza foglie/);
+      await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;localStorage.removeItem('sb-plantnet-key');});
+      await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
+    });
+    await test('Wikipedia: scarta taxon non botanici e pagine prive di classificazione',async()=>{
+      await page.evaluate(()=>{
+        apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid);
+        window.fetchPrecedente=window.fetch;
+        window.fetch=(url)=>{
+          const u=String(url);
+          const data=u.includes('list=search')?{query:{search:[{title:'Lupo'},{title:'Faggio'}]}}:
+            u.includes('titles=Lupo')?{query:{pages:{'1':{pageprops:{wikibase_item:'Q1'}}}}}:
+            u.includes('titles=Faggio')?{query:{pages:{'2':{title:'Faggio',extract:'Un albero.',pageprops:{wikibase_item:'Q2'}}}}}:
+            u.includes('EntityData/Q1')?{entities:{Q1:{claims:{P225:[{mainsnak:{datavalue:{value:'Canis lupus'}}}]}}}}:
+            u.includes('EntityData/Q2')?{entities:{Q2:{claims:{P225:[{mainsnak:{datavalue:{value:'Fagus sylvatica'}}}]}}}}:
+            u.includes('api.gbif.org')?{kingdom:u.includes('Canis')?'Animalia':'Plantae',matchType:'EXACT',confidence:98,rank:'SPECIES',usageKey:12}:{};
+          return Promise.resolve(new Response(JSON.stringify(data),{status:200}));
+        };
+      });
+      assert.equal(await page.evaluate(()=>nomeWikipediaAuto('faggio')),'Fagus sylvatica');
+      await page.evaluate(()=>{apriGuidaSpecie('faggio');return cercaSulWeb('faggio');});
+      assert.match(await page.locator('#gs-lista').textContent(),/Fagus sylvatica/);
+      assert.doesNotMatch(await page.locator('#gs-lista').textContent(),/Canis lupus/);
+      assert.match(await page.evaluate(async()=>{
+        window.fetch=(url)=>{
+          const u=String(url);
+          const data=u.includes('list=search')?{query:{search:[{title:'Lupo'}]}}:
+            u.includes('prop=pageprops')?{query:{pages:{'1':{pageprops:{wikibase_item:'Q1'}}}}}:
+            u.includes('wikidata.org')?{entities:{Q1:{claims:{P225:[{mainsnak:{datavalue:{value:'Canis lupus'}}}]}}}}:
+            {kingdom:'Animalia',matchType:'EXACT',confidence:99,rank:'SPECIES'};
+          return Promise.resolve(new Response(JSON.stringify(data),{status:200}));
+        };
+        await cercaSulWeb('lupo');
+        return document.querySelector('#gs-lista').textContent;
+      }), /Nessuna pianta verificata per «lupo»/);
+      await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;document.querySelector('#dlg-guida-specie').close();});
+      await page.click('#btn-chiudi');
     });
     await test('PlantNet: mostra anche specie fuori dalla guida locale',async()=>{
       await page.evaluate(async()=>{
@@ -366,7 +463,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>localStorage.getItem('sb-traccia-pausa')),null);
       assert(n>=1);
       await page.evaluate(()=>{window.aperturaMeteo=window.open;window.open=(url)=>{window.meteoUrl=url;return null;};});
-      await page.click('#home-meteo');
+      await apriOpzioni();await page.click('#home-meteo');
       await page.fill('#meteo-luogo','Roletto');
       await page.click('#meteo-form button');
       assert.equal(await page.evaluate(()=>window.meteoUrl),'https://www.3bmeteo.com/meteo/roletto');
@@ -374,7 +471,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>window.meteoUrl),'https://www.3bmeteo.com/');
       await page.evaluate(()=>{window.open=window.aperturaMeteo;delete window.aperturaMeteo;});
       await page.click('#meteo-chiudi');
-      await page.click('#home-nuova');
+      await page.click('#btn-nuova');
       await page.waitForFunction(()=>!!S.aperta);
       await page.fill('#f-nome','Scheda dal pulsante iniziale');
       await page.click('#btn-salva-scheda');
@@ -408,6 +505,7 @@ const server = http.createServer((req, res) => {
     });
     await test('Nuovo elenco in home: backup e archiviazione atomica',async()=>{
       const n=await page.evaluate(()=>S.schede.length);
+      await apriOpzioni();
       assert.equal(await page.locator('#btn-nuovo-elenco').isVisible(),true);
       assert.equal(await page.locator('#dlg-menu #btn-nuovo-elenco').count(),0);
       confermaNuovoElenco=true;
@@ -429,6 +527,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.inputValue('#f-prog'),'1');
     });
     await test('Scelta dalla zona compila la scheda e chiude la ricerca',async()=>{
+      await page.locator('#nome-ricerca summary').click();
       await page.click('#nome-cerca-zona');
       await page.locator('#zh-lista .gs-riga').first().click();
       const nome=await page.locator('#zh-dettaglio h3.specie').textContent();
