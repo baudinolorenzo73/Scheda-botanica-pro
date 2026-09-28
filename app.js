@@ -1757,7 +1757,11 @@ function validaIntegrazioniGuida(elenco) {
       if (scelta && !scelta.valori.includes(valore)) throw new Error('Scelta del catalogo non valida');
       campi[k] = valore.trim();
     }
-    return { id: v.id, campi, fonte: v.fonte, modificato: v.modificato || '' };
+    if (v.fontiCampi !== undefined && (!v.fontiCampi || typeof v.fontiCampi !== 'object' || Array.isArray(v.fontiCampi) ||
+        Object.keys(v.fontiCampi).some(k => !campi[k] || !['pagina', 'osservazione', 'altro'].includes(v.fontiCampi[k]))))
+      throw new Error('Fonti dei campi del catalogo non valide');
+    return { id: v.id, campi, fonte: v.fonte, modificato: v.modificato || '',
+      ...(v.fontiCampi ? { fontiCampi: { ...v.fontiCampi } } : {}) };
   });
 }
 
@@ -1851,7 +1855,8 @@ function apriPiantaCatalogo(id, dopoSalvataggio = false) {
             maxlength: 180, placeholder: 'Non indicato nella guida' });
         return el('label', { class: 'cg-campo ' + (originale ? 'cg-originale' : salvata?.campi[k] ? 'cg-integrato' : '') },
           el('span', { testo: etichetta }), controllo,
-          el('small', { testo: originale ? 'Dal materiale originale · non modificabile' : salvata?.campi[k] ? 'Integrazione personale' : 'Da verificare sulla pagina' }));
+          el('small', { testo: originale ? 'Dal materiale originale · non modificabile' : salvata?.campi[k] ?
+            `Integrazione modificabile · fonte: ${{ pagina: 'slide del corso', osservazione: 'osservazione', altro: 'altra fonte' }[salvata.fontiCampi?.[k] || salvata.fonte] || 'da verificare'}` : 'Da verificare sulla pagina' }));
       }))));
   $('#cg-form').append(el('label', { class: 'cg-campo cg-note' },
     el('span', { testo: 'Nota originale (solo lettura)' }),
@@ -1876,7 +1881,11 @@ async function salvaIntegrazioneGuida() {
   $('#cg-stato').classList.remove('cg-errore');
   $('#cg-stato').textContent = 'Salvataggio in corso…';
   try {
-    const voce = { id: cgSpecie, campi, fonte: fonte || 'pagina', modificato: oraISO() };
+    const precedente = S.guida.find(v => v.id === cgSpecie);
+    const fontiCampi = {};
+    for (const [k, valore] of Object.entries(campi))
+      fontiCampi[k] = precedente?.campi[k] === valore ? (precedente.fontiCampi?.[k] || precedente.fonte) : fonte;
+    const voce = { id: cgSpecie, campi, fonte: fonte || 'pagina', fontiCampi, modificato: oraISO() };
     validaIntegrazioniGuida([voce]);
     if (Object.keys(campi).length) await DB.scrivi('guida', voce);
     else await DB.cancella('guida', cgSpecie);
@@ -1956,16 +1965,36 @@ async function importaIntegrazioniGuida(file) {
     const dato = JSON.parse(await file.text());
     if (dato?.tipo !== 'scheda-botanica-guida' || dato.versione !== 1) throw new Error('Seleziona un file di integrazioni del catalogo esportato dall’app');
     const voci = validaIntegrazioniGuida(dato.voci);
-    const esistenti = new Set(S.guida.map(v => v.id));
-    const nuove = voci.filter(v => !esistenti.has(v.id));
-    if (nuove.length) await DB.sostituisciArchivio({ schede: [], foto: [], audio: [], specie: [], traccia: [], guida: nuove }, false);
-    S.guida.push(...nuove);
+    const esistenti = new Map(S.guida.map(v => [v.id, v]));
+    const modificate = [];
+    let nuove = 0, aggiunti = 0, conservati = 0;
+    for (const voce of voci) {
+      const precedente = esistenti.get(voce.id);
+      if (!precedente) { modificate.push(voce); nuove++; aggiunti += Object.keys(voce.campi).length; continue; }
+      const campi = { ...precedente.campi };
+      const fontiCampi = { ...(precedente.fontiCampi || {}) };
+      let cambiati = 0;
+      for (const [k, valore] of Object.entries(voce.campi)) {
+        if (campi[k]) { conservati++; continue; }
+        campi[k] = valore;
+        fontiCampi[k] = voce.fontiCampi?.[k] || voce.fonte;
+        cambiati++; aggiunti++;
+      }
+      if (cambiati) modificate.push({ ...precedente, campi, fontiCampi, modificato: oraISO() });
+    }
+    if (modificate.length) {
+      const unite = new Map(S.guida.map(v => [v.id, v]));
+      for (const voce of modificate) unite.set(voce.id, voce);
+      const verificate = validaIntegrazioniGuida([...unite.values()]);
+      await DB.sostituisciGuida(verificate);
+      S.guida = verificate;
+    }
     applicaIntegrazioniGuida();
     cgSpecie = null; cgSporco = false; cgIstantanea = '';
     $('#cg-editor').classList.add('nascosto');
     $('#cg-lista').classList.remove('nascosto');
     listaCompletaGuida();
-    $('#cg-messaggio').textContent = `Importazione completata: ${nuove.length} nuove piante integrate, ${voci.length - nuove.length} già presenti e conservate.`;
+    $('#cg-messaggio').textContent = `Importazione completata: ${nuove} nuove piante, ${aggiunti} campi aggiunti. ${conservati} campi già compilati conservati.`;
   } catch (e) { $('#cg-messaggio').textContent = 'Importazione non riuscita: ' + e.message; }
 }
 

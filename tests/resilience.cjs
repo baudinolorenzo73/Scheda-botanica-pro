@@ -13,9 +13,9 @@ const server = http.createServer((req, res) => {
     res.setHeader('Content-Type', ({'.js':'application/javascript','.json':'application/json','.css':'text/css','.html':'text/html','.webp':'image/webp','.png':'image/png'})[path.extname(file)] || 'application/octet-stream');
     res.setHeader('Cache-Control', 'no-store');
     let bytes = fs.readFileSync(file);
-    if (nuovo && pathname === '/versione.json') bytes = Buffer.from('{"versione":"3.26.3"}');
-    if (nuovo && pathname === '/service-worker.js') bytes = Buffer.from(String(bytes).replace('scheda-botanica-app-v37-', 'scheda-botanica-app-v38-'));
-    if (nuovo && pathname === '/js/config.js') bytes = Buffer.from(String(bytes).replace("APP_VERSIONE = '3.26.2'", "APP_VERSIONE = '3.26.3'"));
+    if (nuovo && pathname === '/versione.json') bytes = Buffer.from('{"versione":"3.26.4"}');
+    if (nuovo && pathname === '/service-worker.js') bytes = Buffer.from(String(bytes).replace('scheda-botanica-app-v38-', 'scheda-botanica-app-v39-'));
+    if (nuovo && pathname === '/js/config.js') bytes = Buffer.from(String(bytes).replace("APP_VERSIONE = '3.26.3'", "APP_VERSIONE = '3.26.4'"));
     res.end(bytes);
   } catch { res.writeHead(404); res.end(); }
 });

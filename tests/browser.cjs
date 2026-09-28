@@ -285,6 +285,22 @@ const server = http.createServer((req, res) => {
       await page.waitForFunction(()=>S.guida.length===1);
       assert.match(await page.locator('#cg-messaggio').textContent(),/Importazione completata: 1 nuove piante/);
       assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].chiomaForma),'globosa');
+      const secondo=structuredClone(esportate);
+      secondo.voci[0].campi.chiomaForma='piramidale';
+      secondo.voci[0].campi.corteccia='A squame';
+      secondo.voci[0].fonte='altro';
+      await page.locator('#cg-file-importa').setInputFiles({name:'seconda-integrazione.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(secondo))});
+      await page.waitForFunction(()=>S.guida[0].campi.corteccia==='A squame');
+      assert.deepEqual(await page.evaluate(()=>({chioma:GUIDA_SPECIE[0].chiomaForma,corteccia:GUIDA_SPECIE[0].corteccia,
+        fonti:S.guida[0].fontiCampi,numero:S.guida.length})),
+        {chioma:'globosa',corteccia:'A squame',fonti:{chiomaForma:'pagina',corteccia:'altro'},numero:1});
+      await page.locator('#cg-lista .cg-riga').first().click();
+      assert.match(await page.locator('#cg-form [name="corteccia"]').locator('..').textContent(),/altra fonte/);
+      await page.fill('#cg-form [name="corteccia"]','A piccole squame');
+      await page.selectOption('#cg-fonte','osservazione');
+      await page.click('#cg-salva');
+      await page.waitForFunction(()=>S.guida[0].campi.corteccia==='A piccole squame');
+      assert.equal(await page.evaluate(()=>S.guida[0].fontiCampi.corteccia),'osservazione');
       await page.click('#cg-chiudi');
       assert.equal(await page.evaluate(async b=>{
         const v=await leggiBackupZip(new Blob([new Uint8Array(b)]));
