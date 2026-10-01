@@ -980,7 +980,7 @@ async function nuovaSchedaDaEditor() {
     S.schede.push(nuova);
     apriEditor(nuova.uid, true);
     $('#f-nome').focus();
-  } finally { bottone.disabled = false; }
+  } finally { if (richiesta === cgAiRichiesta) bottone.disabled = false; }
 }
 
 async function salvaSchedaVisibile() {
@@ -1727,6 +1727,198 @@ const GS_CAMPO_GUIDA = { formaChioma: 'chiomaForma', rami: 'ramiInserzione', tip
 // La guida inclusa resta la fonte originale. Le integrazioni per dispositivo
 // hanno uno store e un backup propri; non alterano il file distribuito.
 const GUIDA_ORIGINALE = new Map(GUIDA_SPECIE.map(v => [v.id, structuredClone(v)]));
+// Solo su richiesta dell'utente le chiavi sono ricordate nello storage locale
+// di questo browser. Non entrano nel database botanico o nei suoi backup.
+let chiaviAI = {};
+let cgAiRichiesta = 0;
+const CHIAVI_AI_STORAGE = 'sb-ai-keys';
+const CHIAVI_AI_AMMESSE = new Set(['GOOGLE_API_KEY', 'GEMINI_API_KEY', 'GROQ_API_KEY', 'OPENROUTER_API_KEY',
+  'CEREBRAS_API_KEY', 'TOGETHER_API_KEY', 'OPENCODE_API_KEY']);
+
+function leggiChiaviEnv(testo) {
+  const chiavi = {};
+  for (const riga of testo.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const match = riga.match(/^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!match || !CHIAVI_AI_AMMESSE.has(match[1])) continue;
+    let valore = match[2];
+    if ((valore.startsWith('"') && valore.endsWith('"')) || (valore.startsWith("'") && valore.endsWith("'")))
+      valore = valore.slice(1, -1);
+    else valore = valore.replace(/\s+#.*$/, '').trim();
+    if (valore && valore.length <= 4096) chiavi[match[1]] = valore;
+  }
+  return chiavi;
+}
+
+function statoChiaviAI() {
+  const nomi = Object.keys(chiaviAI);
+  $('#ai-env-stato').textContent = !nomi.length ? 'Nessuna chiave caricata.' :
+    `${nomi.length} ${nomi.length === 1 ? 'chiave caricata' : 'chiavi caricate'}${$('#ai-ricorda-env').checked ? ' e ricordate su questo browser' : ' per questa pagina'}. ` +
+    'Seleziona Gemini, Groq o OpenRouter nell’editor del catalogo in base alla chiave disponibile.';
+  aggiornaFornitoreSlide(true);
+}
+
+function aggiornaFornitoreSlide(automatico = false) {
+  const selettore = $('#cg-ai-fornitore');
+  if (!selettore) return;
+  const disponibili = { gemini: Boolean(chiaviAI.GEMINI_API_KEY || chiaviAI.GOOGLE_API_KEY),
+    groq: Boolean(chiaviAI.GROQ_API_KEY), openrouter: Boolean(chiaviAI.OPENROUTER_API_KEY) };
+  if (automatico && !disponibili[selettore.value])
+    selettore.value = Object.keys(disponibili).find(k => disponibili[k]) || 'gemini';
+  const router = selettore.value === 'openrouter';
+  $('#cg-ai-modello').classList.toggle('nascosto', !router);
+  $('#cg-ai-modello-label').classList.toggle('nascosto', !router);
+}
+
+function ricordaChiaviAI() {
+  try {
+    if ($('#ai-ricorda-env').checked && Object.keys(chiaviAI).length)
+      localStorage.setItem(CHIAVI_AI_STORAGE, JSON.stringify(chiaviAI));
+    else localStorage.removeItem(CHIAVI_AI_STORAGE);
+    statoChiaviAI();
+  } catch {
+    $('#ai-ricorda-env').checked = false;
+    $('#ai-env-stato').textContent = 'Chiavi disponibili solo fino alla chiusura della pagina: archiviazione locale non disponibile.';
+  }
+}
+
+function ripristinaChiaviAI() {
+  try {
+    const salvate = JSON.parse(localStorage.getItem(CHIAVI_AI_STORAGE) || 'null');
+    if (salvate && typeof salvate === 'object' && !Array.isArray(salvate)) {
+      chiaviAI = Object.fromEntries(Object.entries(salvate).filter(([nome, valore]) =>
+        CHIAVI_AI_AMMESSE.has(nome) && typeof valore === 'string' && valore.length > 0 && valore.length <= 4096));
+      $('#ai-ricorda-env').checked = Object.keys(chiaviAI).length > 0;
+    }
+  } catch { /* La scheda resta utilizzabile senza storage. */ }
+  statoChiaviAI();
+}
+
+async function caricaChiaviAI(file) {
+  if (!file || file.size > 32768) { $('#ai-env-stato').textContent = 'Seleziona un piccolo file open.env di testo (massimo 32 KB).'; return; }
+  try {
+    const nuove = leggiChiaviEnv(await file.text());
+    if (!Object.keys(nuove).length) throw new Error('Nessuna chiave riconosciuta nel file.');
+    chiaviAI = nuove;
+    ricordaChiaviAI();
+  } catch { $('#ai-env-stato').textContent = 'Impossibile leggere open.env: controlla che sia un file di testo con righe NOME_CHIAVE="valore".'; }
+}
+
+function codificaBase64(bytes) {
+  let testo = '';
+  for (let i = 0; i < bytes.length; i += 8192)
+    testo += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return btoa(testo);
+}
+
+async function richiediProposteSlideAI(fornitore, istruzioni, base64) {
+  const modelli = {
+    gemini: { chiave: chiaviAI.GEMINI_API_KEY || chiaviAI.GOOGLE_API_KEY },
+    groq: { chiave: chiaviAI.GROQ_API_KEY, modello: 'qwen/qwen3.8-27b', url: 'https://api.groq.com/openai/v1/chat/completions' },
+    openrouter: { chiave: chiaviAI.OPENROUTER_API_KEY, modello: $('#cg-ai-modello').value.trim(), url: 'https://openrouter.ai/api/v1/chat/completions' },
+  };
+  const scelta = modelli[fornitore];
+  if (!scelta?.chiave) throw new Error('Carica la chiave del servizio scelto da Configurazione.');
+  if (fornitore === 'openrouter' && !/^[\w.-]+\/[\w./:-]+$/.test(scelta.modello))
+    throw new Error('Inserisci l’ID esatto di un modello OpenRouter che supporti immagini. Controlla prima i costi.');
+
+  let risposta;
+  if (fornitore === 'gemini') {
+    risposta = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+      method: 'POST', signal: AbortSignal.timeout(45000),
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': scelta.chiave },
+      body: JSON.stringify({ contents: [{ parts: [{ text: istruzioni }, { inline_data: { mime_type: 'image/webp', data: base64 } }] }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0 } }),
+    });
+  } else {
+    risposta = await fetch(scelta.url, {
+      method: 'POST', signal: AbortSignal.timeout(60000),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${scelta.chiave}` },
+      body: JSON.stringify({ model: scelta.modello, temperature: 0, max_tokens: 1300,
+        messages: [{ role: 'user', content: [{ type: 'text', text: istruzioni },
+          { type: 'image_url', image_url: { url: `data:image/webp;base64,${base64}` } }] }] }),
+    });
+  }
+  if (!risposta.ok) throw new Error(risposta.status === 401 || risposta.status === 403 ?
+    `Chiave ${fornitore} non valida o accesso al modello negato.` : risposta.status === 429 ?
+    'Limite delle richieste raggiunto. Riprova più tardi.' : `Servizio non disponibile (${risposta.status}).`);
+  const dati = await risposta.json();
+  const testo = fornitore === 'gemini' ? dati.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') :
+    dati.choices?.[0]?.message?.content;
+  if (typeof testo !== 'string' || !testo.trim()) throw new Error('Il servizio non ha restituito una proposta leggibile.');
+  // Alcuni modelli restituiscono un blocco Markdown, pur richiedendo solo JSON.
+  return JSON.parse(testo.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
+}
+
+function normalizzaProposteAI(dato, specie) {
+  if (!Array.isArray(dato?.proposte)) return [];
+  const base = GUIDA_ORIGINALE.get(specie.id);
+  const viste = new Set();
+  return dato.proposte.slice(0, 25).filter(p => {
+    if (!p || !CG_CHIAVI.has(p.campo) || p.campo === 'noteExtra' || base[p.campo] || viste.has(p.campo) ||
+        typeof p.valore !== 'string' || !p.valore.trim() || p.valore.length > 180 ||
+        typeof p.evidenza !== 'string' || !p.evidenza.trim() || p.evidenza.length > 220) return false;
+    const def = CG_SEZIONI.flatMap(s => s.campi).find(c => c[0] === p.campo);
+    const scelta = def?.[2] && CAMPI.find(c => c.k === def[2]);
+    if (scelta && !scelta.valori.includes(p.valore.trim())) return false;
+    viste.add(p.campo);
+    return true;
+  }).map(p => ({ campo: p.campo, valore: p.valore.trim(), evidenza: p.evidenza.trim() }));
+}
+
+function mostraProposteAI(proposte, id) {
+  const contenitore = $('#cg-ai-risultati');
+  contenitore.replaceChildren(...proposte.map(p => {
+    const nome = CG_SEZIONI.flatMap(s => s.campi).find(c => c[0] === p.campo)?.[1] || p.campo;
+    const attuale = $('#cg-form').elements.namedItem(p.campo)?.value.trim() || '';
+    return el('div', { class: 'cg-ai-proposta' },
+      el('strong', { testo: nome }),
+      el('p', { testo: `Proposta: ${p.valore}` }),
+      el('small', { testo: `Indicazione riportata dall’AI: «${p.evidenza}». Controlla la slide.` }),
+      attuale ? el('p', { class: 'cg-ai-conflitto', testo: `Già compilato: ${attuale}. Correggi il campo manualmente se necessario.` }) :
+        el('button', { type: 'button', class: 'btn', onclick: () => {
+          if (cgSpecie !== id) return;
+          const campo = $('#cg-form').elements.namedItem(p.campo);
+          if (!campo || campo.readOnly || campo.disabled || campo.value.trim()) return;
+          campo.value = p.valore;
+          $('#cg-fonte').value = 'pagina';
+          aggiornaModificheCatalogo();
+          $('#cg-ai-stato').textContent = 'Proposta inserita nel modulo. Verifica e premi «Salva integrazioni».';
+          mostraProposteAI(proposte, id);
+        } }, 'Usa proposta'));
+  }));
+}
+
+async function proponiCaratteriSlideAI() {
+  const id = cgSpecie;
+  if (!id) return;
+  if (!navigator.onLine) { $('#cg-ai-stato').textContent = 'Sei offline: l’editor manuale resta disponibile.'; return; }
+  const specie = GUIDA_ORIGINALE.get(id);
+  const richiesta = ++cgAiRichiesta;
+  const bottone = $('#cg-ai-proponi');
+  bottone.disabled = true;
+  $('#cg-ai-stato').textContent = 'Leggo la slide e preparo proposte da verificare…';
+  $('#cg-ai-risultati').replaceChildren();
+  try {
+    const immagine = await fetch(`./slides/${specie.pagina}.webp`);
+    if (!immagine.ok) throw new Error('Slide non disponibile.');
+    const base64 = codificaBase64(new Uint8Array(await immagine.arrayBuffer()));
+    const campi = CG_SEZIONI.flatMap(s => s.campi).filter(([k]) => !specie[k]).map(([k, label, scheda]) => {
+      const scelta = scheda && CAMPI.find(c => c.k === scheda);
+      return `${k} (${label}${scelta ? `; valori ammessi: ${scelta.valori.join(', ')}` : ''})`;
+    }).join('; ');
+    const istruzioni = `Analizza la slide del corso relativa a ${nomeCatalogo(specie)}. Usa solo caratteristiche ESPLICITAMENTE scritte nella slide o nella nota trascritta qui sotto; non dedurre tratti botanici dalle foto né inventare fonti. Restituisci soltanto JSON {"proposte":[{"campo":"...","valore":"...","evidenza":"breve frase presente nella slide"}]}. Campi ammessi: ${campi}. Non inventare valori se mancano. Nota trascritta: ${specie.note || ''}`;
+    const proposte = normalizzaProposteAI(await richiediProposteSlideAI($('#cg-ai-fornitore').value, istruzioni, base64), specie);
+    if (richiesta !== cgAiRichiesta || cgSpecie !== id) return;
+    mostraProposteAI(proposte, id);
+    $('#cg-ai-stato').textContent = proposte.length ?
+      `${proposte.length} proposte da confrontare con la slide. Nessun dato è stato salvato automaticamente.` :
+      'Nessuna nuova caratteristica utilizzabile trovata. Puoi continuare a compilare manualmente.';
+  } catch (e) {
+    if (richiesta === cgAiRichiesta && cgSpecie === id)
+      $('#cg-ai-stato').textContent = 'Analisi non riuscita: ' + (e.name === 'TimeoutError' ? 'tempo scaduto.' :
+        e instanceof SyntaxError ? 'risposta AI non valida.' : e instanceof TypeError ? 'connessione o accesso al servizio non disponibile.' : e.message);
+  } finally { bottone.disabled = false; }
+}
 const CG_SEZIONI = [
   { titolo: 'Chioma e rami', campi: [['chiomaForma', 'Forma chioma', 'formaChioma'], ['ramiForma', 'Forma rami'], ['ramiInserzione', 'Inserzione rami', 'rami'], ['crescita', 'Tipo di crescita', 'crescita'], ['estensione', 'Estensione delle gemme', 'estensione']] },
   { titolo: 'Foglie', campi: [['fogliaTipo', 'Tipo di foglia', 'tipoFoglia'], ['fogliaComposta', 'Foglia composta'], ['fogliaLamina', 'Forma lamina', 'lamina'], ['fogliaMargine', 'Margine fogliare', 'margine'], ['fogliaBase', 'Base della foglia'], ['fogliaApice', 'Apice della foglia']] },
@@ -1831,6 +2023,10 @@ function apriPiantaCatalogo(id, dopoSalvataggio = false) {
   const specie = GUIDA_SPECIE.find(v => v.id === id);
   if (!specie) return;
   cgSpecie = id; cgSporco = false;
+  cgAiRichiesta++;
+  $('#cg-ai-proponi').disabled = false;
+  $('#cg-ai-risultati').replaceChildren();
+  $('#cg-ai-stato').textContent = 'Le proposte AI vanno controllate sulla slide prima di salvarle.';
   const salvata = S.guida.find(v => v.id === id);
   $('#cg-lista').classList.add('nascosto');
   $('#cg-editor').classList.remove('nascosto');
@@ -4106,6 +4302,12 @@ function applicaDimensioneInterfaccia(valore) {
 }
 
 function collegaEventi() {
+  $('#btn-versione').textContent = `v${APP_VERSIONE} ↻`;
+  $('#btn-versione').onclick = () => {
+    $('#btn-menu').click();
+    $('#dlg-menu .aggiornamento-app').scrollIntoView({ block: 'nearest' });
+    verificaAggiornamenti(true);
+  };
   $('.nav-editor').onclick = (e) => { const link = e.target.closest('a'); if (link) { e.preventDefault(); $(link.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
   $('#btn-tema').onclick = () => {
     const t = document.documentElement.dataset.tema === 'scuro' ? 'chiaro' : 'scuro';
@@ -4271,6 +4473,16 @@ function collegaEventi() {
   $('#gs-c-altro').oninput = disegnaListaGuidaSpecie;
 
   // Catalogo integrabile: editor separato dai rilievi.
+  ripristinaChiaviAI();
+  $('#ai-carica-env').onclick = () => $('#ai-file-env').click();
+  $('#ai-file-env').onchange = (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (file) caricaChiaviAI(file);
+  };
+  $('#ai-ricorda-env').onchange = ricordaChiaviAI;
+  $('#ai-rimuovi-env').onclick = () => { chiaviAI = {}; $('#ai-file-env').value = ''; ricordaChiaviAI(); };
+  $('#cg-ai-proponi').onclick = proponiCaratteriSlideAI;
+  $('#cg-ai-fornitore').onchange = () => aggiornaFornitoreSlide();
   $('#cg-cerca').oninput = listaCompletaGuida;
   $('#cg-filtro').onchange = listaCompletaGuida;
   $('#cg-form').oninput = () => { $('#cg-stato').classList.remove('cg-errore'); aggiornaModificheCatalogo(); };

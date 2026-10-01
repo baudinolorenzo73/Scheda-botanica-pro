@@ -46,6 +46,8 @@ header.testata{
 header.testata h1{margin:0;font:600 19px/1.1 Georgia,serif;flex:1}
 header.testata h1 small{display:block;font:12px system-ui,sans-serif;opacity:.8;margin-top:2px}
 header.testata h1 .marchio{display:block;font:400 10px system-ui,sans-serif;opacity:.5;margin-top:1px}
+.versione-app{flex:none;border:1px solid rgba(255,255,255,.38);border-radius:999px;background:rgba(255,255,255,.12);color:#fff;padding:6px 10px;font:600 12px/1.2 system-ui,sans-serif;white-space:nowrap;min-height:36px}
+.versione-app:hover,.versione-app:focus-visible{background:rgba(255,255,255,.25)}
 .btn-icona{
   width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.28);
   background:rgba(255,255,255,.1);color:#fff;font-size:18px;display:grid;place-items:center;
@@ -640,6 +642,15 @@ dialog .azioni .btn{flex:0 1 auto}
 .dimensione-interfaccia{display:grid;gap:7px;font-size:13px;font-weight:600;margin:8px 0 12px}
 .aggiornamento-app{display:grid;gap:8px;padding:12px;border:1px solid var(--linea);border-radius:var(--r-piccolo);margin:2px 0 10px}
 .aggiornamento-app p{margin:0;font-size:13px;line-height:1.45;color:var(--tenue)}
+.ai-config,.cg-ai{border:1px solid var(--linea);border-radius:10px;padding:12px;margin:12px 0;background:var(--foglio);line-height:1.45}
+.ai-config p,.ai-config small,.cg-ai p,.cg-ai small{color:var(--tenue);font-size:13px;overflow-wrap:anywhere}
+.cg-ai>label{display:block;margin:6px 0;font-size:13px;font-weight:600}
+.cg-ai>.campo-base{width:100%;max-width:100%;margin-bottom:8px}
+.ai-config .cg-trasferimento{margin:8px 0}
+.cg-ai-proposta{border-top:1px solid var(--linea);padding:10px 0;display:grid;gap:5px}
+.cg-ai-proposta p,.cg-ai-proposta small{margin:0}
+.cg-ai-proposta .btn{justify-self:start;min-height:42px}
+.cg-ai-conflitto{font-weight:700;color:#9a5a21!important}
 body[data-interfaccia="110"]{zoom:1.1}
 body[data-interfaccia="125"]{zoom:1.25}
 .barra{grid-template-columns:minmax(0,1fr) 190px}

@@ -13,9 +13,9 @@ const server = http.createServer((req, res) => {
     res.setHeader('Content-Type', ({'.js':'application/javascript','.json':'application/json','.css':'text/css','.html':'text/html','.webp':'image/webp','.png':'image/png'})[path.extname(file)] || 'application/octet-stream');
     res.setHeader('Cache-Control', 'no-store');
     let bytes = fs.readFileSync(file);
-    if (nuovo && pathname === '/versione.json') bytes = Buffer.from('{"versione":"3.26.4"}');
-    if (nuovo && pathname === '/service-worker.js') bytes = Buffer.from(String(bytes).replace('scheda-botanica-app-v38-', 'scheda-botanica-app-v39-'));
-    if (nuovo && pathname === '/js/config.js') bytes = Buffer.from(String(bytes).replace("APP_VERSIONE = '3.26.3'", "APP_VERSIONE = '3.26.4'"));
+    if (nuovo && pathname === '/versione.json') bytes = Buffer.from('{"versione":"3.26.8"}');
+    if (nuovo && pathname === '/service-worker.js') bytes = Buffer.from(String(bytes).replace('scheda-botanica-app-v42-', 'scheda-botanica-app-v43-'));
+    if (nuovo && pathname === '/js/config.js') bytes = Buffer.from(String(bytes).replace("APP_VERSIONE = '3.26.7'", "APP_VERSIONE = '3.26.8'"));
     res.end(bytes);
   } catch { res.writeHead(404); res.end(); }
 });
@@ -92,12 +92,12 @@ const server = http.createServer((req, res) => {
       const caricamento=page.waitForEvent('load');
       await page.evaluate(() => applicaAggiornamento());
       await caricamento;
-      await page.waitForFunction(() => DB.db && APP_VERSIONE==='3.26.3');
+      await page.waitForFunction(() => DB.db && APP_VERSIONE==='3.26.8');
       assert.equal(await page.evaluate(() => S.schede.some(r=>r.nome==='Fagus sylvatica')),true);
       await context.setOffline(true);
       await page.reload();
       await page.waitForFunction(() => DB.db && S.schede.some(r=>r.nome==='Fagus sylvatica'));
-      assert.equal(await page.evaluate(() => APP_VERSIONE),'3.26.3');
+      assert.equal(await page.evaluate(() => APP_VERSIONE),'3.26.8');
       assert.deepEqual(errors,[]);
       await context.close();
       console.log('OK Aggiornamento PWA: scheda conservata offline');

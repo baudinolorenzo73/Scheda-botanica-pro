@@ -41,6 +41,15 @@ const server = http.createServer((req, res) => {
       const pubblicata=JSON.parse(fs.readFileSync(path.join(root,'versione.json'),'utf8')).versione;
       assert.equal(await page.evaluate(()=>APP_VERSIONE),pubblicata,'Versione interna diversa da versione.json');
       assert.equal(require(path.join(root,'package.json')).version,pubblicata,'Versione npm diversa da versione.json');
+      assert.equal((await page.locator('#btn-versione').textContent()).trim(),`v${pubblicata} ↻`);
+      await page.click('#btn-versione');
+      assert.equal(await page.locator('#dlg-menu').evaluate(e=>e.open),true);
+      assert.match(await page.locator('#aggiornamento-stato').textContent(),/Versione installata:/);
+      await page.locator('#dlg-menu [data-az="chiudi"]').click();
+      await apriOpzioni(); await page.click('#btn-aiuto');
+      assert.match(await page.locator('#dlg-aiuto').textContent(),/Assistente AI facoltativo/);
+      assert.match(await page.locator('#dlg-aiuto').textContent(),/catalogo delle 144 piante/);
+      await page.click('#aiuto-chiudi');
       assert.equal(await page.evaluate(()=>typeof window.XlsxPopulate),'undefined');
       assert.equal(await page.evaluate(()=>typeof window.XLSX),'undefined');
       assert.equal(await page.evaluate(()=>typeof JSZip), 'function');
@@ -340,6 +349,68 @@ const server = http.createServer((req, res) => {
       await page.click('#cg-chiudi');
       await page.reload(); await page.waitForFunction(()=>DB.db && S.guida.length===1);
       assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].chiomaForma),'globosa');
+    });
+    await test('AI facoltativa: open.env locale, proposta verificabile e salvataggio esplicito',async()=>{
+      await apriOpzioni(); await page.click('#btn-menu');
+      await page.locator('#ai-file-env').setInputFiles({name:'open.env',mimeType:'text/plain',buffer:Buffer.from('# prova\nGOOGLE_API_KEY="chiave-di-prova"\n')});
+      assert.match(await page.locator('#ai-env-stato').textContent(),/Gemini, Groq o OpenRouter/);
+      assert.equal(await page.evaluate(()=>Boolean(localStorage.getItem('sb-ai-keys'))),true);
+      await page.route('https://generativelanguage.googleapis.com/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+        candidates:[{content:{parts:[{text:JSON.stringify({proposte:[{campo:'fiore',valore:'Bianco',evidenza:'fiore bianco'}]})}]}}]
+      })}));
+      await page.click('[data-az="completa-guida"]');
+      await page.locator('#cg-lista .cg-riga').first().click();
+      await page.click('#cg-ai-proponi');
+      await page.waitForFunction(()=>document.querySelectorAll('#cg-ai-risultati .cg-ai-proposta').length===1);
+      assert.equal(await page.evaluate(()=>S.guida[0].campi.fiore),undefined);
+      await page.click('#cg-ai-risultati .btn');
+      assert.equal(await page.locator('#cg-form [name="fiore"]').inputValue(),'Bianco');
+      assert.equal(await page.locator('#cg-fonte').inputValue(),'pagina');
+      await page.click('#cg-salva');
+      await page.waitForFunction(()=>S.guida[0].campi.fiore==='Bianco');
+      await page.click('#cg-chiudi');
+      await page.reload();await page.waitForFunction(()=>DB.db);
+      assert.equal(await page.evaluate(()=>Object.keys(chiaviAI).length),1);
+      assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].fiore),'Bianco');
+      await apriOpzioni(); await page.click('#btn-menu');
+      await page.click('#ai-rimuovi-env');
+      assert.equal(await page.evaluate(()=>localStorage.getItem('sb-ai-keys')),null);
+    });
+    await test('Slide AI: Groq e OpenRouter scelti esplicitamente, senza salvataggio automatico',async()=>{
+      await page.locator('#ai-file-env').setInputFiles({name:'open.env',mimeType:'text/plain',
+        buffer:Buffer.from('GROQ_API_KEY="chiave-groq-di-prova"\nOPENROUTER_API_KEY="chiave-router-di-prova"\n')});
+      await page.click('[data-az="completa-guida"]');
+      await page.locator('#cg-lista .cg-riga').first().click();
+      assert.equal(await page.locator('#cg-ai-fornitore').inputValue(),'groq');
+      let chiamate = 0;
+      const fake = JSON.stringify({choices:[{message:{content:'```json\n'+JSON.stringify({proposte:[{campo:'frutto',valore:'Riccio',evidenza:'Frutto, riccio con castagne'}]})+'\n```'}}]});
+      await page.route('https://api.groq.com/openai/v1/chat/completions',async route=>{
+        chiamate++;
+        const body=route.request().postDataJSON();
+        assert.equal(body.model,'qwen/qwen3.8-27b');
+        assert.match(body.messages[0].content[1].image_url.url,/^data:image\/webp;base64,/);
+        await route.fulfill({status:200,contentType:'application/json',body:fake});
+      });
+      await page.click('#cg-ai-proponi');
+      await page.waitForFunction(()=>document.querySelectorAll('#cg-ai-risultati .cg-ai-proposta').length===1);
+      assert.equal(chiamate,1);
+      assert.equal(await page.evaluate(()=>S.guida[0].campi?.frutto),undefined);
+      await page.selectOption('#cg-ai-fornitore','openrouter');
+      assert.equal(await page.locator('#cg-ai-modello').isVisible(),true);
+      await page.click('#cg-ai-proponi');
+      await page.waitForFunction(()=>document.querySelector('#cg-ai-stato').textContent.includes('Inserisci l’ID'));
+      await page.fill('#cg-ai-modello','esempio/modello-vision');
+      await page.route('https://openrouter.ai/api/v1/chat/completions',async route=>{
+        chiamate++;
+        assert.equal(route.request().postDataJSON().model,'esempio/modello-vision');
+        await route.fulfill({status:200,contentType:'application/json',body:fake});
+      });
+      await page.click('#cg-ai-proponi');
+      await page.waitForFunction(()=>document.querySelectorAll('#cg-ai-risultati .cg-ai-proposta').length===1);
+      assert.equal(chiamate,2);
+      await page.click('#cg-chiudi');
+      await page.click('#btn-menu'); await page.click('#ai-rimuovi-env');
+      await page.locator('#dlg-menu [data-az="chiudi"]').click();
     });
     await test('Azioni specie: caratteristiche, foto, fonti e dati discordanti',async()=>{
       await page.evaluate(()=>apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid));
