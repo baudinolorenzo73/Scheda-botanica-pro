@@ -1,6 +1,6 @@
 # Assistente AI facoltativo
 
-La scheda botanica, l'archivio delle 144 piante, la ricerca locale e il backup funzionano senza chiavi API e anche offline. L'analisi AI delle slide richiede rete e una chiave per Google Gemini, Groq oppure OpenRouter.
+La scheda botanica, l'archivio delle 144 piante, la ricerca locale e il backup funzionano senza chiavi API e anche offline. La ricerca AI e l'analisi AI delle slide richiedono rete e una chiave per Google Gemini, Groq oppure OpenRouter.
 
 ## Dove conservare `open.env`
 
@@ -18,3 +18,34 @@ Il browser richiede una selezione esplicita del file la prima volta. Se **Ricord
 La richiesta invia al fornitore scelto la slide selezionata e la nota del corso. Non invia automaticamente foto delle schede, coordinate GPS o l'intero archivio. Le chiavi Cerebras, Together e OpenCode sono riconosciute nel file ma non vengono ancora usate per le slide; questo evita di inviare immagini a modelli senza verificarne prima le capacità.
 
 Se la chiave è stata mostrata in uno screenshot o caricata in un luogo pubblico, rigenerala nel pannello del fornitore. Per un uso condiviso o continuo, le API devono passare da un servizio server con chiavi protette: una pagina statica non può tenere segrete le chiavi durante una richiesta effettuata dal browser.
+
+## Ricerca AI nella scheda · versione 3.27.3
+
+In **Configurazione → Assistente AI** scegli il servizio per la ricerca. «Automatico» usa il servizio selezionato per il catalogo quando ha una chiave, altrimenti la prima chiave disponibile (Gemini, Groq, OpenRouter). Scegliendo esplicitamente un servizio non viene usata la chiave di un altro provider se manca quella richiesta.
+
+Sotto **Modelli AI · impostazioni avanzate** puoi specificare gli ID dei modelli. I valori vengono ricordati dal browser; lascia vuoto per i predefiniti. OpenRouter richiede sempre l'ID esatto di un modello scelto da te: non viene selezionato arbitrariamente un modello gratuito o a pagamento. Il campo OpenRouter del catalogo e quello di Configurazione sono sincronizzati.
+
+**Cerca → Cerca con AI** invia il nome e i caratteri compilati: persistenza, chioma, rami, foglie, crescita, estensione, grandezza, altezza, circonferenza e terreno. Non invia coordinate, numero, data, note personali, problemi, foto o l'intero database. Richiede fino a quattro candidati e verifica il taxon su GBIF, regno Plantae: animali, funghi, corrispondenze incerte e risultati solo a livello di genere vengono esclusi. Nessun campo cambia finché non premi «Usa questo nome»; il nome attuale richiede conferma per essere sostituito e i caratteri già inseriti restano conservati. Una percentuale AI è una stima non calibrata, non una certezza botanica.
+
+**Cerca intelligente** mantiene i risultati della guida locale e consulta anche Wikipedia e GBIF. Se c'è una foto salvata e la chiave PlantNet, invia la prima foto a PlantNet; se è configurato un servizio AI consulta anche quello. I fallimenti vengono mostrati senza nascondere i risultati delle altre fonti. Le percentuali di foto, AI e corrispondenza del nome restano separate.
+
+## Errori e modelli
+
+- **404 AI**: può indicare un ID modello errato, ritirato o non disponibile per quell'account; non dimostra da solo che la chiave sia sbagliata. Gemini/Groq controllano il catalogo ufficiale e riprovano una sola volta con un modello compatibile nello stesso servizio, ma soltanto quando stai usando i predefiniti. Per Gemini il recupero sceglie un modello Flash, non Pro; per Groq mantiene distinta la ricerca testuale dalle slide con immagini. Non è una garanzia di gratuità: verifica costi e quote nel tuo account.
+- **Modello impostato da te / OpenRouter**: un 404 non modifica la tua scelta; il messaggio indica il servizio e l'ID da correggere.
+- **401/403**: autenticazione o accesso al modello negato; controlla chiave e abilitazioni, senza inviare il file open.env a nessuno.
+- **429**: quota o frequenza delle richieste superata. Non vengono usate automaticamente altre chiavi per aggirare il limite.
+- **Rete, CORS o timeout**: il browser non ha ricevuto una risposta valida. Le richieste AI e fotografiche hanno un limite di attesa di 60 secondi; le verifiche ordinarie 12 secondi.
+- **AI ha risposto ma GBIF non risponde**: l'app distingue la verifica non disponibile da «nessuna pianta trovata» e non applica proposte non verificate.
+
+## PlantNet: ricerca, foto e pagina della specie
+
+La chiave PlantNet si inserisce in **Configurazione → Chiave PlantNet**: è distinta dalle chiavi AI di open.env. La verifica della chiave interroga il catalogo senza inviare una foto finta o dichiarare erroneamente valido un 404.
+
+**Cerca su PlantNet** interroga `/v2/projects/k-world-flora/species` con un prefisso, lingua italiana e una pagina di massimo 20 risultati. Il nome della guida è usato senza la cultivar; un nome comune non trovato direttamente viene cercato su Wikipedia e verificato tramite GBIF. I risultati riportano nome scientifico, autore e nomi comuni disponibili, con un collegamento esplicito alla pagina della specie. Non sono identità certificate dell'esemplare né dati morfologici completi. L'app non chiede le immagini del catalogo, riservate al piano Pro. Una varietà coltivata non viene confermata dalla sola corrispondenza della specie.
+
+**Cerca da foto** usa fotocamera, galleria o una foto della scheda, poi «Identifica» invia la foto a PlantNet. Un 404 di questa identificazione può significare nessuna pianta riconosciuta, diversamente dal 404 di un modello AI. Prova una singola foglia o un fiore a fuoco, scegliendo l'organo corretto.
+
+**Caratteristiche · guida locale** e **Zona d'origine** interrogano la guida delle 144, non PlantNet. Per proporre taxa a partire da caratteristiche testuali usa l'AI; verifica sempre l'esemplare sul campo. I collegamenti **Scheda PlantNet** e **Apri la specie su GBIF** aprono siti esterni e non sono presentati come ricerche interne.
+
+Riferimenti tecnici: [catalogo PlantNet](https://my.plantnet.org/doc/api/taxonomy), [identificazione PlantNet](https://my.plantnet.org/doc/api/identify), [modelli Gemini](https://ai.google.dev/api/models), [modelli Groq](https://console.groq.com/docs/models).

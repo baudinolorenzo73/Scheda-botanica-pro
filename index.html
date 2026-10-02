@@ -232,8 +232,8 @@
 
 <!-- ================= DIALOGHI ================= -->
 <dialog id="dlg-cerca-auto" aria-labelledby="auto-titolo">
-  <h2 id="auto-titolo">Risultati della ricerca automatica</h2>
-  <p class="auto-spiega">Confronta i caratteri con la guida locale, verifica il nome su Wikipedia/Wikidata e GBIF e, se hai caricato una chiave, consulta anche l’assistente AI. Se la scheda ha una foto e la chiave PlantNet, invia la prima foto a PlantNet. Le percentuali delle diverse fonti hanno significati diversi e non sono una certezza d’identificazione.</p>
+  <h2 id="auto-titolo">Risultati della ricerca</h2>
+  <p class="auto-spiega" id="auto-spiega">Le proposte non modificano la scheda finché non scegli un risultato. Le percentuali delle fonti hanno significati diversi e non sono una certezza d’identificazione.</p>
   <p id="auto-stato" role="status" aria-live="polite"></p>
   <div id="auto-risultati"></div>
   <div class="azioni"><button type="button" class="btn" id="auto-chiudi">Chiudi</button></div>
@@ -267,6 +267,23 @@
       <input type="file" id="ai-file-env" accept=".env,.txt,text/plain" class="nascosto">
       <label><input type="checkbox" id="ai-ricorda-env" checked> Ricorda le chiavi su questo browser</label>
       <p id="ai-env-stato" role="status" aria-live="polite">Nessuna chiave caricata.</p>
+      <label for="ai-ricerca-servizio">Servizio per la ricerca AI</label>
+      <select id="ai-ricerca-servizio" class="campo-base">
+        <option value="auto">Automatico · servizio selezionato nel catalogo o prima chiave disponibile</option>
+        <option value="gemini">Google Gemini</option><option value="groq">Groq</option><option value="openrouter">OpenRouter</option>
+      </select>
+      <details>
+        <summary>Modelli AI · impostazioni avanzate</summary>
+        <p>Lascia vuoto per i modelli predefiniti. In caso di errore 404 Gemini/Groq controllano i modelli disponibili e riprovano una volta nello stesso servizio. Un modello impostato da te non viene sostituito. Disponibilità e gratuità dipendono dal tuo account: verifica prezzi e limiti prima dell’uso.</p>
+        <label for="ai-modello-gemini">ID modello Gemini · testo e slide</label>
+        <input id="ai-modello-gemini" class="campo-base" placeholder="Automatico · modello Flash" autocomplete="off" spellcheck="false">
+        <label for="ai-modello-groq">ID modello Groq · ricerca testuale</label>
+        <input id="ai-modello-groq" class="campo-base" placeholder="llama-3.1-8b-instant" autocomplete="off" spellcheck="false">
+        <label for="ai-modello-groq-vision">ID modello Groq · slide con immagini</label>
+        <input id="ai-modello-groq-vision" class="campo-base" placeholder="qwen/qwen3.8-27b" autocomplete="off" spellcheck="false">
+        <label for="ai-modello-openrouter">ID modello OpenRouter · verifica prezzi e supporto immagini</label>
+        <input id="ai-modello-openrouter" class="campo-base" placeholder="fornitore/modello" autocomplete="off" spellcheck="false">
+      </details>
       <small>Il browser salva una copia locale delle chiavi, non il percorso di open.env. “Dimentica chiavi” la elimina; cancellare i dati del sito la elimina ugualmente. Evita dispositivi condivisi. Tieni open.env fuori da ZIP, Drive e GitHub. Una ricerca AI invia al servizio scelto soltanto il nome e le caratteristiche botaniche compilate; l’analisi del catalogo invia invece la slide selezionata.</small>
     </div>
     <label class="dimensione-interfaccia" for="sel-dimensione-interfaccia">Dimensione interfaccia
@@ -616,7 +633,7 @@
     <li><b>Cartella Download/Botanica</b>: premi «Scegli Download/Botanica». L’app spiega perché serve il permesso e chiede conferma prima di mostrare la richiesta del browser. Se accetti, seleziona Download: viene creata la sottocartella Botanica. L’autorizzazione riguarda solo quella cartella e può essere dimenticata dalla Configurazione. Se Android o il browser non offre questa funzione, ogni file viene scaricato normalmente.</li>
     <li><b>Backup completo (.zip)</b>: un unico archivio con tutti i dati, le foto e gli audio. Serve a due cose: si reimporta nell'app con "Ripristina backup" (anche su un altro telefono), e dentro ha CSV, GeoJSON, KML e GPX leggibili con Excel e QGIS. È il modo più sicuro per non perdere nulla: fallo a fine giornata.</li>
     <li><b>Backup automatico</b>: attivo di default, prepara un backup completo con la frequenza scelta. Se hai autorizzato Download/Botanica lo salva lì; altrimenti usa il normale download del browser.</li>
-    <li><b>Nuovo elenco</b> (nella sezione «Sul campo»): salva le schede di adesso in un backup con data e ora nel nome, le sposta nel cestino e riparte da un elenco vuoto, con «N° progressivo» ed etichetta interna nuovamente da Prova1.</li>
+    <li><b>Nuovo elenco</b> (nella sezione «Sul campo»): salva le schede di adesso in un backup con data e ora nel nome, le sposta nel cestino e riparte da un elenco vuoto, con «N° progressivo» nuovamente da 1.</li>
     <li><b>Condividi backup</b>: come sopra, ma invece di scaricare il file apre il pannello "Condividi" del telefono, per mandarlo con un tocco in più a Drive, Dropbox o WhatsApp. Se il browser non lo supporta, scarica il file normalmente.</li>
     <li><b>Ripristina backup</b>: accetta lo .zip e i vecchi backup .json. Prima mostra un riepilogo di schede, foto, audio, catalogo e traccia. La modalità “Sostituisci” conserva l’archivio attuale se il file è incompleto o una scrittura fallisce.</li>
     <li><b>Importa da Excel o CSV</b>: le colonne vengono riconosciute dal nome dell'intestazione (N° progressivo, Data, Nome…), utile per correggere molti dati insieme al PC.</li>
@@ -628,7 +645,21 @@
   <p>In Configurazione puoi scegliere «Adatta allo schermo», 110% o 125% per ingrandire l’interfaccia. Sotto «+ Opzioni» puoi cambiare tema chiaro/scuro. Dopo la prima apertura completa, l’app conserva le risorse essenziali per lavorare offline; le ricerche web, PlantNet, l’AI e il meteo richiedono invece connessione.</p>
 
   <h3>Nuove schede e aggiornamenti</h3>
-  <p>Ogni nuova scheda nasce con la data odierna e con un’etichetta interna uguale al progressivo: Prova1, Prova2 e così via. L’etichetta serve nell’elenco, nel menu delle schede e nella ricerca; non viene inserita nel campo «Nome esemplare», che resta vuoto finché non identifichi la pianta. Se esci senza aggiungere alcun dato reale, foto, GPS o nota vocale, la bozza viene eliminata e non compare tra le schede salvate. Il pulsante della versione in alto a destra controlla il file pubblicato senza usare la cache; se trova una versione più recente chiede conferma prima di scaricarla e mostra poi «Aggiorna ora».</p>
+  <p>Ogni nuova scheda nasce con la data odierna; nessun nome o etichetta viene aggiunto automaticamente. «Nome esemplare» resta vuoto. Le vecchie etichette Prova1, Prova2 ecc. non sono più visualizzate, ma i nomi botanici e i dati già salvati restano invariati. Se esci senza aggiungere alcun dato reale, foto, GPS o nota vocale, la bozza viene eliminata e non compare tra le schede salvate. Il pulsante della versione in alto a destra controlla il file pubblicato senza usare la cache; se trova una versione più recente chiede conferma prima di scaricarla e mostra poi «Aggiorna ora».</p>
+
+  <h3>Ricerca botanica: quale pulsante usare</h3>
+  <ul>
+    <li><b>Digitazione del nome</b>: suggerimenti immediati dalla guida delle 144 piante e dai nomi già salvati, anche offline.</li>
+    <li><b>Wikipedia / Wikidata</b>: cerca un nome scientifico strutturato e lo verifica nel regno Plantae su GBIF. Animali, funghi e pagine non botaniche sono scartati.</li>
+    <li><b>Cerca su PlantNet</b>: interroga il catalogo per nome scientifico o genere. Se non trova il nome comune prova a convertirlo tramite Wikipedia. Richiede Internet e la chiave PlantNet (separata dalle chiavi AI). Mostra fino a 20 specie; non apre semplicemente la pagina iniziale.</li>
+    <li><b>Scheda PlantNet / Apri la specie su GBIF</b>: collegamenti esterni esplicitamente distinti dalla ricerca. Appaiono quando è noto il riferimento della specie. Se GBIF non è già associato puoi avviare la verifica del nome dal pulsante «Cerca su GBIF».</li>
+    <li><b>Cerca da foto</b>: scegli fotocamera, galleria o una foto già salvata nella scheda. PlantNet analizza la foto con l’organo selezionato; richiede la sua chiave, rete e quota disponibile. Una foto di una sola pianta ben a fuoco dà risultati migliori.</li>
+    <li><b>Caratteristiche · guida locale</b>: confronto con i dati e le note del catalogo delle 144. Non è un’interrogazione testuale a PlantNet e non copre tutte le piante del mondo.</li>
+    <li><b>Zona d’origine</b>: filtra la provenienza riportata nella guida, non certifica la distribuzione attuale della specie né usa il tuo GPS.</li>
+    <li><b>Cerca con AI</b>: invia solo nome e caratteristiche botaniche al servizio configurato (non foto, GPS, note personali o intero DB). Verifica i nomi suggeriti su GBIF prima di proporli. Le percentuali AI sono stime, non probabilità scientificamente calibrate.</li>
+    <li><b>Cerca intelligente</b>: confronta la guida, Wikipedia, GBIF e, se configurati, AI e prima foto salvata su PlantNet. Un servizio in errore non elimina i risultati degli altri. Le percentuali delle fonti non vengono mediate.</li>
+  </ul>
+  <p>La scelta del nome richiede una tua conferma. I campi già compilati non vengono sovrascritti: eventuali conflitti con la guida vengono segnalati. Il catalogo PlantNet fornisce nomi e riferimenti, non tutti i caratteri morfologici della scheda; l’app non inventa dati mancanti.</p>
 
   <p id="aiuto-versione" style="font-size:11px;color:var(--tenue);margin-top:16px">Versione dell'app: —</p>
   <div class="azioni"><button type="button" class="btn" id="aiuto-chiudi" onclick="this.closest('dialog').close()">Chiudi</button></div>
@@ -693,6 +724,7 @@
 <script src="./js/config.js"></script>
 <script src="./js/utils.js"></script>
 <script src="./js/database.js"></script>
+<script src="./js/ricerca-servizi.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

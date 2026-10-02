@@ -71,14 +71,14 @@ const server = http.createServer((req, res) => {
     await test('Scheda: misura decimale libera e persistenza al ricaricamento',async()=>{
       await page.click('#btn-nuova');
       assert.equal(await page.inputValue('#f-nome'),'');
-      assert.equal(await page.evaluate(()=>S.aperta.nomeScheda),'Prova1');
+      assert.equal(await page.evaluate(()=>S.aperta.nomeScheda),undefined);
       assert.equal(await page.inputValue('#f-data'),await page.evaluate(()=>oggi()));
       await page.fill('#f-nome','Quercus robur');await page.fill('#f-altezza','12.3');
       assert.equal(await page.locator('#f-altezza').evaluate(e=>e.checkValidity()),true);
       await page.click('#btn-chiudi'); await page.waitForFunction(()=>S.aperta===null);
       await page.reload(); await page.waitForFunction(()=>S.schede.length===1);
       assert.equal(await page.evaluate(()=>S.schede[0].altezza),'12.3');
-      assert.match(await page.locator('#apri-scheda-salvata').locator('option').nth(1).textContent(),/N° 1 — Prova1 — Quercus robur/);
+      assert.match(await page.locator('#apri-scheda-salvata').locator('option').nth(1).textContent(),/N° 1 — Quercus robur/);
       const uid=await page.evaluate(()=>S.schede[0].uid);
       await page.selectOption('#apri-scheda-salvata',uid);
       await page.waitForFunction(()=>S.aperta?.uid===S.schede[0].uid);
@@ -88,7 +88,7 @@ const server = http.createServer((req, res) => {
     await test('Una scheda con soli valori automatici non viene memorizzata',async()=>{
       await page.click('#btn-nuova');
       const bozza=await page.evaluate(()=>({uid:S.aperta.uid,nomeScheda:S.aperta.nomeScheda,data:S.aperta.data}));
-      assert.equal(bozza.nomeScheda,'Prova2');
+      assert.equal(bozza.nomeScheda,undefined);
       assert.equal(bozza.data,await page.evaluate(()=>oggi()));
       assert.equal(await page.inputValue('#f-nome'),'');
       await page.click('#btn-chiudi');
@@ -507,7 +507,7 @@ const server = http.createServer((req, res) => {
       await page.evaluate(()=>apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid));
       await page.locator('#nome-ricerca summary').click();
       if(process.env.SCREENSHOT_DIR){
-        await page.locator('#plantnet-link').scrollIntoViewIfNeeded();
+        await page.locator('#nome-cerca-plantnet').scrollIntoViewIfNeeded();
         await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'azioni-specie.png'),animations:'disabled'});
       }
       await page.click('#nome-cerca-caratteristiche');
@@ -523,7 +523,8 @@ const server = http.createServer((req, res) => {
       });
       assert.match(await page.locator('#nome-conflitti').textContent(),/Persistenza foglie/);
       assert.equal(await page.evaluate(()=>S.aperta.persistenza),'sempreverde');
-      assert.match(await page.locator('#plantnet-link').getAttribute('href'),/identify\.plantnet\.org/);
+      assert.equal(await page.locator('#plantnet-link').isVisible(),false);
+      assert.equal(await page.locator('#plantnet-link').getAttribute('href'),null);
       await page.click('#nome-cerca-nome');
       assert.equal(await page.locator('#gs-modo-nome').getAttribute('aria-selected'),'true');
       await page.waitForFunction(()=>document.querySelector('#gs-lista').textContent.includes('guida locale'));
@@ -624,6 +625,35 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.inputValue('#f-nome'),'Ocimum basilicum');
       assert.match(await page.locator('#plantnet-link').getAttribute('href'),/Ocimum%20basilicum%20L\./);
       await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;localStorage.removeItem('sb-plantnet-key');});
+      await page.click('#btn-chiudi');
+    });
+    await test('PlantNet per nome: interroga il catalogo, non apre la pagina iniziale',async()=>{
+      await page.evaluate(()=>{
+        apriEditor(S.schede.find(s=>s.nome==='Ocimum basilicum').uid);
+        localStorage.setItem('sb-plantnet-key','chiave-simulata');
+        window.fetchPrecedente=window.fetch;
+        window.richiestePlantNet=[];
+        window.fetch=(url,options)=>{
+          if(!String(url).includes('my-api.plantnet.org')) return window.fetchPrecedente(url,options);
+          window.richiestePlantNet.push(String(url));
+          return Promise.resolve(new Response(JSON.stringify([{scientificNameWithoutAuthor:'Ocimum basilicum',scientificNameAuthorship:'L.',commonNames:['Basilico'],gbifId:2927167}]),{status:200}));
+        };
+      });
+      await page.locator('#nome-ricerca summary').click();
+      const prima=await page.inputValue('#f-nome');
+      await page.click('#nome-cerca-plantnet');
+      await page.waitForFunction(()=>document.querySelector('#auto-stato').textContent.includes('risultati nel catalogo PlantNet'));
+      assert.match(await page.locator('#auto-risultati').textContent(),/Catalogo PlantNet: Basilico/);
+      assert.equal(await page.inputValue('#f-nome'),prima);
+      assert.match(await page.evaluate(()=>window.richiestePlantNet[0]),/projects\/k-world-flora\/species\?prefix=Ocimum%20basilicum/);
+      assert.match(await page.locator('#auto-risultati a').getAttribute('href'),/Ocimum%20basilicum%20L\./);
+      await page.click('#auto-chiudi');
+      await page.evaluate(()=>localStorage.removeItem('sb-plantnet-key'));
+      await page.click('#nome-cerca-plantnet');
+      assert.match(await page.locator('#auto-stato').textContent(),/Manca la chiave PlantNet/);
+      assert.equal(await page.evaluate(()=>window.richiestePlantNet.length),1);
+      await page.click('#auto-chiudi');
+      await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;});
       await page.click('#btn-chiudi');
     });
     await test('Home: traccia con pausa, stop, nuova scheda e meteo',async()=>{
@@ -748,7 +778,7 @@ const server = http.createServer((req, res) => {
       await page.waitForFunction(()=>!!S.aperta);
       assert.equal(await page.inputValue('#f-prog'),'1');
       assert.equal(await page.inputValue('#f-nome'),'');
-      assert.equal(await page.evaluate(()=>S.aperta.nomeScheda),'Prova1');
+      assert.equal(await page.evaluate(()=>S.aperta.nomeScheda),undefined);
       assert.equal(await page.inputValue('#f-data'),await page.evaluate(()=>oggi()));
     });
     await test('Scelta dalla zona compila la scheda e chiude la ricerca',async()=>{

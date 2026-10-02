@@ -2,7 +2,9 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.27.2**
+**by Lollo ®2026 — versione 3.27.3**
+
+[Correzioni delle ricerche e test 3.27.3](REVISIONE-3.27.3.md) · [Guida all’AI e alle chiavi](ASSISTENTE-AI.md)
 
 [Editor e ricerca automatica](REVISIONE-3.25.md) · [Prima pagina e dimensione interfaccia](REVISIONE-3.24.md) · [Excel più leggero](REVISIONE-3.23.md) · [Unione con Drive Up](REVISIONE-3.22.md)
 
@@ -37,7 +39,9 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 - **Foto, GPS e nota vocale** sempre accessibili in alto nell’editor, anche mentre scorri la scheda.
 - **Catalogo integrabile** in Configurazione: sfoglia le 144 pagine originali, aggiungi le caratteristiche mancanti e registra la fonte; le integrazioni hanno un editor viola distinto dalle schede di rilievo. Trasferisci solo le integrazioni o il catalogo completo delle 144 piante in JSON, oppure includi le integrazioni nel backup ZIP di schede, foto e audio.
 - **Azioni in prima pagina**: «Nuova scheda» resta sempre visibile nella barra inferiore; avvio/pausa/stop della traccia GPS e «Nuovo elenco» sono nel riquadro «Sul campo»; «+ Opzioni» raccoglie meteo 3B Meteo, QR, stampa, backup, cestino, guida e tema. In Configurazione si può scegliere la dimensione dell’interfaccia.
-- **Nuove schede già riconoscibili**: data odierna automatica ed etichetta interna sequenziale `Prova1`, `Prova2`… visibile nell’elenco, nel menu e nella ricerca. Il campo botanico «Nome esemplare» resta vuoto. Se si torna indietro senza inserire alcun dato reale, la bozza non viene memorizzata.
+- **Nuove schede senza nomi automatici**: la data è quella odierna e «Nome esemplare» resta vuoto. Nessuna etichetta `Prova…` viene generata o visualizzata, neppure per le vecchie schede. Se si torna indietro senza inserire alcun dato reale, la bozza non viene memorizzata.
+- **PlantNet per nome dentro l’app**: il pulsante interroga il catalogo ufficiale per prefisso scientifico; i nomi comuni sono risolti tramite Wikipedia quando necessario. Richiede la chiave PlantNet. Il collegamento alla scheda esterna è un comando separato. Le caratteristiche sono confrontate nella guida locale o con l’AI, non con un inesistente motore testuale PlantNet.
+- **AI con recupero dai modelli non disponibili**: modelli diversi per testo e immagini; per i predefiniti Gemini/Groq un errore 404 avvia il controllo del catalogo ufficiale e una sola riprova nello stesso servizio. Modelli e servizio si configurano da Configurazione. Non c’è passaggio automatico fra provider o scelta arbitraria di modelli OpenRouter.
 - **Nuovo elenco** dalla prima schermata: scarica un backup delle schede correnti e le sposta nel cestino, poi riparte dalla scheda numero 1.
 - **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
 - **Stampa** di una o più schede, anche solo come etichette QR.
