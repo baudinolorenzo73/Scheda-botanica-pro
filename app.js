@@ -708,9 +708,10 @@ function costruisciModulo() {
                 el('div', { id: 'gbif-link', class: 'nome-fonte-gbif' }),
                 el('button', { type: 'button', class: 'btn', id: 'nome-cerca-foto', onclick: apriGuidaSpecieFoto }, 'Cerca da foto'),
                 el('button', { type: 'button', class: 'btn', id: 'nome-cerca-caratteristiche', onclick: cercaCaratteristicheDaScheda }, 'Cerca da caratteristiche'),
-                el('button', { type: 'button', class: 'btn', id: 'nome-cerca-zona', onclick: apriRicercaZonaHabitat }, 'Zona d’origine'))),
-            el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-auto', onclick: cercaAutoDaScheda }, 'Cerca auto')),
-          el('p', { class: 'nome-auto-nota' }, 'La ricerca auto consulta servizi online. Se hai già salvato una foto e la chiave PlantNet, invia quella foto per l’identificazione.'),
+                el('button', { type: 'button', class: 'btn', id: 'nome-cerca-zona', onclick: apriRicercaZonaHabitat }, 'Zona d’origine'),
+                el('button', { type: 'button', class: 'btn nome-cerca-ai', id: 'nome-cerca-ai', onclick: cercaAIDaScheda }, '✨ Cerca con AI'))),
+            el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-auto', onclick: cercaAutoDaScheda }, '✨ Cerca intelligente')),
+          el('p', { class: 'nome-auto-nota' }, 'La ricerca intelligente confronta guida, Wikipedia, GBIF, foto PlantNet e, se hai caricato una chiave, anche l’AI. Le proposte non modificano la scheda finché non le confermi.'),
           el('p', { id: 'nome-conflitti', class: 'nome-conflitti nascosto', role: 'status' })));
       } else {
         griglia.append(el('label', { class: 'campo' + (c.largo ? ' largo' : ''), for: id },
@@ -2498,9 +2499,87 @@ async function fotoPlantNetAuto(foto) {
   })).filter(r => r.nome);
 }
 
+function fornitoreRicercaAI() {
+  const disponibili = {
+    gemini: Boolean(chiaviAI.GEMINI_API_KEY || chiaviAI.GOOGLE_API_KEY),
+    groq: Boolean(chiaviAI.GROQ_API_KEY),
+    openrouter: Boolean(chiaviAI.OPENROUTER_API_KEY && /^[\w.-]+\/[\w./:-]+$/.test($('#cg-ai-modello')?.value?.trim() || '')),
+  };
+  const preferito = $('#cg-ai-fornitore')?.value;
+  const nome = disponibili[preferito] ? preferito : Object.keys(disponibili).find(k => disponibili[k]);
+  if (!nome) return null;
+  return {
+    nome,
+    etichetta: { gemini: 'Gemini', groq: 'Groq', openrouter: 'OpenRouter' }[nome],
+    chiave: nome === 'gemini' ? (chiaviAI.GEMINI_API_KEY || chiaviAI.GOOGLE_API_KEY) :
+      nome === 'groq' ? chiaviAI.GROQ_API_KEY : chiaviAI.OPENROUTER_API_KEY,
+    modello: nome === 'gemini' ? 'gemini-2.5-flash' : nome === 'groq' ? 'qwen/qwen3.8-27b' : $('#cg-ai-modello').value.trim(),
+    url: nome === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions',
+  };
+}
+
+function datiRicercaAI(r) {
+  const caratteristiche = {};
+  for (const k of GS_CAMPI_SCHEDA) {
+    if (!r[k]) continue;
+    caratteristiche[CAMPI.find(c => c.k === k)?.label || k] = String(r[k]).slice(0, 160);
+  }
+  if (r.grandezza) caratteristiche['Classe di grandezza'] = String(r.grandezza).slice(0, 80);
+  if (r.altezza) caratteristiche['Altezza (m)'] = String(r.altezza).slice(0, 30);
+  return { nomeInserito: String($('#f-nome')?.value || r.nome || '').trim().slice(0, 160), caratteristiche };
+}
+
+async function richiediRicercaSpecieAI(r) {
+  const fornitore = fornitoreRicercaAI();
+  if (!fornitore) throw new Error('Carica open.env da «+ Opzioni → Backup e configurazione» e scegli Gemini, Groq o OpenRouter.');
+  const osservazioni = datiRicercaAI(r);
+  if (!osservazioni.nomeInserito && !Object.keys(osservazioni.caratteristiche).length)
+    throw new Error('Inserisci un nome o almeno una caratteristica botanica prima della ricerca AI.');
+  const istruzioni = `Sei un assistente di identificazione botanica prudente. Proponi al massimo 4 taxa vegetali compatibili con questi dati: ${JSON.stringify(osservazioni)}. Usa soltanto nomi scientifici binomiali (genere e specie); non inventare taxa e non proporre animali, funghi o nomi soltanto di genere. La percentuale è una stima orientativa basata esclusivamente sui dati forniti, non una certezza. Rispondi esclusivamente con JSON nel formato {"candidati":[{"nomeScientifico":"Genere specie","percentuale":0,"motivazione":"massimo 180 caratteri"}]}.`;
+  let risposta;
+  if (fornitore.nome === 'gemini') {
+    risposta = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${fornitore.modello}:generateContent`, {
+      method: 'POST', signal: AbortSignal.timeout(45000),
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': fornitore.chiave },
+      body: JSON.stringify({ contents: [{ parts: [{ text: istruzioni }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0 } }),
+    });
+  } else {
+    risposta = await fetch(fornitore.url, {
+      method: 'POST', signal: AbortSignal.timeout(60000),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${fornitore.chiave}` },
+      body: JSON.stringify({ model: fornitore.modello, temperature: 0, max_tokens: 1000,
+        messages: [{ role: 'user', content: istruzioni }] }),
+    });
+  }
+  if (!risposta.ok) throw new Error(risposta.status === 401 || risposta.status === 403 ?
+    `Chiave ${fornitore.etichetta} non valida o accesso al modello negato.` : risposta.status === 429 ?
+    'Limite delle richieste AI raggiunto. Riprova più tardi.' : `Servizio AI non disponibile (${risposta.status}).`);
+  const dati = await risposta.json();
+  const testo = fornitore.nome === 'gemini' ? dati.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') : dati.choices?.[0]?.message?.content;
+  if (typeof testo !== 'string' || !testo.trim()) throw new Error('L’AI non ha restituito proposte leggibili.');
+  let json;
+  try { json = JSON.parse(testo.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')); }
+  catch { throw new Error('La risposta AI non era nel formato previsto. Riprova.'); }
+  const grezzi = Array.isArray(json?.candidati) ? json.candidati.slice(0, 4) : [];
+  const validi = grezzi.filter(c => c && typeof c.nomeScientifico === 'string' &&
+    /^[A-ZÀ-ÖØ-Þ][\p{L}-]+\s+[a-zà-öø-ÿ][\p{L}.-]+(?:\s+(?:subsp\.|var\.|f\.)\s+[a-zà-öø-ÿ][\p{L}.-]+)?$/u.test(c.nomeScientifico.trim()) &&
+    Number.isFinite(Number(c.percentuale)) && typeof c.motivazione === 'string' && c.motivazione.trim())
+    .map(c => ({ nome: c.nomeScientifico.trim().slice(0, 160), percentuale: Math.round(Math.max(0, Math.min(100, Number(c.percentuale)))),
+      motivazione: c.motivazione.trim().slice(0, 180) }));
+  const verificati = await Promise.allSettled(validi.map(async c => {
+    const gbif = await jsonAuto(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(c.nome)}&kingdom=Plantae`);
+    if (gbif.kingdom !== 'Plantae' || gbif.matchType !== 'EXACT' || gbif.confidence < 90 || !gbif.usageKey ||
+        !['SPECIES', 'SUBSPECIES', 'VARIETY', 'FORM'].includes(gbif.rank)) return null;
+    return { nome: gbif.canonicalName || gbif.scientificName || c.nome, ai: { percentuale: c.percentuale, motivazione: c.motivazione, fornitore: fornitore.etichetta },
+      gbif: gbif.confidence, gbifId: gbif.usageKey };
+  }));
+  return verificati.filter(e => e.status === 'fulfilled' && e.value).map(e => e.value);
+}
+
 function disegnaRisultatiAuto(candidati) {
   const ordinati = [...candidati.values()].sort((a, b) =>
-    (b.foto ?? -1) - (a.foto ?? -1) || (b.locale?.punti ?? -1) - (a.locale?.punti ?? -1) || a.nome.localeCompare(b.nome, 'it')).slice(0, 8);
+    (b.foto ?? -1) - (a.foto ?? -1) || (b.ai?.percentuale ?? -1) - (a.ai?.percentuale ?? -1) ||
+    (b.locale?.punti ?? -1) - (a.locale?.punti ?? -1) || a.nome.localeCompare(b.nome, 'it')).slice(0, 8);
   $('#auto-risultati').replaceChildren(...(ordinati.length ? ordinati.map(c => {
     const indizi = [];
     if (c.foto != null) indizi.push(`Foto PlantNet: ${c.foto}% di confidenza del modello`);
@@ -2508,6 +2587,7 @@ function disegnaRisultatiAuto(candidati) {
     else if (c.locale?.totale === 1) indizi.push(`Guida locale: ${c.locale.punti}/1 carattere concordante; troppo poco per stimare una compatibilità.`);
     else if (c.guida) indizi.push('Presente nella guida delle 144 piante');
     if (c.wikipedia) indizi.push('Nome del taxon su Wikidata, trovato tramite Wikipedia');
+    if (c.ai) indizi.push(`AI ${c.ai.fornitore}: ${c.ai.percentuale}% (stima orientativa) · ${c.ai.motivazione}`);
     if (c.gbif != null) indizi.push(`GBIF: corrispondenza del nome ${c.gbif}% (non identificazione della pianta)`);
     if (c.scritto && !c.guida && !c.wikipedia && c.gbif == null && c.foto == null) indizi.push('Nome inserito nella scheda: ancora da verificare.');
     return el('div', { class: 'auto-carta' },
@@ -2515,6 +2595,29 @@ function disegnaRisultatiAuto(candidati) {
       ...indizi.map(s => el('p', {}, s)),
       el('button', { type: 'button', class: 'btn primario', onclick: () => usaRisultatoAuto(c) }, 'Usa questo nome'));
   }) : [el('p', { class: 'vuoto' }, 'Nessuna proposta verificabile. Inserisci qualche caratteristica, un nome o una foto e riprova.')]));
+}
+
+async function cercaAIDaScheda() {
+  const r = S.aperta;
+  if (!r) return;
+  const serie = ++AUTO_RICERCA.serie;
+  const candidati = new Map();
+  $('#auto-risultati').replaceChildren();
+  $('#auto-stato').textContent = 'L’AI confronta nome e caratteristiche; ogni taxon sarà verificato su GBIF…';
+  $('#dlg-cerca-auto').showModal();
+  if (!navigator.onLine) { $('#auto-stato').textContent = 'Sei offline: la ricerca AI richiede Internet. La scheda resta utilizzabile.'; return; }
+  try {
+    const risultati = await richiediRicercaSpecieAI(r);
+    if (serie !== AUTO_RICERCA.serie || S.aperta !== r) return;
+    for (const v of risultati) candidati.set(v.nome.toLocaleLowerCase('it'), { nome: v.nome, ai: v.ai, gbif: v.gbif, gbifId: v.gbifId, guida: trovaSpecieGuida(v.nome) });
+    disegnaRisultatiAuto(candidati);
+    $('#auto-stato').textContent = risultati.length ? `${risultati.length} proposte AI confermate come taxa vegetali da GBIF. Controlla la motivazione prima di scegliere.` :
+      'L’AI non ha prodotto nomi botanici verificabili su GBIF. Aggiungi caratteristiche o una foto e riprova.';
+  } catch (errore) {
+    if (serie !== AUTO_RICERCA.serie || S.aperta !== r) return;
+    disegnaRisultatiAuto(candidati);
+    $('#auto-stato').textContent = errore?.message || 'Ricerca AI non disponibile.';
+  }
 }
 
 function usaRisultatoAuto(c) {
@@ -2561,6 +2664,10 @@ async function cercaAutoDaScheda() {
   if (foto && chiavePlantNet() && navigator.onLine) prove.push(fotoPlantNetAuto(foto).then(lista => {
     for (const v of lista) aggiungi(v.nome, { foto: v.percentuale, nomeCompleto: v.nomeCompleto, gbifId: v.gbifId });
   }));
+  const aiDisponibile = Boolean(fornitoreRicercaAI());
+  if (navigator.onLine && aiDisponibile && (nome || haCaratteri)) prove.push(richiediRicercaSpecieAI(r).then(lista => {
+    for (const v of lista) aggiungi(v.nome, { ai: v.ai, gbif: v.gbif, gbifId: v.gbifId });
+  }));
   const esiti = await Promise.allSettled(prove);
   if (serie !== AUTO_RICERCA.serie || S.aperta !== r) return;
   const nomiGbif = [...candidati.values()].filter(c => /^\S+\s+\S+/.test(c.nome))
@@ -2583,8 +2690,9 @@ async function cercaAutoDaScheda() {
   const errori = esiti.filter(e => e.status === 'rejected').length;
   const avvisoFoto = !foto ? 'Nessuna foto salvata: prova fotografica saltata. · '
     : !chiavePlantNet() ? 'Foto non analizzata: manca la chiave PlantNet. · ' : '';
+  const avvisoAI = !aiDisponibile ? 'AI saltata: nessuna chiave compatibile caricata. · ' : '';
   const conteggio = candidati.size > 8 ? `Prime 8 di ${candidati.size} proposte` : `${candidati.size} proposte`;
-  $('#auto-stato').textContent = `${conteggio} · ${avvisoFoto}${!navigator.onLine ? 'Offline: solo guida locale.' : errori ? `${errori} servizio/i non disponibili; gli altri risultati restano utilizzabili.` : 'Verifica completata.'}`;
+  $('#auto-stato').textContent = `${conteggio} · ${avvisoFoto}${avvisoAI}${!navigator.onLine ? 'Offline: solo guida locale.' : errori ? `${errori} servizio/i non disponibili; gli altri risultati restano utilizzabili.` : 'Verifica completata.'}`;
 }
 
 // Scorciatoia dal campo "Nome esemplare" (pulsante 🔎): apre la stessa guida

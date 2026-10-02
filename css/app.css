@@ -538,8 +538,7 @@ dialog .azioni .btn{flex:0 1 auto}
 
 /* Versione 3.15 — nuovo elenco in home e ricerca nomi locale */
 .strumenti-elenco{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 14px;min-height:68px}
-#btn-nuovo-elenco{background:var(--foglio);border-color:var(--bosco);color:var(--bosco);font-weight:700}
-#btn-nuovo-elenco:hover:not(:disabled){background:var(--concorda-bg)}
+#btn-nuovo-elenco{font-weight:700}
 #btn-seleziona-tutte{min-height:48px;font-size:13px}
 .campo-nome{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13px;font-weight:600;color:var(--tenue)}
 .campo-nome > label{cursor:pointer}
@@ -563,13 +562,15 @@ dialog .azioni .btn{flex:0 1 auto}
 .campo-nome-riga{display:block}
 .nome-azioni{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:4px;align-items:start}
 .nome-azioni>.btn,.nome-ricerca>summary{min-height:50px;white-space:normal;text-align:center;justify-content:center;font-size:14px;line-height:1.25;padding:8px;display:flex;align-items:center}
-.nome-ricerca>summary{list-style:none;cursor:pointer;border:1.5px solid var(--linea);border-radius:12px;background:var(--foglio);font-weight:700;color:var(--inchiostro)}
+.nome-ricerca{display:contents}
+.nome-ricerca>summary{grid-column:1;list-style:none;cursor:pointer;border:1.5px solid var(--linea);border-radius:12px;background:var(--foglio);font-weight:700;color:var(--inchiostro)}
 .nome-ricerca>summary::-webkit-details-marker{display:none}
 .nome-ricerca[open]>summary{border-color:var(--bosco);background:var(--focus)}
-.nome-ricerca[open]{grid-column:1/-1}
-.nome-ricerca-opzioni{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px;margin-top:7px;border:1px solid var(--linea);border-radius:12px;background:var(--foglio)}
+.nome-ricerca-opzioni{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px;margin-top:0;border:1px solid var(--linea);border-radius:12px;background:var(--foglio)}
 .nome-ricerca-opzioni .btn{display:flex;min-width:0;min-height:48px;align-items:center;justify-content:center;text-align:center;white-space:normal;padding:8px;font-size:13px;line-height:1.2}
 .nome-ricerca-opzioni a.btn{color:var(--inchiostro);text-decoration:none}
+.nome-ricerca-opzioni .nome-cerca-ai{border-color:#7650ae;color:#684398;background:color-mix(in srgb,var(--foglio) 88%,#7650ae 12%);font-weight:700}
+.nome-azioni>#nome-cerca-auto{grid-column:2;grid-row:1}
 .nome-fonte-gbif .btn{width:100%;height:100%}
 .nome-auto-nota{font-size:11.5px;color:var(--tenue);line-height:1.35;margin:3px 0 0}
 .auto-spiega{font-size:13px;line-height:1.45;color:var(--tenue)}
@@ -672,7 +673,7 @@ body[data-interfaccia="125"]{zoom:1.25}
 @media(max-width:700px){
   .azioni-home{margin:12px 12px 8px}
   .azioni-home-griglia{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .azioni-home-griglia #home-traccia-avvia{grid-column:1/-1;font-size:15px}
+  .azioni-home-griglia #home-traccia-avvia,.azioni-home-griglia #btn-nuovo-elenco{font-size:15px}
   .opzioni-griglia{grid-template-columns:repeat(2,minmax(0,1fr))}
   .opzioni-griglia .btn{font-size:12px}
   .barra{grid-template-columns:1fr}

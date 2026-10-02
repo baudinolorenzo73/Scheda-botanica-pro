@@ -423,6 +423,33 @@ const server = http.createServer((req, res) => {
       await page.click('#btn-menu'); await page.click('#ai-rimuovi-env');
       await page.locator('#dlg-menu [data-az="chiudi"]').click();
     });
+    await test('Ricerca AI: propone solo piante verificate e non modifica automaticamente la scheda',async()=>{
+      await page.evaluate(()=>{
+        apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid);
+        chiaviAI={GOOGLE_API_KEY:'chiave-ai-di-prova'};
+        window.fetchPrecedente=window.fetch;
+        window.fetch=(url,opzioni)=>{
+          const u=String(url);
+          const data=u.includes('generativelanguage.googleapis.com')?{candidates:[{content:{parts:[{text:JSON.stringify({candidati:[
+            {nomeScientifico:'Fagus sylvatica',percentuale:84,motivazione:'Foglia caduca e caratteri compatibili con il faggio.'},
+            {nomeScientifico:'Canis lupus',percentuale:99,motivazione:'Risultato errato simulato.'}
+          ]})}]}}]}:u.includes('api.gbif.org')?{kingdom:u.includes('Canis')?'Animalia':'Plantae',matchType:'EXACT',rank:'SPECIES',confidence:98,usageKey:2882316,canonicalName:'Fagus sylvatica'}:{};
+          return Promise.resolve(new Response(JSON.stringify(data),{status:200}));
+        };
+      });
+      const prima=await page.inputValue('#f-nome');
+      await page.locator('#nome-ricerca summary').click();
+      await page.click('#nome-cerca-ai');
+      await page.waitForFunction(()=>document.querySelector('#auto-stato').textContent.includes('confermate come taxa vegetali'));
+      assert.match(await page.locator('#auto-risultati').textContent(),/AI Gemini: 84% \(stima orientativa\)/);
+      assert.match(await page.locator('#auto-risultati').textContent(),/Foglia caduca/);
+      assert.doesNotMatch(await page.locator('#auto-risultati').textContent(),/Canis lupus/);
+      assert.equal(await page.inputValue('#f-nome'),prima);
+      await page.click('#auto-chiudi');
+      await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;chiaviAI={};});
+      await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
+    });
     await test('Azioni specie: caratteristiche, foto, fonti e dati discordanti',async()=>{
       await page.evaluate(()=>apriEditor(S.schede.find(s=>s.nome==='Fagus sylvatica').uid));
       await page.locator('#nome-ricerca summary').click();
@@ -643,6 +670,13 @@ const server = http.createServer((req, res) => {
       await apriOpzioni();
       assert.equal(await page.locator('#btn-nuovo-elenco').isVisible(),true);
       assert.equal(await page.locator('#dlg-menu #btn-nuovo-elenco').count(),0);
+      assert.equal(await page.locator('.azioni-home-griglia > #btn-nuovo-elenco').count(),1);
+      assert.equal(await page.locator('.opzioni-griglia > #btn-nuovo-elenco').count(),0);
+      assert.equal(await page.evaluate(()=>{
+        const traccia=document.querySelector('#home-traccia-avvia').getBoundingClientRect();
+        const elenco=document.querySelector('#btn-nuovo-elenco').getBoundingClientRect();
+        return Math.abs(traccia.width-elenco.width)<2 && Math.abs(traccia.height-elenco.height)<2;
+      }),true);
       confermaNuovoElenco=true;
       const download=page.waitForEvent('download');
       await page.click('#btn-nuovo-elenco');

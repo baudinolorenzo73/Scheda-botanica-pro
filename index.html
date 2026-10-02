@@ -52,6 +52,7 @@
   <h2>Sul campo</h2>
   <div class="azioni-home-griglia">
     <button type="button" class="btn primario" id="home-traccia-avvia">Avvia traccia</button>
+    <button type="button" class="btn primario" id="btn-nuovo-elenco" title="Salva un backup e inizia un nuovo elenco"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Nuovo elenco</span></button>
     <button type="button" class="btn" id="home-traccia-pausa" disabled>Pausa</button>
     <button type="button" class="btn" id="home-traccia-ferma" disabled>Stop</button>
   </div>
@@ -62,7 +63,6 @@
       <button type="button" class="btn" id="btn-scansiona" aria-label="Trova scheda con QR"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-qr"></use></svg><span>Scansiona QR</span></button>
       <button type="button" class="btn" id="home-meteo">Meteo · 3B Meteo</button>
       <button type="button" class="btn" id="btn-stampa" aria-label="Stampa schede"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg><span>Stampa</span></button>
-      <button type="button" class="btn" id="btn-nuovo-elenco" title="Salva un backup e inizia un nuovo elenco"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Nuovo elenco</span></button>
       <button type="button" class="btn" id="btn-menu"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg><span>Backup e configurazione</span></button>
       <button type="button" class="btn" id="btn-cestino" title="Cestino" aria-label="Cestino"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-trash"></use></svg><span>Cestino</span><span id="cestino-badge" class="badge-cestino nascosto"></span></button>
       <button type="button" class="btn" id="btn-aiuto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-help"></use></svg><span>Aiuto</span></button>
@@ -230,7 +230,7 @@
 <!-- ================= DIALOGHI ================= -->
 <dialog id="dlg-cerca-auto" aria-labelledby="auto-titolo">
   <h2 id="auto-titolo">Risultati della ricerca automatica</h2>
-  <p class="auto-spiega">Confronta i caratteri con la guida locale, verifica il nome su Wikipedia/Wikidata e GBIF. Se la scheda ha una foto e una chiave PlantNet, invia la prima foto a PlantNet. Le percentuali delle diverse fonti hanno significati diversi e non sono una certezza d’identificazione.</p>
+  <p class="auto-spiega">Confronta i caratteri con la guida locale, verifica il nome su Wikipedia/Wikidata e GBIF e, se hai caricato una chiave, consulta anche l’assistente AI. Se la scheda ha una foto e la chiave PlantNet, invia la prima foto a PlantNet. Le percentuali delle diverse fonti hanno significati diversi e non sono una certezza d’identificazione.</p>
   <p id="auto-stato" role="status" aria-live="polite"></p>
   <div id="auto-risultati"></div>
   <div class="azioni"><button type="button" class="btn" id="auto-chiudi">Chiudi</button></div>
@@ -264,7 +264,7 @@
       <input type="file" id="ai-file-env" accept=".env,.txt,text/plain" class="nascosto">
       <label><input type="checkbox" id="ai-ricorda-env" checked> Ricorda le chiavi su questo browser</label>
       <p id="ai-env-stato" role="status" aria-live="polite">Nessuna chiave caricata.</p>
-      <small>Il browser salva una copia locale delle chiavi, non il percorso di open.env. “Dimentica chiavi” la elimina; cancellare i dati del sito la elimina ugualmente. Evita dispositivi condivisi. Tieni open.env fuori da ZIP, Drive e GitHub. Una chiamata AI invia la slide al fornitore del servizio.</small>
+      <small>Il browser salva una copia locale delle chiavi, non il percorso di open.env. “Dimentica chiavi” la elimina; cancellare i dati del sito la elimina ugualmente. Evita dispositivi condivisi. Tieni open.env fuori da ZIP, Drive e GitHub. Una ricerca AI invia al servizio scelto soltanto il nome e le caratteristiche botaniche compilate; l’analisi del catalogo invia invece la slide selezionata.</small>
     </div>
     <label class="dimensione-interfaccia" for="sel-dimensione-interfaccia">Dimensione interfaccia
       <select id="sel-dimensione-interfaccia" class="campo-base">
@@ -580,7 +580,7 @@
   <p>Ogni specie confermata resta anche in un piccolo <b>catalogo sul dispositivo</b>, che cresce da solo: da quel momento il campo "Nome esemplare" la propone tra i suggerimenti anche <b>senza connessione</b>, senza dover richiamare PlantNet. Il catalogo viaggia anche dentro il backup completo, così si arricchisce con il lavoro di tutto il gruppo. Ogni specie porta con sé anche l'<b>ID GBIF</b> (il database naturalistico più usato al mondo): compare nella scheda come link "Apri la specie su GBIF", nel report per il cliente e nelle esportazioni CSV/GeoJSON/KML — utile per collegare i tuoi dati a un riferimento tassonomico riconosciuto ovunque.</p>
 
   <h3>Guida alle specie (144 alberi del corso)</h3>
-  <p>Sotto «Nome esemplare» trovi «Cerca» con Wikipedia/Wikidata, PlantNet, GBIF, ricerca da foto, da caratteristiche e per zona d’origine. Wikipedia propone solo nomi scientifici confermati come piante da GBIF; se la verifica non è disponibile, il risultato non viene suggerito. «Cerca auto» confronta subito i caratteri della scheda con la guida locale, controlla il nome sui servizi disponibili e, se hai una foto già salvata e la chiave PlantNet, invia la prima foto per ottenere proposte. Le percentuali indicano cosa ha misurato ciascuna fonte: la confidenza della foto non è la stessa cosa della corrispondenza del nome su GBIF o dei caratteri della guida. Scegli tu se applicare un risultato. I dati già osservati non vengono sovrascritti e le discordanze vengono segnalate.</p>
+  <p>Sotto «Nome esemplare» trovi «Cerca» con Wikipedia/Wikidata, PlantNet, GBIF, ricerca da foto, da caratteristiche, per zona d’origine e con AI. Wikipedia e le proposte AI vengono mostrate solo dopo una verifica botanica su GBIF. «Cerca intelligente» confronta i caratteri con la guida locale, controlla il nome sui servizi disponibili, consulta l’AI se è configurata e usa PlantNet quando trova una foto salvata e la relativa chiave. La percentuale AI è una stima del modello, non una misurazione scientifica. Scegli tu se applicare un risultato; i dati osservati non vengono sovrascritti.</p>
   <p>Il <b>catalogo delle 144 piante</b> è separato dalle schede rilevate sul campo. In «Configurazione e backup → Completa catalogo» puoi aprire ogni pagina, aggiungere caratteristiche mancanti, indicare la fonte e salvarle. I dati originali restano distinti e non modificabili. Esporta le sole integrazioni per unirle a un altro dispositivo, oppure il catalogo completo con le integrazioni; queste ultime sono comprese anche nel backup generale.</p>
   <p><b>Assistente AI facoltativo:</b> in Configurazione carica <code>open.env</code> dal tablet. Se scegli «Ricorda le chiavi», il browser ne conserva una copia locale; «Dimentica chiavi» la elimina. Nel catalogo seleziona Gemini, Groq o OpenRouter e premi «Proponi caratteristiche dalla slide». Controlla ogni proposta e le eventuali discordanze prima di salvarla. La slide e la nota della pianta vengono inviate solo al servizio scelto quando premi il pulsante; verifica disponibilità e costo del modello. La scheda funziona anche senza chiavi.</p>
   <p><b>Aggiornamenti:</b> il numero di versione è visibile in alto. Toccandolo apri il controllo; lo stesso comando è in «+ Opzioni → Backup e configurazione». Se una versione nuova è pronta compare «Aggiorna ora». Salva eventuali modifiche e ferma prima una traccia GPS o una nota vocale in corso. Il controllo richiede rete e funziona dal sito HTTPS.</p>
