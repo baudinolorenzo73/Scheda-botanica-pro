@@ -20,7 +20,10 @@ function schedaVuota() {
   for (const c of CAMPI) r[c.k] = '';
   r.prog = String(S.schede.reduce((m, s) => Math.max(m, Number(s.prog) || 0), 0) + 1);
   r.data = oggi();
-  r.nome = `Prova${r.prog}`;
+  // Etichetta interna, utile nell'elenco e nella ricerca. Non e il nome botanico:
+  // il campo "Nome esemplare" deve restare vuoto finche non viene identificata la pianta.
+  r.nomeScheda = `Prova${r.prog}`;
+  r.bozzaVuota = true;
   r.numeroZona = calcolaNumeroZona(r.data, r.uid);
   // "N° medesimo esemplare" conta quanti alberi uguali ci sono vicino: di default 1
   // (nessun altro uguale intorno, esemplare isolato). L'utente lo cambia solo se serve.
@@ -40,6 +43,8 @@ function normalizza(v) {
   r.cancellata = v.cancellata || null;   // null = attiva; altrimenti data ISO di spostamento nel cestino
   r.gbifId = /^\d+$/.test(String(v.gbifId ?? '')) ? String(v.gbifId) : '';             // ID GBIF della specie, se identificata con PlantNet
   r.plantnetNome = typeof v.plantnetNome === 'string' ? v.plantnetNome.slice(0, 180) : '';
+  r.nomeScheda = typeof v.nomeScheda === 'string' ? v.nomeScheda.trim().slice(0, 80) : '';
+  r.bozzaVuota = v.bozzaVuota === true;
   for (const c of CAMPI) {
     let val = v[c.k] === undefined || v[c.k] === null ? '' : String(v[c.k]).trim();
     if (c.tipo === 'numero') {
@@ -102,6 +107,23 @@ const timerSalva = new Map();
 const scrittureInCorso = new Map();
 const nonSalvate = new Map();
 
+// Questi valori vengono compilati dall'app e, da soli, non trasformano una
+// nuova scheda in un rilievo reale. Anche il numero di esemplari parte da 1.
+const CAMPI_AUTOMATICI_SCHEDA = new Set(['prog', 'data', 'numeroZona', 'numero']);
+
+function schedaSenzaContenuto(r) {
+  if (!r) return true;
+  const haCampoInserito = CAMPI.some((c) => {
+    const valore = String(r[c.k] ?? '').trim();
+    if (!CAMPI_AUTOMATICI_SCHEDA.has(c.k)) return !!valore;
+    // Il valore 1 di "N° medesimo esemplare" e automatico; un valore
+    // diverso, invece, e una vera informazione inserita dall'utente.
+    return c.k === 'numero' && valore !== '' && valore !== '1';
+  });
+  return !haCampoInserito && !r.gps && !(r.foto || []).length && !(r.audio || []).length &&
+    !String(r.gbifId || '').trim() && !String(r.plantnetNome || '').trim();
+}
+
 function salvaPresto(r) {
   r.modificato = oraISO();
   nonSalvate.set(r.uid, r);
@@ -114,6 +136,7 @@ async function salvaOra(r) {
   if (!r) return false;
   clearTimeout(timerSalva.get(r.uid));
   timerSalva.delete(r.uid);
+  r.bozzaVuota = schedaSenzaContenuto(r);
   const operazione = DB.scrivi('schede', r);
   scrittureInCorso.set(r.uid, operazione);
   nonSalvate.set(r.uid, r);
@@ -129,6 +152,19 @@ async function salvaOra(r) {
   } finally {
     if (scrittureInCorso.get(r.uid) === operazione) scrittureInCorso.delete(r.uid);
   }
+}
+
+async function eliminaBozzaVuota(r) {
+  if (!r || !schedaSenzaContenuto(r)) return false;
+  clearTimeout(timerSalva.get(r.uid));
+  timerSalva.delete(r.uid);
+  nonSalvate.delete(r.uid);
+  const scrittura = scrittureInCorso.get(r.uid);
+  if (scrittura) await scrittura.catch(() => {});
+  await DB.cancella('schede', r.uid);
+  S.schede = S.schede.filter((s) => s.uid !== r.uid);
+  S.selezionate.delete(r.uid);
+  return true;
 }
 
 async function salvaTuttiInSospeso() {
@@ -218,7 +254,7 @@ async function eliminaFoto(r, id) {
 /* =====================================================================
    6b. AUDIO — note vocali registrate sul posto
    ===================================================================== */
-const REG = { attiva: false, annullata: false, recorder: null, stream: null, chunks: [], inizio: 0, timer: null, riga: null };
+const REG = { attiva: false, annullata: false, recorder: null, stream: null, chunks: [], inizio: 0, timer: null, riga: null, fine: Promise.resolve() };
 
 async function urlAudio(id) {
   if (S.urlAudio.has(id)) return S.urlAudio.get(id);
@@ -252,29 +288,33 @@ async function avviaRegistrazione(r) {
     const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
     REG.stream = stream; REG.recorder = rec; REG.chunks = []; REG.riga = r; REG.annullata = false; REG.attiva = true; REG.inizio = Date.now();
     rec.ondataavailable = (e) => { if (e.data.size > 0) REG.chunks.push(e.data); };
+    let completaRegistrazione;
+    REG.fine = new Promise((risolvi) => { completaRegistrazione = risolvi; });
     rec.onstop = async () => {
-      REG.stream.getTracks().forEach((t) => t.stop());
-      clearInterval(REG.timer);
-      // catturo tutto in locale prima di toccare REG: mette al riparo da una seconda
-      // registrazione avviata mentre questa è ancora in fase di salvataggio
-      const chunks = REG.chunks;
-      const durata = Math.round((Date.now() - REG.inizio) / 1000);
-      const annullata = REG.annullata;
-      REG.attiva = false; REG.stream = null; REG.recorder = null;
-      aggiornaUIRegistrazione();
-      if (annullata || !chunks.length) return;
-      const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
-      const id = nuovoId('a');
       try {
-        await DB.scrivi('audio', blob, id);
-        r.audio.push({ id, didascalia: '', quando: oraISO(), durata });
-        r.modificato = oraISO();
-        await salvaOra(r);
-      } catch (e2) {
-        alert('Nota vocale non salvata: ' + e2.message);
-      }
-      if (S.aperta === r) disegnaAudio();
-      disegnaElenco();
+        REG.stream.getTracks().forEach((t) => t.stop());
+        clearInterval(REG.timer);
+        // catturo tutto in locale prima di toccare REG: mette al riparo da una seconda
+        // registrazione avviata mentre questa e ancora in fase di salvataggio
+        const chunks = REG.chunks;
+        const durata = Math.round((Date.now() - REG.inizio) / 1000);
+        const annullata = REG.annullata;
+        REG.attiva = false; REG.stream = null; REG.recorder = null;
+        aggiornaUIRegistrazione();
+        if (annullata || !chunks.length) return;
+        const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+        const id = nuovoId('a');
+        try {
+          await DB.scrivi('audio', blob, id);
+          r.audio.push({ id, didascalia: '', quando: oraISO(), durata });
+          r.modificato = oraISO();
+          await salvaOra(r);
+        } catch (e2) {
+          alert('Nota vocale non salvata: ' + e2.message);
+        }
+        if (S.aperta === r) disegnaAudio();
+        disegnaElenco();
+      } finally { completaRegistrazione(); }
     };
     rec.start();
     aggiornaUIRegistrazione();
@@ -342,6 +382,15 @@ async function eliminaAudio(r, id) {
 /* =====================================================================
    7. ELENCO
    ===================================================================== */
+function nomeInternoScheda(r) {
+  return (r?.nomeScheda || '').trim() || `Prova${r?.prog || '?'}`;
+}
+
+function etichettaScheda(r) {
+  const interno = nomeInternoScheda(r);
+  return r?.nome ? `${interno} — ${r.nome}` : interno;
+}
+
 function schedeVisibili() {
   const q = $('#cerca').value.trim().toLowerCase();
   const data = $('#filtro-data').value;
@@ -359,7 +408,7 @@ function schedeVisibili() {
       (!soloProblemi || (r.problemi || '').trim()) &&
       (!senzaFoto || !r.foto.length) &&
       (!senzaGps || !r.gps) &&
-      (!q || [r.prog, r.nome, dataBreveIT(r.data), r.problemi, r.note, r.terreno].join(' ').toLowerCase().includes(q)))
+      (!q || [r.prog, nomeInternoScheda(r), r.nome, dataBreveIT(r.data), r.problemi, r.note, r.terreno].join(' ').toLowerCase().includes(q)))
     .sort(perProg);
 }
 
@@ -452,7 +501,7 @@ function aggiornaApriSchedaSalvata() {
   if (!sel) return;
   const ordinate = [...S.schede].sort(perProg);
   sel.replaceChildren(el('option', { value: '' }, ordinate.length ? 'Apri scheda salvata…' : 'Nessuna scheda salvata'),
-    ...ordinate.map(r => el('option', { value: r.uid }, `N° ${r.prog || '?'} — ${r.nome || 'Senza nome'}${r.data ? ` — ${dataBreveIT(r.data)}` : ''}`)));
+    ...ordinate.map(r => el('option', { value: r.uid }, `N° ${r.prog || '?'} — ${etichettaScheda(r)}${r.data ? ` — ${dataBreveIT(r.data)}` : ''}`)));
   sel.value = '';
   sel.disabled = !ordinate.length;
 }
@@ -524,7 +573,7 @@ async function disegnaElenco() {
     },
       el('div', { class: 'voce-foto' }, foto, el('span', { class: 'voce-num', testo: r.prog || '?' })),
       el('div', { style: 'min-width:0' },
-        el('div', { class: 'titolo specie', testo: r.nome || 'Senza nome' }),
+        el('div', { class: 'titolo specie', testo: etichettaScheda(r) }),
         el('div', { class: 'sotto', testo: r.data ? dataBreveIT(r.data) : 'Data non indicata' }),
         dati ? el('div', { class: 'dati-riassunto', testo: dati }) : null,
         el('div', { class: 'segni' },
@@ -894,7 +943,7 @@ function controllaProg() {
 
 function aggiornaTitoloEditor() {
   const r = S.aperta;
-  $('#ed-titolo').firstChild.textContent = `N° ${r.prog || '?'}${r.nome ? ' – ' + r.nome : ''} `;
+  $('#ed-titolo').firstChild.textContent = `N° ${r.prog || '?'} – ${etichettaScheda(r)} `;
 }
 
 function apriEditor(uid, sostituisciCronologia = false) {
@@ -955,14 +1004,19 @@ async function chiudiEditor(daIndietro = false) {
     if (daIndietro) history.pushState({ editor: true }, '');
     return;
   }
-  if (REG.attiva && REG.riga === S.aperta) fermaRegistrazione();
+  if (REG.attiva && REG.riga === S.aperta) {
+    fermaRegistrazione();
+    await REG.fine;
+  }
   if (GPSR.watch !== null && GPSR.riga === S.aperta) fermaGPS(true);
   const uid = S.aperta.uid;
-  if (!(await salvaOra(S.aperta))) {
+  const eliminata = await eliminaBozzaVuota(S.aperta);
+  if (!eliminata && !(await salvaOra(S.aperta))) {
     if (daIndietro) history.pushState({ editor: true }, '');
     return;
   }
   nascondiEditor();
+  if (eliminata) stato('Scheda vuota non memorizzata');
   document.getElementById('voce-' + uid)?.scrollIntoView({ block: 'center' });
   if (!daIndietro && history.state?.editor) history.back();
 }
@@ -985,9 +1039,12 @@ async function nuovaSchedaDaEditor() {
   const bottone = $('#ar-nuova');
   bottone.disabled = true;
   try {
-    if (REG.attiva && REG.riga === corrente) fermaRegistrazione();
+    if (REG.attiva && REG.riga === corrente) {
+      fermaRegistrazione();
+      await REG.fine;
+    }
     if (GPSR.watch !== null && GPSR.riga === corrente) fermaGPS(true);
-    if (!(await salvaOra(corrente))) return;
+    if (!(await eliminaBozzaVuota(corrente)) && !(await salvaOra(corrente))) return;
     const nuova = schedaVuota();
     if (!(await salvaOra(nuova))) return;
     S.schede.push(nuova);
@@ -4926,8 +4983,13 @@ async function avvio() {
   navigator.storage?.persist?.().catch(() => {});
 
   const tutte = (await DB.tutte('schede')).map((r) => normalizza(r).record);
-  S.schede = tutte.filter((r) => !r.cancellata);
-  S.cestino = tutte.filter((r) => r.cancellata);
+  // Se il browser e stato chiuso mentre era aperta una nuova scheda ancora
+  // vuota, la bozza tecnica non deve riapparire come se fosse un rilievo.
+  const bozzeVuote = tutte.filter((r) => !r.cancellata && r.bozzaVuota && schedaSenzaContenuto(r));
+  await Promise.all(bozzeVuote.map((r) => DB.cancella('schede', r.uid)));
+  const conservate = tutte.filter((r) => !bozzeVuote.includes(r));
+  S.schede = conservate.filter((r) => !r.cancellata);
+  S.cestino = conservate.filter((r) => r.cancellata);
   disegnaElenco();
   aggiornaBadgeCestino();
   await migraVecchiaVersione();

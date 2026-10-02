@@ -70,19 +70,38 @@ const server = http.createServer((req, res) => {
     });
     await test('Scheda: misura decimale libera e persistenza al ricaricamento',async()=>{
       await page.click('#btn-nuova');
-      assert.equal(await page.inputValue('#f-nome'),'Prova1');
+      assert.equal(await page.inputValue('#f-nome'),'');
+      assert.equal(await page.evaluate(()=>S.aperta.nomeScheda),'Prova1');
       assert.equal(await page.inputValue('#f-data'),await page.evaluate(()=>oggi()));
       await page.fill('#f-nome','Quercus robur');await page.fill('#f-altezza','12.3');
       assert.equal(await page.locator('#f-altezza').evaluate(e=>e.checkValidity()),true);
       await page.click('#btn-chiudi'); await page.waitForFunction(()=>S.aperta===null);
       await page.reload(); await page.waitForFunction(()=>S.schede.length===1);
       assert.equal(await page.evaluate(()=>S.schede[0].altezza),'12.3');
-      assert.match(await page.locator('#apri-scheda-salvata').locator('option').nth(1).textContent(),/N° 1 — Quercus robur/);
+      assert.match(await page.locator('#apri-scheda-salvata').locator('option').nth(1).textContent(),/N° 1 — Prova1 — Quercus robur/);
       const uid=await page.evaluate(()=>S.schede[0].uid);
       await page.selectOption('#apri-scheda-salvata',uid);
       await page.waitForFunction(()=>S.aperta?.uid===S.schede[0].uid);
       await page.click('#btn-chiudi');
       await page.waitForFunction(()=>S.aperta===null);
+    });
+    await test('Una scheda con soli valori automatici non viene memorizzata',async()=>{
+      await page.click('#btn-nuova');
+      const bozza=await page.evaluate(()=>({uid:S.aperta.uid,nomeScheda:S.aperta.nomeScheda,data:S.aperta.data}));
+      assert.equal(bozza.nomeScheda,'Prova2');
+      assert.equal(bozza.data,await page.evaluate(()=>oggi()));
+      assert.equal(await page.inputValue('#f-nome'),'');
+      await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
+      assert.equal(await page.evaluate(uid=>S.schede.some(r=>r.uid===uid),bozza.uid),false);
+      assert.equal(await page.evaluate(async uid=>(await DB.leggi('schede',uid))==null,bozza.uid),true);
+      assert.equal(await page.locator('#apri-scheda-salvata option').count(),2);
+      await page.click('#btn-nuova');
+      const interrotta=await page.evaluate(()=>S.aperta.uid);
+      await page.waitForFunction(uid=>DB.leggi('schede',uid).then(Boolean),interrotta);
+      await page.reload();
+      await page.waitForFunction(()=>DB.db && S.schede.length===1);
+      assert.equal(await page.evaluate(uid=>DB.leggi('schede',uid).then(v=>v==null),interrotta),true);
     });
     await test('Cartella Botanica: i salvataggi usano la cartella autorizzata',async()=>{
       assert.deepEqual(await page.evaluate(async()=>{
@@ -728,7 +747,8 @@ const server = http.createServer((req, res) => {
       await page.click('#btn-nuova');
       await page.waitForFunction(()=>!!S.aperta);
       assert.equal(await page.inputValue('#f-prog'),'1');
-      assert.equal(await page.inputValue('#f-nome'),'Prova1');
+      assert.equal(await page.inputValue('#f-nome'),'');
+      assert.equal(await page.evaluate(()=>S.aperta.nomeScheda),'Prova1');
       assert.equal(await page.inputValue('#f-data'),await page.evaluate(()=>oggi()));
     });
     await test('Scelta dalla zona compila la scheda e chiude la ricerca',async()=>{
