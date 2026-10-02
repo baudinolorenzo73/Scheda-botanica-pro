@@ -2,7 +2,7 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.25.0**
+**by Lollo ®2026 — versione 3.27.1**
 
 [Editor e ricerca automatica](REVISIONE-3.25.md) · [Prima pagina e dimensione interfaccia](REVISIONE-3.24.md) · [Excel più leggero](REVISIONE-3.23.md) · [Unione con Drive Up](REVISIONE-3.22.md)
 
@@ -33,14 +33,15 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 - **Codice QR permanente** per ogni scheda, per ritrovarla senza ambiguità anche dopo l’apertura di un nuovo elenco.
 - **Ricerca immediata del nome** nel catalogo locale delle specie e nei nomi già registrati, utilizzabile anche offline. Il nome può essere inserito liberamente.
 - **Comandi di ricerca della specie** raccolti sotto «Cerca» nel campo nome: Wikipedia/Wikidata, PlantNet, GBIF, foto, caratteristiche e zona d’origine. La ricerca Wikipedia considera i primi cinque risultati e mostra solo nomi tassonomici strutturati su Wikidata che GBIF classifica nel regno Plantae; se GBIF non risponde, non propone nomi non verificati. «Cerca auto» combina la guida locale con la verifica del nome e, se c’è una foto e la chiave PlantNet, l’identificazione da foto; mostra la provenienza e il significato di ogni percentuale senza sintetizzarle in una probabilità fittizia. La provenienza d’origine non dimostra la presenza locale. I dati già osservati non vengono sovrascritti e le discordanze vengono evidenziate.
-- **Aggiornamenti:** da Configurazione vedi la versione installata, controlli quella pubblicata e puoi toccare «Aggiorna ora» quando il download è pronto. L’app salva le schede in sospeso prima di ricaricarsi; durante una traccia GPS o una registrazione vocale chiede prima di fermarle. A ogni nuova pubblicazione aggiorna insieme `js/config.js`, `versione.json` e la versione della cache in `service-worker.js`.
+- **Aggiornamenti controllati:** toccando la versione in alto a destra l’app confronta la versione installata con `versione.json` pubblicato. Se trova una versione più recente mostra il numero e chiede conferma prima di scaricarla; quando è pronta compare «Aggiorna ora». Schede e dati locali non vengono cancellati.
 - **Foto, GPS e nota vocale** sempre accessibili in alto nell’editor, anche mentre scorri la scheda.
 - **Catalogo integrabile** in Configurazione: sfoglia le 144 pagine originali, aggiungi le caratteristiche mancanti e registra la fonte; le integrazioni hanno un editor viola distinto dalle schede di rilievo. Trasferisci solo le integrazioni o il catalogo completo delle 144 piante in JSON, oppure includi le integrazioni nel backup ZIP di schede, foto e audio.
-- **Azioni in prima pagina**: «Nuova scheda» resta sempre visibile nella barra inferiore; avvio/pausa/stop della traccia GPS nel riquadro «Sul campo»; «+ Opzioni» raccoglie meteo 3B Meteo, QR, stampa, nuovo elenco, backup, cestino, guida e tema. In Configurazione si può scegliere la dimensione dell’interfaccia (adatta allo schermo, 110% o 125%). La traccia mantiene i punti durante la pausa e dopo lo stop; il meteo richiede Internet.
+- **Azioni in prima pagina**: «Nuova scheda» resta sempre visibile nella barra inferiore; avvio/pausa/stop della traccia GPS e «Nuovo elenco» sono nel riquadro «Sul campo»; «+ Opzioni» raccoglie meteo 3B Meteo, QR, stampa, backup, cestino, guida e tema. In Configurazione si può scegliere la dimensione dell’interfaccia.
+- **Nuove schede già riconoscibili**: data odierna automatica e nome provvisorio sequenziale `Prova1`, `Prova2`… da sostituire con il nome botanico. Il menu «Apri scheda salvata…» mostra numero, nome e data e apre direttamente la scheda scelta.
 - **Nuovo elenco** dalla prima schermata: scarica un backup delle schede correnti e le sposta nel cestino, poi riparte dalla scheda numero 1.
 - **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
 - **Stampa** di una o più schede, anche solo come etichette QR.
-- **Backup completo (.zip)** con ripristino protetto di schede, cestino, foto, audio, catalogo e traccia; import/export CSV, GeoJSON, KML e GPX. Importa file `.xlsx` e `.csv` e produce un registro `.xlsx` formattato; per importare un vecchio `.xls` salvalo prima come `.xlsx`. La libreria Excel si attiva soltanto quando occorre.
+- **Backup completo (.zip)** con ripristino protetto di schede, cestino, foto, audio, catalogo e traccia; import/export CSV, GeoJSON, KML e GPX. Nei browser che supportano File System Access puoi autorizzare Download e l’app crea/usa la sottocartella `Botanica`. Prima spiega lo scopo e chiede conferma; il permesso riguarda esclusivamente la cartella scelta. Negli altri browser usa il download normale.
 - **100% offline-first**: tutti i dati restano sul dispositivo (IndexedDB), archivio locale; alcune funzioni consultano servizi esterni.
 
 ## 🖼️ Screenshot

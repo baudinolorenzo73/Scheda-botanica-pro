@@ -75,6 +75,9 @@
 <div class="barra">
   <label class="cerca-box"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg><span class="visually-hidden">Cerca nelle schede</span><input type="search" id="cerca" class="campo-base" placeholder="Nome, numero, note…" aria-label="Cerca nelle schede"></label>
   <select id="filtro-data" class="campo-base" aria-label="Filtra per data"></select>
+  <select id="apri-scheda-salvata" class="campo-base" aria-label="Apri una scheda salvata">
+    <option value="">Apri scheda salvata…</option>
+  </select>
 </div>
 <div style="max-width:var(--largo);margin:0 auto;padding:0 12px 6px">
   <button type="button" class="btn" id="btn-filtri-avanzati" aria-controls="pannello-filtri" aria-expanded="false" ><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-filter"></use></svg><span>Filtri</span><span id="filtri-avanzati-conteggio"></span></button>
@@ -279,6 +282,15 @@
       <button type="button" class="btn primario nascosto" id="btn-applica-aggiornamento">Aggiorna ora</button>
     </div>
     <h3 class="menu-titolo">Backup ed esportazioni</h3>
+    <div class="cartella-botanica">
+      <strong>Cartella dei salvataggi</strong>
+      <p id="cartella-botanica-stato" role="status" aria-live="polite">Download normali del browser.</p>
+      <div class="cg-trasferimento">
+        <button type="button" class="btn" id="btn-cartella-botanica">Scegli Download/Botanica</button>
+        <button type="button" class="btn nascosto" id="btn-cartella-botanica-dimentica">Dimentica cartella</button>
+      </div>
+      <small>Prima della richiesta del browser, l’app ti spiega perché serve l’autorizzazione e chiede conferma. Il permesso vale soltanto per la cartella scelta: l’app non cancella file, non legge le altre cartelle e non invia i contenuti online. Nei browser non compatibili i file restano nei Download normali.</small>
+    </div>
     <button class="btn primario" data-az="zip"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Backup completo, con foto e audio</span></button>
     <button class="btn" data-az="zip-condividi"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Condividi backup</span></button>
     <button class="btn" data-az="ripristina"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Ripristina backup</span></button>
@@ -594,16 +606,17 @@
   <p>La scheda "Mappa" mostra tutte le rilevazioni con coordinate GPS. I numeri colorati di rosso hanno un problema segnalato. Le zone della cartina già viste o scaricate restano disponibili offline; lo stato in alto indica quando tutti i file dell’app sono pronti per l’uso senza rete.</p>
 
   <h3>Ricerca, filtri e meteo</h3>
-  <p>La ricerca sulla pagina principale trova nomi, numeri e note delle schede. Puoi limitare l’elenco per data e usare «Filtri» per combinare altri criteri. «Meteo · 3B Meteo» sotto «+ Opzioni» apre il servizio esterno: cerca una località per nome oppure lascia che 3B Meteo chieda il permesso GPS. Verifica sempre luogo e orario della previsione.</p>
+  <p>La ricerca sulla pagina principale trova nomi, numeri e note delle schede. «Apri scheda salvata…» porta direttamente a una scheda tramite numero, nome e data. Puoi limitare l’elenco per data e usare «Filtri» per combinare altri criteri. «Meteo · 3B Meteo» sotto «+ Opzioni» apre il servizio esterno: cerca una località per nome oppure lascia che 3B Meteo chieda il permesso GPS. Verifica sempre luogo e orario della previsione.</p>
 
   <h3>Stampa</h3>
   <p>Si può stampare una scheda alla volta (icona 🖨 nell'editor) oppure più schede dal pulsante «Stampa» sotto «+ Opzioni»: quelle selezionate con la casella, quelle visibili con il filtro attuale, o tutte. È possibile stampare anche solo le etichette con il QR, pronte per il taglio.</p>
 
   <h3>Backup, Excel e ZIP</h3>
   <ul>
+    <li><b>Cartella Download/Botanica</b>: premi «Scegli Download/Botanica». L’app spiega perché serve il permesso e chiede conferma prima di mostrare la richiesta del browser. Se accetti, seleziona Download: viene creata la sottocartella Botanica. L’autorizzazione riguarda solo quella cartella e può essere dimenticata dalla Configurazione. Se Android o il browser non offre questa funzione, ogni file viene scaricato normalmente.</li>
     <li><b>Backup completo (.zip)</b>: un unico archivio con tutti i dati, le foto e gli audio. Serve a due cose: si reimporta nell'app con "Ripristina backup" (anche su un altro telefono), e dentro ha CSV, GeoJSON, KML e GPX leggibili con Excel e QGIS. È il modo più sicuro per non perdere nulla: fallo a fine giornata.</li>
-    <li><b>Backup automatico</b>: attivo di default (menu ⋮), scarica da solo un backup completo con la frequenza che scegli, senza doversene ricordare. Un sito web non può salvare da solo in una cartella a scelta (es. Drive): finisce sempre nella cartella Download del telefono, come un download normale.</li>
-    <li><b>Nuovo elenco</b> (sotto «+ Opzioni»): salva le schede di adesso in un backup con data e ora nel nome, le sposta nel cestino (restano recuperabili) e riparte da un elenco vuoto, con «N° progressivo» di nuovo da 1. Comodo per iniziare una nuova giornata o campagna di rilievi.</li>
+    <li><b>Backup automatico</b>: attivo di default, prepara un backup completo con la frequenza scelta. Se hai autorizzato Download/Botanica lo salva lì; altrimenti usa il normale download del browser.</li>
+    <li><b>Nuovo elenco</b> (nella sezione «Sul campo»): salva le schede di adesso in un backup con data e ora nel nome, le sposta nel cestino e riparte da un elenco vuoto, con «N° progressivo» e nome provvisorio nuovamente da Prova1.</li>
     <li><b>Condividi backup</b>: come sopra, ma invece di scaricare il file apre il pannello "Condividi" del telefono, per mandarlo con un tocco in più a Drive, Dropbox o WhatsApp. Se il browser non lo supporta, scarica il file normalmente.</li>
     <li><b>Ripristina backup</b>: accetta lo .zip e i vecchi backup .json. Prima mostra un riepilogo di schede, foto, audio, catalogo e traccia. La modalità “Sostituisci” conserva l’archivio attuale se il file è incompleto o una scrittura fallisce.</li>
     <li><b>Importa da Excel o CSV</b>: le colonne vengono riconosciute dal nome dell'intestazione (N° progressivo, Data, Nome…), utile per correggere molti dati insieme al PC.</li>
@@ -613,6 +626,9 @@
   <h3>Dispositivo</h3>
   <p>L'app riconosce da sola se stai usando uno smartphone, un tablet o un PC (lo vedi in «Backup e configurazione») e adatta l'impaginazione: una colonna su telefono, due su tablet, tre su PC. Si aggiorna anche ruotando il dispositivo.</p>
   <p>In Configurazione puoi scegliere «Adatta allo schermo», 110% o 125% per ingrandire l’interfaccia. Sotto «+ Opzioni» puoi cambiare tema chiaro/scuro. Dopo la prima apertura completa, l’app conserva le risorse essenziali per lavorare offline; le ricerche web, PlantNet, l’AI e il meteo richiedono invece connessione.</p>
+
+  <h3>Nuove schede e aggiornamenti</h3>
+  <p>Ogni nuova scheda nasce con la data odierna e con un nome provvisorio uguale al progressivo: Prova1, Prova2 e così via. Puoi sostituirlo subito con il nome botanico corretto. Il pulsante della versione in alto a destra controlla il file pubblicato senza usare la cache; se trova una versione più recente chiede conferma prima di scaricarla e mostra poi «Aggiorna ora».</p>
 
   <p id="aiuto-versione" style="font-size:11px;color:var(--tenue);margin-top:16px">Versione dell'app: —</p>
   <div class="azioni"><button type="button" class="btn" id="aiuto-chiudi" onclick="this.closest('dialog').close()">Chiudi</button></div>

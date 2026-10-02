@@ -69,11 +69,45 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.locator('#dlg-zona-habitat').evaluate(d=>d.open),false);
     });
     await test('Scheda: misura decimale libera e persistenza al ricaricamento',async()=>{
-      await page.click('#btn-nuova');await page.fill('#f-nome','Quercus robur');await page.fill('#f-altezza','12.3');
+      await page.click('#btn-nuova');
+      assert.equal(await page.inputValue('#f-nome'),'Prova1');
+      assert.equal(await page.inputValue('#f-data'),await page.evaluate(()=>oggi()));
+      await page.fill('#f-nome','Quercus robur');await page.fill('#f-altezza','12.3');
       assert.equal(await page.locator('#f-altezza').evaluate(e=>e.checkValidity()),true);
       await page.click('#btn-chiudi'); await page.waitForFunction(()=>S.aperta===null);
       await page.reload(); await page.waitForFunction(()=>S.schede.length===1);
       assert.equal(await page.evaluate(()=>S.schede[0].altezza),'12.3');
+      assert.match(await page.locator('#apri-scheda-salvata').locator('option').nth(1).textContent(),/N° 1 — Quercus robur/);
+      const uid=await page.evaluate(()=>S.schede[0].uid);
+      await page.selectOption('#apri-scheda-salvata',uid);
+      await page.waitForFunction(()=>S.aperta?.uid===S.schede[0].uid);
+      await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
+    });
+    await test('Cartella Botanica: i salvataggi usano la cartella autorizzata',async()=>{
+      assert.deepEqual(await page.evaluate(async()=>{
+        let nome='',contenuto='',chiuso=false;
+        cartellaBotanicaHandle={name:'Botanica',queryPermission:async()=> 'granted',getFileHandle:async(n,opzioni)=>{
+          if(!opzioni?.create)throw new DOMException('Manca','NotFoundError');
+          nome=n;
+          return {createWritable:async()=>({write:async blob=>{contenuto=await blob.text();},close:async()=>{chiuso=true;}})};
+        }};
+        const destinazione=await scarica(new Blob(['salvataggio-prova']),'prova.txt');
+        cartellaBotanicaHandle=null;
+        return {destinazione,nome,contenuto,chiuso};
+      }),{destinazione:'cartella',nome:'prova.txt',contenuto:'salvataggio-prova',chiuso:true});
+    });
+    await test('Cartella Botanica: spiega il permesso e rispetta il rifiuto',async()=>{
+      assert.deepEqual(await page.evaluate(async()=>{
+        let aperture=0;
+        const conferma=window.confirm, picker=window.showDirectoryPicker;
+        window.confirm=()=>false;
+        window.showDirectoryPicker=async()=>{aperture++;throw new Error('non deve aprirsi');};
+        cartellaBotanicaHandle=null;
+        try { await collegaCartellaBotanica(); }
+        finally { window.confirm=conferma; if(picker)window.showDirectoryPicker=picker;else delete window.showDirectoryPicker; }
+        return {aperture,testo:document.querySelector('#cartella-botanica-stato').textContent};
+      }),{aperture:0,testo:'Autorizzazione non richiesta: i file continueranno nei Download normali.'});
     });
     await test('Normalizzazione coordinate, date Excel e scelte',async()=>{
       assert.deepEqual(await page.evaluate(()=>[
@@ -694,6 +728,8 @@ const server = http.createServer((req, res) => {
       await page.click('#btn-nuova');
       await page.waitForFunction(()=>!!S.aperta);
       assert.equal(await page.inputValue('#f-prog'),'1');
+      assert.equal(await page.inputValue('#f-nome'),'Prova1');
+      assert.equal(await page.inputValue('#f-data'),await page.evaluate(()=>oggi()));
     });
     await test('Scelta dalla zona compila la scheda e chiude la ricerca',async()=>{
       await page.locator('#nome-ricerca summary').click();

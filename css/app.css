@@ -654,13 +654,17 @@ dialog .azioni .btn{flex:0 1 auto}
 .cg-ai-conflitto{font-weight:700;color:#9a5a21!important}
 body[data-interfaccia="110"]{zoom:1.1}
 body[data-interfaccia="125"]{zoom:1.25}
-.barra{grid-template-columns:minmax(0,1fr) 190px}
+.barra{grid-template-columns:minmax(0,1fr) 190px minmax(220px,300px)}
 .barra .cerca-box{grid-column:auto}
 .strumenti-elenco{min-height:0;padding-top:0}
 #meteo-form{display:grid;gap:9px}
 #meteo-form .btn,#meteo-gps{width:100%}
 #meteo-gps{margin-top:10px}
 .meteo-spiega{font-size:13px;line-height:1.5;color:var(--tenue)}
+.cartella-botanica{display:grid;gap:7px;padding:12px;border:1px solid var(--linea);border-radius:var(--r-piccolo);margin:2px 0 10px;background:var(--focus)}
+.cartella-botanica p,.cartella-botanica small{margin:0;font-size:12.5px;line-height:1.45;color:var(--tenue)}
+.cartella-botanica .cg-trasferimento{margin:2px 0;display:flex;flex-wrap:wrap;gap:8px}
+.cartella-botanica .btn{flex:1 1 210px}
 #editor .testata h1{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .editor-comandi{position:sticky;top:0;z-index:31;background:var(--foglio);box-shadow:0 4px 14px #0002}
 #editor .editor-comandi .testata,#editor .editor-comandi .azioni-rapide{position:relative;top:auto}

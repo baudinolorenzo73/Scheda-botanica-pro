@@ -20,6 +20,7 @@ function schedaVuota() {
   for (const c of CAMPI) r[c.k] = '';
   r.prog = String(S.schede.reduce((m, s) => Math.max(m, Number(s.prog) || 0), 0) + 1);
   r.data = oggi();
+  r.nome = `Prova${r.prog}`;
   r.numeroZona = calcolaNumeroZona(r.data, r.uid);
   // "N° medesimo esemplare" conta quanti alberi uguali ci sono vicino: di default 1
   // (nessun altro uguale intorno, esemplare isolato). L'utente lo cambia solo se serve.
@@ -446,6 +447,16 @@ function aggiornaFiltroData() {
   sel.value = date.includes(attuale) ? attuale : '';
 }
 
+function aggiornaApriSchedaSalvata() {
+  const sel = $('#apri-scheda-salvata');
+  if (!sel) return;
+  const ordinate = [...S.schede].sort(perProg);
+  sel.replaceChildren(el('option', { value: '' }, ordinate.length ? 'Apri scheda salvata…' : 'Nessuna scheda salvata'),
+    ...ordinate.map(r => el('option', { value: r.uid }, `N° ${r.prog || '?'} — ${r.nome || 'Senza nome'}${r.data ? ` — ${dataBreveIT(r.data)}` : ''}`)));
+  sel.value = '';
+  sel.disabled = !ordinate.length;
+}
+
 function etichettaValore(c, v) {
   if (!v) return '';
   if (c.tipo === 'scelta') return (c.valori.find(([x]) => x === v) || [, v])[1];
@@ -481,6 +492,7 @@ async function disegnaElenco() {
   const revisione = ++revisioneElenco;
   aggiornaFiltroData();
   aggiornaFiltroSpecie();
+  aggiornaApriSchedaSalvata();
   aggiornaBottoneFiltriAvanzati();
   const vis = schedeVisibili();
   const dup = progDuplicati();
@@ -4231,14 +4243,16 @@ async function esportaZIP(modo = 'scarica', opzioni = {}) {
         'Backup Scheda Botanica', `${tutteLeSchede.length} schede — ${dataIT(oraISO())}`);
       if (!condiviso) {
         // Il dispositivo/browser non supporta la condivisione di file: scarichiamo come sempre.
-        scarica(blob, nomeFileZip);
-        stato('Il tuo browser non supporta "Condividi": ho scaricato il file, caricalo a mano nella cartella condivisa.');
+        const destinazione = await scarica(blob, nomeFileZip);
+        stato(destinazione === 'cartella' ? 'Condivisione non supportata: backup salvato nella cartella Botanica.' :
+          'Il tuo browser non supporta "Condividi": ho scaricato il file, caricalo a mano nella cartella condivisa.');
       } else {
         stato(`Backup pronto per la condivisione: ${tutteLeSchede.length} schede`);
       }
     } else {
-      scarica(blob, nomeFileZip);
-      stato(`Backup preparato: ${tutteLeSchede.length} schede. Verifica il file nei download.`);
+      const destinazione = await scarica(blob, nomeFileZip);
+      stato(destinazione === 'cartella' ? `Backup salvato in Botanica: ${tutteLeSchede.length} schede.` :
+        `Backup preparato: ${tutteLeSchede.length} schede. Verifica il file nei Download.`);
     }
     localStorage.setItem('sb-ultimo-backup', oraISO());
     return true;
@@ -4433,6 +4447,53 @@ function applicaDimensioneInterfaccia(valore) {
   localStorage.setItem('sb-dimensione-interfaccia', scelto);
 }
 
+async function aggiornaStatoCartellaBotanica() {
+  const testo = $('#cartella-botanica-stato');
+  const scegli = $('#btn-cartella-botanica');
+  const dimentica = $('#btn-cartella-botanica-dimentica');
+  if (typeof window.showDirectoryPicker !== 'function') {
+    testo.textContent = 'Selezione cartella non supportata su questo browser: i file vanno nei Download normali.';
+    scegli.textContent = 'Funzione non disponibile';
+    scegli.disabled = true;
+    dimentica.classList.add('nascosto');
+    return;
+  }
+  scegli.disabled = false;
+  const permesso = await permessoCartellaBotanica();
+  if (permesso === 'granted') {
+    testo.textContent = `Cartella attiva: ${cartellaBotanicaHandle.name || 'Botanica'}. Tutti i nuovi salvataggi finiranno qui.`;
+    scegli.textContent = 'Cambia cartella';
+    dimentica.classList.remove('nascosto');
+  } else if (cartellaBotanicaHandle) {
+    testo.textContent = 'Cartella ricordata, ma il browser richiede di autorizzarla nuovamente.';
+    scegli.textContent = 'Riautorizza cartella';
+    dimentica.classList.remove('nascosto');
+  } else {
+    testo.textContent = 'Download normali del browser. Puoi collegare Download/Botanica.';
+    scegli.textContent = 'Scegli Download/Botanica';
+    dimentica.classList.add('nascosto');
+  }
+}
+
+async function collegaCartellaBotanica() {
+  const motivo = cartellaBotanicaHandle ?
+    'La cartella Botanica è già stata scelta, ma il browser deve autorizzarla nuovamente per poter continuare a salvare i file.' :
+    'Per raccogliere automaticamente backup, QR, report ed esportazioni, l’app deve poter creare e scrivere nella cartella Download/Botanica.';
+  if (!confirm(`${motivo}\n\nIl permesso vale solo per la cartella che scegli. L’app non cancella i file, non accede alle altre cartelle e non invia nulla online.\n\nVuoi continuare e aprire la richiesta di autorizzazione del browser?`)) {
+    $('#cartella-botanica-stato').textContent = 'Autorizzazione non richiesta: i file continueranno nei Download normali.';
+    return;
+  }
+  try {
+    if (cartellaBotanicaHandle && await permessoCartellaBotanica() === 'prompt' && cartellaBotanicaHandle.requestPermission) {
+      const permesso = await cartellaBotanicaHandle.requestPermission({ mode: 'readwrite' });
+      if (permesso !== 'granted') throw new Error('Permesso di scrittura non concesso.');
+    } else await scegliCartellaBotanica();
+    await aggiornaStatoCartellaBotanica();
+  } catch (e) {
+    if (e.name !== 'AbortError') $('#cartella-botanica-stato').textContent = e.message || 'Impossibile collegare la cartella.';
+  }
+}
+
 function collegaEventi() {
   $('#btn-versione').textContent = `v${APP_VERSIONE} ↻`;
   $('#btn-versione').onclick = () => {
@@ -4471,6 +4532,11 @@ function collegaEventi() {
   window.visualViewport?.addEventListener('resize', posizionaRisultatiNome);
   $('#cerca').oninput = disegnaElenco;
   $('#filtro-data').onchange = disegnaElenco;
+  $('#apri-scheda-salvata').onchange = (e) => {
+    const uid = e.target.value;
+    e.target.value = '';
+    if (uid) { cambiaVista('schede'); apriEditor(uid); }
+  };
   $('#btn-filtri-avanzati').onclick = () => {
     const nascosto = $('#pannello-filtri').classList.toggle('nascosto');
     $('#btn-filtri-avanzati').setAttribute('aria-expanded', String(!nascosto));
@@ -4515,13 +4581,15 @@ function collegaEventi() {
     $('#sel-backup-auto-giorni').value = localStorage.getItem('sb-backup-auto-giorni') || '1';
     $('#chk-notifica-backup').checked = localStorage.getItem('sb-notifica-backup') === '1';
     aggiornaStatoNotificaBackup();
+    aggiornaStatoCartellaBotanica();
     $('#aggiornamento-stato').textContent = `Versione installata: ${APP_VERSIONE}`;
     $('#dlg-menu').showModal();
-    if (navigator.onLine) verificaAggiornamenti();
   };
   $('#btn-controlla-aggiornamenti').onclick = () => verificaAggiornamenti(true);
   $('#btn-applica-aggiornamento').onclick = applicaAggiornamento;
   $('#sel-dimensione-interfaccia').onchange = (e) => applicaDimensioneInterfaccia(e.target.value);
+  $('#btn-cartella-botanica').onclick = collegaCartellaBotanica;
+  $('#btn-cartella-botanica-dimentica').onclick = async () => { await dimenticaCartellaBotanica(); await aggiornaStatoCartellaBotanica(); };
   $('#chk-backup-auto').onchange = (e) => localStorage.setItem('sb-backup-auto', e.target.checked ? '1' : '0');
   $('#sel-backup-auto-giorni').onchange = (e) => localStorage.setItem('sb-backup-auto-giorni', e.target.value);
   $('#chk-notifica-backup').onchange = async (e) => {
@@ -4833,6 +4901,7 @@ async function avvio() {
   aggiornaDispositivo();
   costruisciModulo();
   collegaEventi();
+  await ripristinaCartellaBotanica();
 
   async function proviAprireDB() {
     try { await DB.apri(); return null; } catch (e) { return e; }
@@ -4883,7 +4952,6 @@ async function avvio() {
       try {
         const riuscito = await esportaZIP('scarica');
         if (!riuscito) throw new Error('backup non creato');
-        stato('Backup automatico preparato: verifica il file nei download.');
         localStorage.removeItem('sb-backup-auto-fallito');
       } catch {
         localStorage.setItem('sb-backup-auto-fallito', oggi());
@@ -4975,6 +5043,10 @@ async function verificaAggiornamenti(forza = false) {
     if (mostraAggiornamentoPronto(reg, pubblicata)) return;
     if (confrontaVersioni(pubblicata, APP_VERSIONE) <= 0) {
       statoVersione.textContent = `Versione installata: ${APP_VERSIONE}. Nessun aggiornamento disponibile.`;
+      return;
+    }
+    if (!confirm(`È disponibile Scheda Botanica ${pubblicata} (installata: ${APP_VERSIONE}).\n\nVuoi scaricare ora l’aggiornamento? I dati e le schede salvate resteranno invariati.`)) {
+      statoVersione.textContent = `Versione ${pubblicata} disponibile. Download non avviato; premi «Controlla aggiornamenti» quando vuoi riprovare.`;
       return;
     }
     statoVersione.textContent = `Versione installata: ${APP_VERSIONE}. Versione ${pubblicata} pubblicata; preparo l’aggiornamento…`;

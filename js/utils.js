@@ -72,13 +72,110 @@ function toast(msg, azione, fn, durata = 7000) {
   toastTimer = setTimeout(() => t.remove(), durata);
 }
 
-function scarica(blob, nome) {
+let cartellaBotanicaHandle = null;
+
+function databaseCartellaBotanica() {
+  return new Promise((ok, ko) => {
+    const richiesta = indexedDB.open('scheda-botanica-cartella-file', 1);
+    richiesta.onupgradeneeded = () => richiesta.result.createObjectStore('impostazioni');
+    richiesta.onsuccess = () => ok(richiesta.result);
+    richiesta.onerror = () => ko(richiesta.error);
+  });
+}
+
+async function ricordaCartellaBotanica(handle) {
+  const db = await databaseCartellaBotanica();
+  await new Promise((ok, ko) => {
+    const tx = db.transaction('impostazioni', 'readwrite');
+    tx.objectStore('impostazioni').put(handle, 'cartella');
+    tx.oncomplete = ok;
+    tx.onerror = () => ko(tx.error);
+    tx.onabort = () => ko(tx.error || new Error('Memorizzazione cartella annullata'));
+  });
+  db.close();
+}
+
+async function ripristinaCartellaBotanica() {
+  try {
+    const db = await databaseCartellaBotanica();
+    cartellaBotanicaHandle = await new Promise((ok, ko) => {
+      const richiesta = db.transaction('impostazioni').objectStore('impostazioni').get('cartella');
+      richiesta.onsuccess = () => ok(richiesta.result || null);
+      richiesta.onerror = () => ko(richiesta.error);
+    });
+    db.close();
+  } catch { cartellaBotanicaHandle = null; }
+  return cartellaBotanicaHandle;
+}
+
+async function permessoCartellaBotanica() {
+  if (!cartellaBotanicaHandle) return 'non-scelta';
+  try { return cartellaBotanicaHandle.queryPermission ? await cartellaBotanicaHandle.queryPermission({ mode: 'readwrite' }) : 'granted'; }
+  catch { return 'denied'; }
+}
+
+async function scegliCartellaBotanica() {
+  if (typeof window.showDirectoryPicker !== 'function') throw new Error('Questo browser non permette a una pagina web di scegliere una cartella. I file continueranno nei Download normali.');
+  let scelta;
+  try { scelta = await window.showDirectoryPicker({ id: 'scheda-botanica-salvataggi', mode: 'readwrite', startIn: 'downloads' }); }
+  catch (e) {
+    if (e.name === 'AbortError') throw e;
+    scelta = await window.showDirectoryPicker({ mode: 'readwrite' });
+  }
+  const cartella = scelta.name?.toLocaleLowerCase('it') === 'botanica' ? scelta : await scelta.getDirectoryHandle('Botanica', { create: true });
+  const permesso = cartella.requestPermission ? await cartella.requestPermission({ mode: 'readwrite' }) : 'granted';
+  if (permesso !== 'granted') throw new Error('Permesso di scrittura non concesso.');
+  await ricordaCartellaBotanica(cartella);
+  cartellaBotanicaHandle = cartella;
+  return cartella;
+}
+
+async function dimenticaCartellaBotanica() {
+  try {
+    const db = await databaseCartellaBotanica();
+    await new Promise((ok, ko) => {
+      const tx = db.transaction('impostazioni', 'readwrite');
+      tx.objectStore('impostazioni').delete('cartella');
+      tx.oncomplete = ok;
+      tx.onerror = () => ko(tx.error);
+    });
+    db.close();
+  } catch { /* La scelta in memoria viene rimossa comunque. */ }
+  cartellaBotanicaHandle = null;
+}
+
+function scaricaNormale(blob, nome) {
   const url = URL.createObjectURL(blob);
   const a = el('a', { href: url, download: nome });
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+async function scarica(blob, nome) {
+  if (cartellaBotanicaHandle && await permessoCartellaBotanica() === 'granted') {
+    try {
+      const punto = nome.lastIndexOf('.');
+      const base = punto > 0 ? nome.slice(0, punto) : nome;
+      const estensione = punto > 0 ? nome.slice(punto) : '';
+      let nomeLibero = nome;
+      let libero = false;
+      for (let i = 0; i < 1000; i++) {
+        nomeLibero = i ? `${base} (${i})${estensione}` : nome;
+        try { await cartellaBotanicaHandle.getFileHandle(nomeLibero); }
+        catch (e) { if (e.name === 'NotFoundError') { libero = true; break; } throw e; }
+      }
+      if (!libero) throw new Error('Troppi file con lo stesso nome nella cartella Botanica');
+      const file = await cartellaBotanicaHandle.getFileHandle(nomeLibero, { create: true });
+      const scrittura = await file.createWritable();
+      await scrittura.write(blob);
+      await scrittura.close();
+      return 'cartella';
+    } catch { /* Cartella rimossa o non più accessibile: uso il download normale. */ }
+  }
+  scaricaNormale(blob, nome);
+  return 'download';
 }
 
 const blobInDataURL = (blob) => new Promise((ok, ko) => {
