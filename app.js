@@ -756,6 +756,7 @@ function costruisciModulo() {
             el('details', { id: 'nome-ricerca', class: 'nome-ricerca' },
               el('summary', { class: 'btn' }, 'Cerca'),
               el('div', { class: 'nome-ricerca-opzioni' },
+                el('button', { type: 'button', class: 'btn', id: 'nome-apri-locale', onclick: apriSchedaLocale }, 'Apri scheda locale'),
                 el('button', { type: 'button', class: 'btn', id: 'nome-cerca-nome', onclick: cercaNomeDaScheda }, 'Wikipedia / Wikidata'),
                 el('button', { id: 'nome-cerca-plantnet', type: 'button', class: 'btn', onclick: cercaPlantNetDaScheda }, 'Cerca su PlantNet'),
                 el('a', { id: 'plantnet-link', class: 'btn nascosto', target: '_blank', rel: 'noopener' }, '↗ Scheda PlantNet'),
@@ -2454,6 +2455,19 @@ function apriGuidaSpecie(filtroIniziale) {
   $('#dlg-guida-specie').showModal();
 }
 
+function apriSchedaLocale() {
+  if (!S.aperta) return;
+  const nome = $('#f-nome').value.trim();
+  const normalizzato = nomeRicercaNormalizzato(nome);
+  const specie = normalizzato ? GUIDA_SPECIE.find(v => nomeRicercaNormalizzato(nomeCatalogo(v)) === normalizzato) || trovaSpecieGuida(nome) : null;
+  $('#gs-modo-foto').classList.remove('nascosto');
+  cambiaModoGuidaSpecie('nome');
+  $('#gs-cerca').value = nome;
+  disegnaListaGuidaSpecie();
+  if (specie) mostraDettaglioGuidaSpecie(specie);
+  $('#dlg-guida-specie').showModal();
+}
+
 function cercaNomeDaScheda() {
   const nome = $('#f-nome').value.trim();
   apriGuidaSpecie(nome);
@@ -2472,7 +2486,7 @@ const AUTO_RICERCA = { serie: 0 };
 // Il nome guida la ricerca; pochi caratteri generici non devono escluderlo.
 function nomeRicercaNormalizzato(nome) {
   return String(nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('it').replace(/[’']/g, '').replace(/\s+/g, ' ').trim();
+    .toLocaleLowerCase('it').replace(/[‘’']/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function distanzaNomeRicerca(a, b) {

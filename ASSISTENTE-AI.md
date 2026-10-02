@@ -19,6 +19,10 @@ La richiesta invia al fornitore scelto la slide selezionata e la nota del corso.
 
 Se la chiave è stata mostrata in uno screenshot o caricata in un luogo pubblico, rigenerala nel pannello del fornitore. Per un uso condiviso o continuo, le API devono passare da un servizio server con chiavi protette: una pagina statica non può tenere segrete le chiavi durante una richiesta effettuata dal browser.
 
+## Apri scheda locale
+
+Nel menu **Cerca**, **Apri scheda locale** apre la pagina della specie o della cultivar del catalogo delle 144 corrispondente al nome della scheda. Mostra slide del corso, dati, note e integrazioni già salvate. Un nome parziale mostra l’elenco filtrato; un nome vuoto apre l’intero catalogo, anche quando il rilievo ha caratteristiche compilate. Non parte alcuna ricerca su Internet. La consultazione non modifica il rilievo; **Usa questo nome nella scheda** resta una scelta esplicita. Per disponibilità offline delle immagini, apri prima l’app online e attendi il completamento dei dati offline.
+
 ## Ricerca AI nella scheda · versione 3.27.4
 
 In **Configurazione → Assistente AI** scegli il servizio per la ricerca. «Automatico» usa il servizio selezionato per il catalogo quando ha una chiave, altrimenti la prima chiave disponibile (Gemini, Groq, OpenRouter). Scegliendo esplicitamente un servizio non viene usata la chiave di un altro provider se manca quella richiesta.
