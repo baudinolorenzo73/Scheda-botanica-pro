@@ -19,7 +19,7 @@ La richiesta invia al fornitore scelto la slide selezionata e la nota del corso.
 
 Se la chiave è stata mostrata in uno screenshot o caricata in un luogo pubblico, rigenerala nel pannello del fornitore. Per un uso condiviso o continuo, le API devono passare da un servizio server con chiavi protette: una pagina statica non può tenere segrete le chiavi durante una richiesta effettuata dal browser.
 
-## Ricerca AI nella scheda · versione 3.27.3
+## Ricerca AI nella scheda · versione 3.27.4
 
 In **Configurazione → Assistente AI** scegli il servizio per la ricerca. «Automatico» usa il servizio selezionato per il catalogo quando ha una chiave, altrimenti la prima chiave disponibile (Gemini, Groq, OpenRouter). Scegliendo esplicitamente un servizio non viene usata la chiave di un altro provider se manca quella richiesta.
 
@@ -27,15 +27,18 @@ Sotto **Modelli AI · impostazioni avanzate** puoi specificare gli ID dei modell
 
 **Cerca → Cerca con AI** invia il nome e i caratteri compilati: persistenza, chioma, rami, foglie, crescita, estensione, grandezza, altezza, circonferenza e terreno. Non invia coordinate, numero, data, note personali, problemi, foto o l'intero database. Richiede fino a quattro candidati e verifica il taxon su GBIF, regno Plantae: animali, funghi, corrispondenze incerte e risultati solo a livello di genere vengono esclusi. Nessun campo cambia finché non premi «Usa questo nome»; il nome attuale richiede conferma per essere sostituito e i caratteri già inseriti restano conservati. Una percentuale AI è una stima non calibrata, non una certezza botanica.
 
-**Cerca intelligente** mantiene i risultati della guida locale e consulta anche Wikipedia e GBIF. Se c'è una foto salvata e la chiave PlantNet, invia la prima foto a PlantNet; se è configurato un servizio AI consulta anche quello. I fallimenti vengono mostrati senza nascondere i risultati delle altre fonti. Le percentuali di foto, AI e corrispondenza del nome restano separate.
+**Cerca intelligente** dà precedenza al nome: nella guida locale mostra corrispondenze del nome e possibili refusi, senza aggiungere piante estranee soltanto perché condividono caratteri generici. Un binomio con un solo carattere errato, per esempio «rubinia pseudoacacia», può suggerire **Robinia pseudoacacia**; il nome cambia solo quando lo confermi. Senza nome cerca invece per caratteristiche. Per una ricerca per caratteri anche quando il nome è compilato usa **Cerca → Cerca da caratteristiche**. Consulta anche Wikipedia e GBIF. Se c'è una foto salvata e la chiave PlantNet, invia la prima foto a PlantNet; se è configurato un servizio AI consulta anche quello. I fallimenti vengono mostrati senza nascondere i risultati delle altre fonti. Le percentuali di foto, AI e corrispondenza del nome restano separate.
+
+I caratteri della guida sono indicati come **2/2 caratteri concordanti**, senza trasformarli in una probabilità. Due caratteri generici sono pochi indizi; anche una corrispondenza del nome su GBIF non identifica automaticamente la pianta osservata. Le proposte AI o da foto possono suggerire alternative e mantengono indicata la loro fonte.
 
 ## Errori e modelli
 
 - **404 AI**: può indicare un ID modello errato, ritirato o non disponibile per quell'account; non dimostra da solo che la chiave sia sbagliata. Gemini/Groq controllano il catalogo ufficiale e riprovano una sola volta con un modello compatibile nello stesso servizio, ma soltanto quando stai usando i predefiniti. Per Gemini il recupero sceglie un modello Flash, non Pro; per Groq mantiene distinta la ricerca testuale dalle slide con immagini. Non è una garanzia di gratuità: verifica costi e quote nel tuo account.
 - **Modello impostato da te / OpenRouter**: un 404 non modifica la tua scelta; il messaggio indica il servizio e l'ID da correggere.
 - **401/403**: autenticazione o accesso al modello negato; controlla chiave e abilitazioni, senza inviare il file open.env a nessuno.
+- **502/503/504 AI**: servizio temporaneamente indisponibile. L’app riprova al massimo due volte, dopo circa 1 e 2 secondi, nello stesso servizio e sullo stesso modello; mostra il tentativo in corso. Se fallisce ancora, puoi toccare **Riprova AI** o riprovare più tardi. L’errore non significa «nessuna pianta trovata» né, da solo, «chiave errata». Chiudendo la ricerca non partono altri tentativi; una richiesta già inviata può comunque terminare.
 - **429**: quota o frequenza delle richieste superata. Non vengono usate automaticamente altre chiavi per aggirare il limite.
-- **Rete, CORS o timeout**: il browser non ha ricevuto una risposta valida. Le richieste AI e fotografiche hanno un limite di attesa di 60 secondi; le verifiche ordinarie 12 secondi.
+- **Rete, CORS o timeout**: il browser non ha ricevuto una risposta valida. Ogni tentativo AI e ogni richiesta fotografica hanno un limite di attesa di 60 secondi; le verifiche ordinarie 12 secondi.
 - **AI ha risposto ma GBIF non risponde**: l'app distingue la verifica non disponibile da «nessuna pianta trovata» e non applica proposte non verificate.
 
 ## PlantNet: ricerca, foto e pagina della specie

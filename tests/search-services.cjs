@@ -5,7 +5,9 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 let chiamate = [], risposta, totale = 0;
-const contesto = vm.createContext({ AbortController, setTimeout, clearTimeout, TypeError,
+// Acceleriamo solo il backoff nei test, conservando i veri timer di timeout.
+const timerTest = (fn, ms) => setTimeout(fn, ms >= 1000 && ms < 2500 ? 0 : ms);
+const contesto = vm.createContext({ AbortController, setTimeout: timerTest, clearTimeout, TypeError,
   fetch: async (url, opzioni) => { chiamate.push({ url: String(url), opzioni }); return risposta(String(url), opzioni); } });
 vm.runInContext(fs.readFileSync(path.join(root, 'js/ricerca-servizi.js'), 'utf8') + '\nglobalThis.servizi = ServiziRicerca;', contesto);
 const s = contesto.servizi;
@@ -26,7 +28,7 @@ function flussoApplicazione() {
   const r = { uid: 'riga-test', nome: 'Fagus sylvatica', foto: [], persistenza: 'caduca', note: 'Nota personale da NON inviare', gps: { lat: 45, lng: 7 } };
   const guida = { nomeSci: 'Fagus sylvatica', famiglia: 'Fagaceae' };
   let chiave = 'chiave-simulata', invii = async () => ok([]);
-  const c = vm.createContext({ AbortController, setTimeout, clearTimeout, TypeError, FormData, Blob,
+  const c = vm.createContext({ AbortController, setTimeout: timerTest, clearTimeout, TypeError, FormData, Blob,
     DB: { leggi: async () => new Blob(['immagine-finta'], { type: 'image/jpeg' }) }, navigator: { onLine: true }, $, S: { aperta: r },
     GS_CAMPI_SCHEDA: ['persistenza', 'formaChioma', 'rami', 'tipoFoglia', 'lamina', 'margine'],
     CAMPI: [{ k: 'persistenza', label: 'Persistenza foglie' }, { k: 'altezza', label: 'Altezza' }],
@@ -49,6 +51,80 @@ function flussoApplicazione() {
     esegui: espressione => vm.runInContext(espressione, c) };
 }
 (async () => {
+  await prova('Gemini 503 transitorio: massimo tre tentativi dello stesso modello', async () => {
+    const progressi = [];
+    risposta = async () => chiamate.length < 3 ? errore(503) : gemini({ candidati: [] });
+    await s.ai(s.impostazione('gemini', 'chiave-finta', 'gemini-personalizzato'), 'test', '', { onRetry: testo => progressi.push(testo) });
+    assert.equal(chiamate.length, 3);
+    assert.equal(new Set(chiamate.map(c => c.url)).size, 1);
+    assert.equal(progressi.length, 2);
+    assert.match(progressi[1], /tentativo 3\/3/);
+  });
+  await prova('503 persistente: stop dopo tre tentativi, nessun cambio provider', async () => {
+    risposta = async () => errore(503);
+    await assert.rejects(s.ai(s.impostazione('groq', 'chiave-finta'), 'test'), /temporaneamente indisponibile.*503/);
+    assert.equal(chiamate.length, 3);
+    assert.ok(chiamate.every(c => c.url.startsWith('https://api.groq.com/')));
+  });
+  await prova('AI chiusa durante il backoff: nessun nuovo invio', async () => {
+    let attiva = true;
+    risposta = async () => errore(503);
+    await assert.rejects(s.ai(s.impostazione('gemini', 'chiave-finta'), 'test', '', {
+      attiva: () => attiva, onRetry: () => { attiva = false; }
+    }), /annullata/);
+    assert.equal(chiamate.length, 1);
+  });
+  await prova('Robinia: il nome non viene escluso da otto aceri con più caratteri', async () => {
+    const f = flussoApplicazione();
+    f.c.navigator.onLine = false;
+    f.r.nome = f.$('#f-nome').value = 'Robinia pseudoacacia';
+    f.c.GUIDA_SPECIE = [...Array.from({ length: 10 }, (_, i) => ({ nomeSci: `Acer platanoides ${i}` })), { nomeSci: 'Robinia pseudoacacia' }];
+    f.c.trovaSpecieGuida = nome => f.c.GUIDA_SPECIE.find(v => v.nomeSci === nome);
+    f.c.punteggioCaratteristiche = v => ({ punti: v.nomeSci.startsWith('Acer') ? 2 : 0, totale: 2 });
+    await f.esegui('cercaAutoDaScheda()');
+    assert.equal(f.$('#auto-risultati').figli.length, 1);
+    assert.match(f.$('#auto-risultati').textContent, /Robinia pseudoacacia.*Corrisponde al nome/);
+    assert.doesNotMatch(f.$('#auto-risultati').textContent, /Acer|100%/);
+    assert.equal(f.r.nome, 'Robinia pseudoacacia');
+  });
+  await prova('Rubinia: refuso suggerito, senza modificare automaticamente il nome', async () => {
+    const f = flussoApplicazione();
+    f.c.navigator.onLine = false;
+    f.r.nome = f.$('#f-nome').value = 'rubinia pseudoacacia';
+    f.c.GUIDA_SPECIE = [{ nomeSci: 'Acer platanoides' }, { nomeSci: 'Robinia pseudoacacia' }];
+    f.c.trovaSpecieGuida = nome => f.c.GUIDA_SPECIE.find(v => v.nomeSci === nome);
+    await f.esegui('cercaAutoDaScheda()');
+    assert.match(f.$('#auto-risultati').textContent, /Robinia pseudoacacia.*Possibile correzione di «rubinia pseudoacacia»/);
+    assert.doesNotMatch(f.$('#auto-risultati').textContent, /Acer/);
+    assert.equal(f.r.nome, 'rubinia pseudoacacia');
+  });
+  await prova('Nome ignoto: nessuna sostituzione con piante genericamente simili', async () => {
+    const f = flussoApplicazione();
+    f.c.navigator.onLine = false;
+    f.r.nome = f.$('#f-nome').value = 'Pianta sconosciuta';
+    await f.esegui('cercaAutoDaScheda()');
+    assert.doesNotMatch(f.$('#auto-risultati').textContent, /Fagus sylvatica/);
+  });
+  await prova('Ricerca senza nome: confronta i caratteri, senza percentuale fuorviante', async () => {
+    const f = flussoApplicazione();
+    f.c.navigator.onLine = false;
+    f.r.nome = f.$('#f-nome').value = '';
+    f.c.punteggioCaratteristiche = () => ({ punti: 2, totale: 2 });
+    await f.esegui('cercaAutoDaScheda()');
+    assert.match(f.$('#auto-risultati').textContent, /Fagus sylvatica.*2\/2 caratteri concordanti.*Pochi indizi/);
+    assert.doesNotMatch(f.$('#auto-risultati').textContent, /100%/);
+  });
+  await prova('Flusso AI 503: indisponibilità distinta da nessuna pianta, riprova visibile', async () => {
+    const f = flussoApplicazione();
+    f.c.chiaviAI = { GOOGLE_API_KEY: 'chiave-finta' };
+    f.invia(async () => errore(503));
+    await f.esegui('cercaAIDaScheda()');
+    assert.equal(f.richieste.length, 3);
+    assert.match(f.$('#auto-stato').textContent, /temporaneamente indisponibile.*503/);
+    assert.match(f.$('#auto-risultati').textContent, /Riprova AI.*Ricerca AI non completata/);
+    assert.doesNotMatch(f.$('#auto-risultati').textContent, /Inserisci qualche|Nessuna proposta verificabile/);
+    assert.equal(f.r.nome, 'Fagus sylvatica');
+  });
   await prova('Groq: ricerca testuale usa un modello diverso dal Vision', async () => {
     risposta = async () => chat({ candidati: [] });
     await s.ai(s.impostazione('groq', 'chiave-finta'), 'testo');

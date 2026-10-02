@@ -2469,6 +2469,35 @@ function cercaCaratteristicheDaScheda() {
 
 const AUTO_RICERCA = { serie: 0 };
 
+// Il nome guida la ricerca; pochi caratteri generici non devono escluderlo.
+function nomeRicercaNormalizzato(nome) {
+  return String(nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('it').replace(/[’']/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function distanzaNomeRicerca(a, b) {
+  let riga = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const nuova = [i];
+    for (let j = 1; j <= b.length; j++) nuova[j] = Math.min(nuova[j - 1] + 1, riga[j] + 1, riga[j - 1] + Number(a[i - 1] !== b[j - 1]));
+    riga = nuova;
+  }
+  return riga[b.length];
+}
+
+function attinenzaNomeRicerca(nome, nomeSci, catalogo = nomeSci) {
+  const q = nomeRicercaNormalizzato(nome), s = nomeRicercaNormalizzato(nomeSci), c = nomeRicercaNormalizzato(catalogo);
+  if (!q) return 0;
+  if (q === c) return 4;
+  if (q === s) return 3;
+  if (c.startsWith(q + ' ') || (q.length >= 3 && !q.includes(' ') && s.startsWith(q))) return 2;
+  const parti = q.split(' '), scientifico = s.split(' ');
+  // Suggerimento conservativo: un solo carattere errato in un binomio completo.
+  if (parti.length !== 2 || scientifico.length !== 2 || parti.some(p => p.length < 4)) return 0;
+  const distanza = parti.reduce((somma, p, i) => somma + distanzaNomeRicerca(p, scientifico[i]), 0);
+  return distanza === 1 ? 1 : 0;
+}
+
 function descriviRicerca(titolo, descrizione) {
   $('#auto-titolo').textContent = titolo;
   $('#auto-spiega').textContent = descrizione + ' I dati non cambiano finché non confermi un risultato.';
@@ -2615,13 +2644,18 @@ function datiRicercaAI(r) {
 }
 
 async function richiediRicercaSpecieAI(r) {
+  const serie = AUTO_RICERCA.serie;
+  const attiva = () => serie === AUTO_RICERCA.serie && S.aperta === r && $('#dlg-cerca-auto').open;
   const fornitore = fornitoreRicercaAI();
   if (!fornitore) throw new Error('Carica open.env da «+ Opzioni → Backup e configurazione» e scegli Gemini, Groq o OpenRouter.');
   const osservazioni = datiRicercaAI(r);
   if (!osservazioni.nomeInserito && !Object.keys(osservazioni.caratteristiche).length)
     throw new Error('Inserisci un nome o almeno una caratteristica botanica prima della ricerca AI.');
   const istruzioni = `Sei un assistente di identificazione botanica prudente. Proponi al massimo 4 taxa vegetali compatibili con questi dati: ${JSON.stringify(osservazioni)}. Usa soltanto nomi scientifici binomiali (genere e specie); non inventare taxa e non proporre animali, funghi o nomi soltanto di genere. La percentuale è una stima orientativa basata esclusivamente sui dati forniti, non una certezza. Rispondi esclusivamente con JSON nel formato {"candidati":[{"nomeScientifico":"Genere specie","percentuale":0,"motivazione":"massimo 180 caratteri"}]}.`;
-  const json = await ServiziRicerca.ai(configurazioneFornitoreAI(fornitore.nome), istruzioni);
+  const json = await ServiziRicerca.ai(configurazioneFornitoreAI(fornitore.nome), istruzioni, '', {
+    attiva, onRetry: testo => { if (attiva()) $('#auto-stato').textContent = testo; }
+  });
+  if (!attiva()) throw new Error('Ricerca annullata.');
   const grezzi = Array.isArray(json?.candidati) ? json.candidati.slice(0, 4) : [];
   const validi = grezzi.filter(c => c && typeof c.nomeScientifico === 'string' &&
     /^[A-ZÀ-ÖØ-Þ][\p{L}-]+\s+[a-zà-öø-ÿ][\p{L}.-]+(?:\s+(?:subsp\.|var\.|f\.)\s+[a-zà-öø-ÿ][\p{L}.-]+)?$/u.test(c.nomeScientifico.trim()) &&
@@ -2640,16 +2674,20 @@ async function richiediRicercaSpecieAI(r) {
   return risultati;
 }
 
-function disegnaRisultatiAuto(candidati) {
+function disegnaRisultatiAuto(candidati, messaggioVuoto = 'Nessuna proposta verificabile. Inserisci qualche caratteristica, un nome o una foto e riprova.') {
   const destinazione = S.aperta;
   const serie = AUTO_RICERCA.serie;
   const ordinati = [...candidati.values()].sort((a, b) =>
+    (b.attinenzaNome ?? 0) - (a.attinenzaNome ?? 0) ||
     (b.foto ?? -1) - (a.foto ?? -1) || (b.ai?.percentuale ?? -1) - (a.ai?.percentuale ?? -1) ||
     (b.locale?.punti ?? -1) - (a.locale?.punti ?? -1) || a.nome.localeCompare(b.nome, 'it')).slice(0, 8);
   $('#auto-risultati').replaceChildren(...(ordinati.length ? ordinati.map(c => {
     const indizi = [];
+    if (c.attinenzaNome >= 3) indizi.push('Corrisponde al nome cercato; l’esemplare resta da verificare.');
+    else if (c.attinenzaNome === 2) indizi.push('Nome compatibile con il testo cercato.');
+    else if (c.attinenzaNome === 1) indizi.push(`Possibile correzione di «${c.nomeCercato}». Il nome cambia solo se confermi.`);
     if (c.foto != null) indizi.push(`Foto PlantNet: ${c.foto}% di confidenza del modello`);
-    if (c.locale?.totale >= 2) indizi.push(`Guida locale: ${Math.round(c.locale.punti / c.locale.totale * 100)}% dei ${c.locale.totale} caratteri inseriti concorda${c.locale.punti === 1 ? '' : 'no'} (${c.locale.punti}/${c.locale.totale})`);
+    if (c.locale?.totale >= 2) indizi.push(`Guida locale: ${c.locale.punti}/${c.locale.totale} caratteri concordanti. ${c.locale.totale < 3 ? 'Pochi indizi: non bastano per identificare la pianta.' : 'La somiglianza dei caratteri non conferma l’identificazione.'}`);
     else if (c.locale?.totale === 1) indizi.push(`Guida locale: ${c.locale.punti}/1 carattere concordante; troppo poco per stimare una compatibilità.`);
     else if (c.guida) indizi.push('Presente nella guida delle 144 piante');
     if (c.wikipedia) indizi.push('Nome del taxon su Wikidata, trovato tramite Wikipedia');
@@ -2664,7 +2702,7 @@ function disegnaRisultatiAuto(candidati) {
       el('button', { type: 'button', class: 'btn primario', onclick: () => {
         if (S.aperta === destinazione && serie === AUTO_RICERCA.serie && $('#dlg-cerca-auto').open) usaRisultatoAuto(c);
       } }, 'Usa questo nome'));
-  }) : [el('p', { class: 'vuoto' }, 'Nessuna proposta verificabile. Inserisci qualche caratteristica, un nome o una foto e riprova.')]));
+  }) : [el('p', { class: 'vuoto' }, messaggioVuoto)]));
 }
 
 async function cercaAIDaScheda() {
@@ -2686,8 +2724,11 @@ async function cercaAIDaScheda() {
       'L’AI non ha prodotto nomi botanici verificabili su GBIF. Aggiungi caratteristiche o un nome più preciso e riprova. Per le foto usa «Cerca da foto».';
   } catch (errore) {
     if (serie !== AUTO_RICERCA.serie || S.aperta !== r || !$('#dlg-cerca-auto').open) return;
-    disegnaRisultatiAuto(candidati);
+    disegnaRisultatiAuto(candidati, 'Ricerca AI non completata. Non è un risultato negativo sull’identificazione: la scheda non è stata modificata.');
     $('#auto-stato').textContent = errore?.message || 'Ricerca AI non disponibile.';
+    $('#auto-risultati').prepend(el('button', { type: 'button', class: 'btn primario', onclick: () => {
+      if (serie === AUTO_RICERCA.serie && S.aperta === r && $('#dlg-cerca-auto').open) cercaAIDaScheda();
+    } }, 'Riprova AI'));
   }
 }
 
@@ -2707,7 +2748,7 @@ function usaRisultatoAuto(c) {
 async function cercaAutoDaScheda() {
   const r = S.aperta;
   if (!r) return;
-  descriviRicerca('Risultati della ricerca intelligente', 'Confronta la guida locale con Wikipedia/Wikidata e GBIF; se configurata consulta l’AI. Se hai una foto salvata e la chiave PlantNet invia la prima foto per identificarla. Le percentuali delle fonti non sono confrontabili né vengono mediate.');
+  descriviRicerca('Risultati della ricerca intelligente', 'Se inserisci un nome, la guida cerca quel nome e possibili refusi; senza nome confronta i caratteri. Wikipedia/Wikidata e GBIF verificano il nome; se configurata consulta l’AI. Una foto salvata e la chiave PlantNet permettono la prova fotografica. Le percentuali delle fonti non sono confrontabili né vengono mediate.');
   const serie = ++AUTO_RICERCA.serie;
   const nome = $('#f-nome').value.trim();
   const foto = r.foto?.[0];
@@ -2719,12 +2760,12 @@ async function cercaAutoDaScheda() {
     const chiave = (nomeSci || '').trim().toLocaleLowerCase('it');
     if (!chiave) return;
     const precedente = candidati.get(chiave) || { nome: nomeSci.trim(), guida: trovaSpecieGuida(nomeSci) };
-    candidati.set(chiave, { ...precedente, ...nuovi });
+    candidati.set(chiave, { ...precedente, ...nuovi,
+      attinenzaNome: attinenzaNomeRicerca(nome, precedente.guida?.nomeSci || nomeSci, nomeSci), nomeCercato: nome });
   };
-  const locali = GUIDA_SPECIE.map(v => ({ v, ...punteggioCaratteristiche(v, filtri) }))
-    .filter(x => (haCaratteri && x.punti >= Math.max(1, Math.ceil(x.totale / 2))) ||
-      (nome && nomeCatalogo(x.v).toLowerCase().includes(nome.toLowerCase())))
-    .sort((a, b) => b.punti - a.punti).slice(0, 8);
+  const locali = GUIDA_SPECIE.map(v => ({ v, attinenza: attinenzaNomeRicerca(nome, v.nomeSci, nomeCatalogo(v)), ...punteggioCaratteristiche(v, filtri) }))
+    .filter(x => nome ? x.attinenza > 0 : haCaratteri && x.punti >= Math.max(1, Math.ceil(x.totale / 2)))
+    .sort((a, b) => b.attinenza - a.attinenza || b.punti - a.punti).slice(0, 8);
   for (const x of locali) aggiungi(nomeCatalogo(x.v), { guida: x.v, locale: haCaratteri ? { punti: x.punti, totale: x.totale } : null });
   if (/^\S+\s+\S+/.test(nome)) aggiungi(nome, { scritto: true });
   $('#auto-stato').textContent = 'Confronto locale completato. Verifico le fonti disponibili…';
@@ -2743,7 +2784,7 @@ async function cercaAutoDaScheda() {
   const esiti = await Promise.allSettled(prove);
   if (serie !== AUTO_RICERCA.serie || S.aperta !== r || !$('#dlg-cerca-auto').open) return;
   const nomiGbif = [...candidati.values()].filter(c => /^\S+\s+\S+/.test(c.nome))
-    .sort((a, b) => Number(!!b.wikipedia) - Number(!!a.wikipedia) ||
+    .sort((a, b) => (b.attinenzaNome ?? 0) - (a.attinenzaNome ?? 0) || Number(!!b.wikipedia) - Number(!!a.wikipedia) ||
       Number(b.nome.toLowerCase() === nome.toLowerCase()) - Number(a.nome.toLowerCase() === nome.toLowerCase()) ||
       (b.foto ?? -1) - (a.foto ?? -1) || (b.locale?.punti ?? -1) - (a.locale?.punti ?? -1))
     .slice(0, 2);

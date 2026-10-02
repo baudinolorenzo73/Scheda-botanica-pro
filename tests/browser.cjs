@@ -825,6 +825,23 @@ const server = http.createServer((req, res) => {
         }
       }),true);
     });
+    await test('Ricerca con nome: Robinia prima delle somiglianze generiche',async()=>{
+      await page.fill('#f-nome','rubinia pseudoacacia');
+      await page.evaluate(async()=>{
+        const descrittore=Object.getOwnPropertyDescriptor(navigator,'onLine');
+        Object.defineProperty(navigator,'onLine',{configurable:true,value:false});
+        try { await cercaAutoDaScheda(); }
+        finally {
+          if(descrittore) Object.defineProperty(navigator,'onLine',descrittore);
+          else delete navigator.onLine;
+        }
+      });
+      assert.equal((await page.locator('#auto-risultati h3').first().textContent()).trim(),'Robinia pseudoacacia');
+      assert.match(await page.locator('#auto-risultati').textContent(),/Possibile correzione/);
+      assert.doesNotMatch(await page.locator('#auto-risultati').textContent(),/Acer platanoides|Guida locale: 100%/);
+      assert.equal(await page.inputValue('#f-nome'),'rubinia pseudoacacia');
+      await page.click('#auto-chiudi');
+    });
     assert.deepEqual(errors,[],'Eccezioni JavaScript');assert.deepEqual(failed,[],'Risorse locali mancanti');
     console.log(`\n${results.length} verifiche superate. Nessuna eccezione JavaScript, nessuna risorsa locale mancante.`);
   } finally {await browser.close();server.close();}

@@ -12,7 +12,8 @@ const ServiziRicerca = (() => {
         const spiegazione = resp.status === 401 || resp.status === 403 ? 'chiave non valida o accesso negato' :
           resp.status === 429 ? 'quota o limite di richieste raggiunto; riprova più tardi' :
           resp.status === 413 ? 'immagine troppo grande' : 'richiesta non disponibile';
-        const errore = new Error(`${servizio}: ${spiegazione} (${resp.status}).`);
+        const temporaneo = [502, 503, 504].includes(resp.status);
+        const errore = new Error(`${servizio}: ${temporaneo ? 'servizio temporaneamente indisponibile; riprova più tardi' : spiegazione} (${resp.status}).`);
         errore.status = resp.status;
         throw errore;
       }
@@ -56,7 +57,7 @@ const ServiziRicerca = (() => {
     cacheModelli.set(cfg.nome, { chiave: cfg.chiave, immagine: cfg.immagine, modello });
     return modello;
   }
-  async function ai(cfg, istruzioni, base64 = '') {
+  async function ai(cfg, istruzioni, base64 = '', opzioni = {}) {
     const esegui = async modello => {
       let url, body, headers;
       if (cfg.nome === 'gemini') {
@@ -72,7 +73,19 @@ const ServiziRicerca = (() => {
           messages: [{ role: 'user', content: base64 ? [{ type: 'text', text: istruzioni },
             { type: 'image_url', image_url: { url: `data:image/webp;base64,${base64}` } }] : istruzioni }] };
       }
-      const dati = await json(url, { method: 'POST', headers, body: JSON.stringify(body) }, 60000, `${cfg.etichetta} · ${modello}`);
+      let dati;
+      for (let tentativo = 1; tentativo <= 3; tentativo++) {
+        if (opzioni.attiva && !opzioni.attiva()) throw new Error('Ricerca annullata.');
+        try {
+          dati = await json(url, { method: 'POST', headers, body: JSON.stringify(body) }, 60000, `${cfg.etichetta} · ${modello}`);
+          break;
+        } catch (errore) {
+          if (![502, 503, 504].includes(errore.status) || tentativo === 3) throw errore;
+          if (opzioni.attiva && !opzioni.attiva()) throw new Error('Ricerca annullata.');
+          opzioni.onRetry?.(`${cfg.etichetta}: servizio temporaneamente indisponibile (${errore.status}). Riprovo: tentativo ${tentativo + 1}/3…`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * 2 ** (tentativo - 1) + Math.floor(Math.random() * 250)));
+        }
+      }
       const testo = cfg.nome === 'gemini' ? dati.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') : dati.choices?.[0]?.message?.content;
       if (typeof testo !== 'string' || !testo.trim()) throw new Error(`${cfg.etichetta}: risposta vuota o bloccata; aggiungi dati botanici più precisi.`);
       try { return JSON.parse(testo.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')); }
