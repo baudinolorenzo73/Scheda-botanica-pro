@@ -298,6 +298,10 @@
       <button type="button" class="btn" id="btn-controlla-aggiornamenti">Controlla aggiornamenti</button>
       <button type="button" class="btn primario nascosto" id="btn-applica-aggiornamento">Aggiorna ora</button>
     </div>
+    <div class="aggiornamento-app">
+      <p id="slide-offline-stato" role="status" aria-live="polite">Slide del corso offline: verifica in corso…</p>
+      <button type="button" class="btn" id="btn-slide-offline">Scarica slide per uso offline (~9 MB)</button>
+    </div>
     <h3 class="menu-titolo">Backup ed esportazioni</h3>
     <div class="cartella-botanica">
       <strong>Cartella dei salvataggi</strong>
@@ -397,7 +401,7 @@
 <dialog id="dlg-import">
   <h2>Importa backup</h2>
   <p id="import-info"></p><p class="campo-aiuto">Unisci conserva la traccia corrente; Sostituisci ripristina anche la traccia del backup. Un file incompleto viene rifiutato prima di modificare i dati.</p>
-  <p style="font-size:13px;color:var(--tenue)">Unisci: aggiunge le schede nuove e aggiorna quelle già presenti se il backup è più recente.<br>Sostituisci: verifica prima tutto il backup, poi sostituisce l’archivio in un’unica operazione protetta.</p>
+  <p style="font-size:13px;color:var(--tenue)">Unisci: aggiunge le schede nuove; in quelle già presenti completa i campi vuoti, somma foto e note vocali e, se un campo ha valori diversi, ti fa scegliere quale tenere.<br>Sostituisci: verifica prima tutto il backup, poi sostituisce l’archivio in un’unica operazione protetta.</p>
   <div class="azioni">
     <button class="btn" value="annulla">Annulla</button>
     <button class="btn pericolo" value="sostituisci">Sostituisci tutto</button>
@@ -642,7 +646,7 @@
 
   <h3>Dispositivo</h3>
   <p>L'app riconosce da sola se stai usando uno smartphone, un tablet o un PC (lo vedi in «Backup e configurazione») e adatta l'impaginazione: una colonna su telefono, due su tablet, tre su PC. Si aggiorna anche ruotando il dispositivo.</p>
-  <p>In Configurazione puoi scegliere «Adatta allo schermo», 110% o 125% per ingrandire l’interfaccia. Sotto «+ Opzioni» puoi cambiare tema chiaro/scuro. Dopo la prima apertura completa, l’app conserva le risorse essenziali per lavorare offline; le ricerche web, PlantNet, l’AI e il meteo richiedono invece connessione.</p>
+  <p>In Configurazione puoi scegliere «Adatta allo schermo», 110% o 125% per ingrandire l’interfaccia. Sotto «+ Opzioni» puoi cambiare tema chiaro/scuro. Dopo la prima apertura completa, l’app conserva le risorse essenziali per lavorare offline e scarica da sola le 144 slide del corso (circa 9 MB); in Configurazione puoi controllarne il numero o riscaricarle con «Scarica slide per uso offline». Le ricerche web, PlantNet, l’AI e il meteo richiedono invece connessione.</p>
 
   <h3>Nuove schede e aggiornamenti</h3>
   <p>Ogni nuova scheda nasce con la data odierna; nessun nome o etichetta viene aggiunto automaticamente. «Nome esemplare» resta vuoto. Le vecchie etichette Prova1, Prova2 ecc. non sono più visualizzate, ma i nomi botanici e i dati già salvati restano invariati. Se esci senza aggiungere alcun dato reale, foto, GPS o nota vocale, la bozza viene eliminata e non compare tra le schede salvate. Il pulsante della versione in alto a destra controlla il file pubblicato senza usare la cache; se trova una versione più recente chiede conferma prima di scaricarla e mostra poi «Aggiorna ora».</p>
@@ -728,6 +732,10 @@
 <script src="./js/utils.js"></script>
 <script src="./js/database.js"></script>
 <script src="./js/ricerca-servizi.js"></script>
+<script src="./js/guida.js"></script>
+<script src="./js/mappa.js"></script>
+<script src="./js/stampa-qr.js"></script>
+<script src="./js/backup.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

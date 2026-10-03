@@ -690,3 +690,25 @@ body[data-interfaccia="125"]{zoom:1.25}
   .barra .cerca-box,.barra select{grid-column:1/-1}
 }
 @media(max-width:480px){#editor .editor-comandi .azioni-rapide button{font-size:11px}#editor .editor-comandi .azioni-rapide{gap:5px;padding-inline:6px}}
+
+/* ---------- unione backup: scelta dei campi diversi ---------- */
+.dlg-unione .unione-elenco{max-height:58dvh;overflow:auto;margin-top:8px}
+.unione-scheda{border-top:1px solid var(--linea);padding:10px 0}
+.unione-scheda h3{margin:0 0 2px;font:600 16px Georgia,serif}
+.unione-nota{margin:0 0 8px;font-size:13px;color:var(--tenue)}
+.unione-campo{border:1px solid var(--linea);border-radius:var(--r-piccolo);margin:0 0 8px;padding:6px 10px 8px}
+.unione-campo legend{font-weight:600;font-size:14px;padding:0 4px}
+.unione-opzione{display:flex;gap:8px;align-items:flex-start;padding:6px 4px;border-radius:6px;cursor:pointer}
+.unione-opzione:has(input:checked){background:var(--concorda-bg)}
+.unione-opzione input{margin-top:3px;flex:none;width:20px;height:20px;accent-color:var(--bosco)}
+.unione-opzione b{display:block;font-size:13px}
+.unione-valore{display:block;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* ---------- classi di testo usate dal codice JS (prima erano stili inline) ---------- */
+.testo-tenue{color:var(--tenue)}
+.testo-nota{font-size:12px;color:var(--tenue)}
+.testo-nota.sotto{font-size:12.5px;margin:0 0 8px}
+.senza-margine{margin:0}
+.avviso-rosso{color:var(--ruggine);font-weight:600;font-size:13px}
+.esito-numero{font:700 18px system-ui;color:var(--bosco)}
+.esito-numero.esito-neutro{color:var(--tenue)}

@@ -1,11 +1,13 @@
 'use strict';
 // Cache versionata per percorso: altri progetti sullo stesso dominio restano indipendenti.
-const CACHE_NOME = 'scheda-botanica-app-v51-' + new URL(self.registration.scope).pathname;
+const CACHE_NOME = 'scheda-botanica-app-v53-' + new URL(self.registration.scope).pathname;
 const CACHE_TILE = 'scheda-botanica-tile-v1';
+// Slide del corso: cache non versionata, sopravvive agli aggiornamenti dell'app.
+const CACHE_SLIDE = 'scheda-botanica-slide-v1-' + new URL(self.registration.scope).pathname;
 const FILE_APP_SHELL = [
   './', './index.html', './css/app.css', './manifest.json', './versione.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
-  './app.js', './js/config.js', './js/utils.js', './js/database.js', './js/ricerca-servizi.js', './icone.js',
+  './app.js', './js/config.js', './js/utils.js', './js/database.js', './js/ricerca-servizi.js', './js/guida.js', './js/mappa.js', './js/stampa-qr.js', './js/backup.js', './icone.js',
   './data/guida-specie.js', './lib/leaflet.js', './lib/leaflet.css',
   './lib/jszip.js', './lib/xlsx-populate.js', './lib/qrcode-generator.js',
 ];
@@ -42,7 +44,8 @@ self.addEventListener('fetch', (event) => {
   const tile = HOST_TILE.includes(url.hostname);
   if (!tile && (url.origin !== self.location.origin || !url.pathname.startsWith(new URL(self.registration.scope).pathname))) return;
   event.respondWith((async () => {
-    const cache = await caches.open(tile ? CACHE_TILE : CACHE_NOME);
+    const slide = !tile && url.pathname.startsWith(new URL('slides/', self.registration.scope).pathname);
+    const cache = await caches.open(tile ? CACHE_TILE : slide ? CACHE_SLIDE : CACHE_NOME);
     const cached = await cache.match(req);
     if (cached) return cached;
     try {

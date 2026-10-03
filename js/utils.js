@@ -256,3 +256,16 @@ function caricaLibreriaExcel() {
   }).catch((errore) => { caricamentoExcel = null; throw errore; });
   return caricamentoExcel;
 }
+
+// Preferenze in localStorage protette: in navigazione privata, con memoria piena
+// o con i dati del sito bloccati, localStorage può lanciare un errore. Qui
+// l'errore viene assorbito: l'app continua con il valore predefinito.
+function leggiPref(chiave) {
+  try { return localStorage.getItem(chiave); } catch { return null; }
+}
+function scriviPref(chiave, valore) {
+  try { localStorage.setItem(chiave, valore); return true; } catch { return false; }
+}
+function cancellaPref(chiave) {
+  try { localStorage.removeItem(chiave); } catch { /* niente da fare */ }
+}

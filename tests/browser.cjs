@@ -69,7 +69,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.locator('#dlg-zona-habitat').evaluate(d=>d.open),false);
     });
     await test('Scheda: misura decimale libera e persistenza al ricaricamento',async()=>{
-      await page.click('#btn-nuova');
+      await page.click('#btn-nuova'); await page.waitForFunction(()=>S.aperta!==null);
       assert.equal(await page.inputValue('#f-nome'),'');
       assert.equal(await page.evaluate(()=>S.aperta.nomeScheda),undefined);
       assert.equal(await page.inputValue('#f-data'),await page.evaluate(()=>oggi()));
@@ -86,7 +86,7 @@ const server = http.createServer((req, res) => {
       await page.waitForFunction(()=>S.aperta===null);
     });
     await test('Una scheda con soli valori automatici non viene memorizzata',async()=>{
-      await page.click('#btn-nuova');
+      await page.click('#btn-nuova'); await page.waitForFunction(()=>S.aperta!==null);
       const bozza=await page.evaluate(()=>({uid:S.aperta.uid,nomeScheda:S.aperta.nomeScheda,data:S.aperta.data}));
       assert.equal(bozza.nomeScheda,undefined);
       assert.equal(bozza.data,await page.evaluate(()=>oggi()));
@@ -96,7 +96,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(uid=>S.schede.some(r=>r.uid===uid),bozza.uid),false);
       assert.equal(await page.evaluate(async uid=>(await DB.leggi('schede',uid))==null,bozza.uid),true);
       assert.equal(await page.locator('#apri-scheda-salvata option').count(),2);
-      await page.click('#btn-nuova');
+      await page.click('#btn-nuova'); await page.waitForFunction(()=>S.aperta!==null);
       const interrotta=await page.evaluate(()=>S.aperta.uid);
       await page.waitForFunction(uid=>DB.leggi('schede',uid).then(Boolean),interrotta);
       await page.reload();
@@ -162,8 +162,37 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(async()=>{
         const v=leggiFormatoBackup({app:'scheda-botanica',schede:[{uid:'importata',nome:'Fagus sylvatica',foto:[{id:'foto_importata'}]}],foto:{foto_importata:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1sAAAAASUVORK5CYII='}});
         await importaDati(v,'unisci');document.querySelectorAll('dialog[open]').forEach(d=>d.close());
-        const r=await DB.leggi('schede','importata');return S.schede.length===2 && r.foto[0].id!=='foto_importata' && (await DB.leggi('foto',r.foto[0].id)).size>0;
+        const r=await DB.leggi('schede','importata');return S.schede.length===2 && r.foto[0].id==='foto_importata' && (await DB.leggi('foto',r.foto[0].id)).size>0;
       }),true);
+    });
+    await test('Unione campo per campo: foto sommate, conflitti scelti, nessun file orfano',async()=>{
+      const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1sAAAAASUVORK5CYII=';
+      // Base comune: la scheda "importata" (da test precedente) con foto_importata.
+      // Collega, più recente: nuova foto, altezza diversa, terreno compilato, note diverse.
+      const base=await page.evaluate(()=>structuredClone(S.schede.find(s=>s.uid==='importata')));
+      await page.evaluate(async()=>{const r=S.schede.find(s=>s.uid==='importata');r.altezza='10';r.note='nota mia';r.modificato='2026-01-01T10:00:00.000Z';await salvaOra(r);});
+      const arrivo={app:'scheda-botanica',schede:[{...base,altezza:'12',terreno:'argilloso',note:'nota collega',modificato:'2026-01-02T10:00:00.000Z',
+        foto:[{id:'foto_importata'},{id:'foto_collega'}]}],foto:{foto_importata:png,foto_collega:png}};
+      const prima=await page.evaluate(async()=>(await DB.chiavi('foto')).length);
+      const fine=page.evaluate(async(a)=>{await importaDati(leggiFormatoBackup(a),'unisci');document.querySelectorAll('dialog[open]').forEach(d=>d.close());},arrivo);
+      await page.waitForSelector('.dlg-unione');
+      assert.equal(await page.locator('.dlg-unione fieldset').count(),2);   // altezza e note; terreno era vuoto
+      assert.equal(await page.locator('.dlg-unione input[value="suo"]').first().isChecked(),true);   // preselezionata la più recente
+      await page.locator('.dlg-unione fieldset').nth(0).locator('input[value="mio"]').check();
+      await page.locator('.dlg-unione fieldset').nth(1).locator('input[value="entrambi"]').check();
+      await page.click('.dlg-unione .btn.primario');
+      await fine;
+      const r=await page.evaluate(()=>DB.leggi('schede','importata'));
+      assert.equal(r.altezza,'10'); assert.equal(r.terreno,'argilloso'); assert.equal(r.note,'nota mia\nnota collega');
+      assert.deepEqual(r.foto.map(f=>f.id).sort(),['foto_collega','foto_importata']);
+      assert.equal(await page.evaluate(async()=>(await DB.chiavi('foto')).length),prima+1);   // solo la foto nuova
+      // Reimportare lo stesso file non cambia nulla e non duplica foto.
+      await page.evaluate(async(a)=>{const p=importaDati(leggiFormatoBackup(a),'unisci');await new Promise(o=>setTimeout(o,300));const d=document.querySelector('.dlg-unione');if(d)[...d.querySelectorAll('fieldset')].forEach((f,i)=>f.querySelector(i===0?'input[value="mio"]':'input[value="mio"]').click()),d.querySelector('.btn.primario').click();await p;document.querySelectorAll('dialog[open]').forEach(x=>x.close());},arrivo);
+      assert.equal(await page.evaluate(async()=>(await DB.chiavi('foto')).length),prima+1);
+      // Un file senza scheda viene eliminato dalla pulizia.
+      assert.equal(await page.evaluate(async()=>{await DB.scrivi('foto',new Blob(['x']),'orfana');const n=await pulisciMediaOrfani();return n===1 && !(await DB.leggi('foto','orfana'));}),true);
+      // Ripristina la scheda com'era per i test successivi.
+      await page.evaluate(async(b)=>{const i=S.schede.findIndex(s=>s.uid===b.uid);S.schede[i]=b;await salvaOra(b);await pulisciMediaOrfani();},base);
     });
     await test('Esportazione Excel con contenuto rileggibile',async()=>{
       const download=page.waitForEvent('download');
@@ -228,9 +257,10 @@ const server = http.createServer((req, res) => {
       await page.click('#tab-mappa');
       assert.equal(await page.locator('#tab-mappa').getAttribute('aria-pressed'),'true');
       assert.equal(await page.locator('#btn-nuova').isVisible(),true);
-      await page.click('#btn-nuova');
+      await page.click('#btn-nuova'); await page.waitForFunction(()=>S.aperta!==null);
       await page.waitForFunction(()=>S.vista==='schede'&&!!S.aperta);
       await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
       await page.click('#btn-tema');
       assert.equal(await page.evaluate(()=>document.documentElement.dataset.tema==='scuro'),true);
       await page.click('#btn-tema');
@@ -432,7 +462,7 @@ const server = http.createServer((req, res) => {
       await page.click('#cg-salva');
       await page.waitForFunction(()=>S.guida[0].campi.fiore==='Bianco');
       await page.click('#cg-chiudi');
-      await page.reload();await page.waitForFunction(()=>DB.db);
+      await page.reload();await page.waitForFunction(()=>DB.db && GUIDA_SPECIE[0].fiore==='Bianco');
       assert.equal(await page.evaluate(()=>Object.keys(chiaviAI).length),1);
       assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].fiore),'Bianco');
       await apriOpzioni(); await page.click('#btn-menu');
@@ -626,6 +656,7 @@ const server = http.createServer((req, res) => {
       assert.match(await page.locator('#plantnet-link').getAttribute('href'),/Ocimum%20basilicum%20L\./);
       await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;localStorage.removeItem('sb-plantnet-key');});
       await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
     });
     await test('PlantNet per nome: interroga il catalogo, non apre la pagina iniziale',async()=>{
       await page.evaluate(()=>{
@@ -655,6 +686,7 @@ const server = http.createServer((req, res) => {
       await page.click('#auto-chiudi');
       await page.evaluate(()=>{window.fetch=window.fetchPrecedente;delete window.fetchPrecedente;});
       await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
     });
     await test('Home: traccia con pausa, stop, nuova scheda e meteo',async()=>{
       await context.grantPermissions(['geolocation']);
@@ -683,12 +715,13 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>window.meteoUrl),'https://www.3bmeteo.com/');
       await page.evaluate(()=>{window.open=window.aperturaMeteo;delete window.aperturaMeteo;});
       await page.click('#meteo-chiudi');
-      await page.click('#btn-nuova');
+      await page.click('#btn-nuova'); await page.waitForFunction(()=>S.aperta!==null);
       await page.waitForFunction(()=>!!S.aperta);
       await page.fill('#f-nome','Scheda dal pulsante iniziale');
       await page.click('#btn-salva-scheda');
       assert.equal(await page.evaluate(async()=>!!(await DB.leggi('schede',S.aperta.uid))?.nome),true);
       await page.click('#btn-chiudi');
+      await page.waitForFunction(()=>S.aperta===null);
     });
     await test('Traccia GPS: segnala precisione, assenza di fix e riattiva al ritorno',async()=>{
       assert.equal(await page.evaluate(async()=>{
@@ -736,7 +769,7 @@ const server = http.createServer((req, res) => {
           fermaTraccia();
           callbacks[0](fix(45.4,ts+3000)); // callback tardivo: deve essere ignorato
           libera();
-          await esportaBackup(); // deve attendere tutta la coda di scrittura
+          await esportaZIP(); // deve attendere tutta la coda di scrittura
           const punti=S.traccia.slice(prima);
           if(punti.length!==3 || punti[0].segmento!==punti[1].segmento || punti[2].segmento<=punti[1].segmento)
             throw Error('Fix persi o segmenti riuniti');
@@ -745,7 +778,8 @@ const server = http.createServer((req, res) => {
           return S.traccia.length;
         } finally {libera();await TRK.coda;geo.watchPosition=watch;geo.clearWatch=clear;DB.scrivi=scrivi;fermaTraccia();}
       });
-      const json=JSON.parse(fs.readFileSync(await (await download).path(),'utf8'));
+      const zip=await require('../lib/jszip.js').loadAsync(fs.readFileSync(await (await download).path()));
+      const json=JSON.parse(await zip.file('backup.json').async('string'));
       assert.equal(json.traccia.length,conteggio);
     });
     await test('Nuovo elenco in home: backup e archiviazione atomica',async()=>{
@@ -774,7 +808,7 @@ const server = http.createServer((req, res) => {
         return S.cestino.every(r => salvate.some(v => v.uid === r.uid && !!v.cancellata));
       }),true);
       confermaNuovoElenco=false;
-      await page.click('#btn-nuova');
+      await page.click('#btn-nuova'); await page.waitForFunction(()=>S.aperta!==null);
       await page.waitForFunction(()=>!!S.aperta);
       assert.equal(await page.inputValue('#f-prog'),'1');
       assert.equal(await page.inputValue('#f-nome'),'');
@@ -810,6 +844,8 @@ const server = http.createServer((req, res) => {
     await test('Nuova scheda non perde dati se il salvataggio fallisce',async()=>{
       assert.equal(await page.evaluate(async()=>{
         const corrente=S.aperta;
+        // Una bozza vuota verrebbe scartata senza salvarla: serve un contenuto reale.
+        corrente.nome=corrente.nome||'Prova salvataggio';
         const numero=S.schede.length;
         const originale=DB.scrivi;
         DB.scrivi=async(archivio,record)=>{
@@ -839,8 +875,17 @@ const server = http.createServer((req, res) => {
       assert.equal((await page.locator('#auto-risultati h3').first().textContent()).trim(),'Robinia pseudoacacia');
       assert.match(await page.locator('#auto-risultati').textContent(),/Possibile correzione/);
       assert.doesNotMatch(await page.locator('#auto-risultati').textContent(),/Acer platanoides|Guida locale: 100%/);
-      assert.equal(await page.inputValue('#f-nome'),'rubinia pseudoacacia');
+      assert.match(await page.inputValue('#f-nome'),/^rubinia pseudoacacia$/i); // il genere riceve la maiuscola
       await page.click('#auto-chiudi');
+    });
+    await test('Slide del corso: scaricate da sole e leggibili offline',async()=>{
+      await page.waitForFunction(async()=>{const c=await contaSlideOffline();return c.totale===144 && c.presenti===c.totale;},null,{timeout:60000});
+      await context.setOffline(true);
+      const ok=await page.evaluate(async()=>{const r=await fetch(`./slides/${GUIDA_SPECIE[5].pagina}.webp`);return r.ok && (await r.blob()).size>1000;});
+      await context.setOffline(false);
+      assert.equal(ok,true);
+      await page.evaluate(()=>aggiornaPannelloSlide());
+      assert.match(await page.locator('#slide-offline-stato').textContent(),/Tutte le 144 slide/);
     });
     assert.deepEqual(errors,[],'Eccezioni JavaScript');assert.deepEqual(failed,[],'Risorse locali mancanti');
     console.log(`\n${results.length} verifiche superate. Nessuna eccezione JavaScript, nessuna risorsa locale mancante.`);

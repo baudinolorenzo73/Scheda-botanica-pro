@@ -41,6 +41,9 @@ const DB = {
     });
   },
   tutte: (store) => DB.tx(store, 'readonly', (s) => s.getAll()),
+  chiavi: (store) => DB.tx(store, 'readonly', (s) => s.getAllKeys()),
+  // Cancella in un'unica transazione le chiavi indicate (es. file orfani).
+  cancellaMolte: (store, chiavi) => DB.tx(store, 'readwrite', (s) => { for (const k of chiavi) s.delete(k); }),
   leggi: (store, k) => DB.tx(store, 'readonly', (s) => s.get(k)),
   scrivi: (store, v, k) => DB.tx(store, 'readwrite', (s) => (k === undefined ? s.put(v) : s.put(v, k))),
   cancella: (store, k) => DB.tx(store, 'readwrite', (s) => s.delete(k)),

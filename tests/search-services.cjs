@@ -41,7 +41,7 @@ function flussoApplicazione() {
   $('#f-nome').value = r.nome;
   $('#cg-ai-fornitore').value = 'gemini';
   $('#ai-ricerca-servizio').value = 'auto';
-  const fonte = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const fonte = ['app.js', 'js/guida.js', 'js/mappa.js', 'js/stampa-qr.js', 'js/backup.js'].map(f => fs.readFileSync(path.join(root, f), 'utf8')).join('\n');
   const segmento = (inizio, fine) => fonte.slice(fonte.indexOf(inizio), fonte.indexOf(fine, fonte.indexOf(inizio)));
   vm.runInContext(fs.readFileSync(path.join(root, 'js/ricerca-servizi.js'), 'utf8') + '\n' +
     segmento('function configurazioneFornitoreAI(', 'function normalizzaProposteAI(') +
@@ -219,7 +219,7 @@ function flussoApplicazione() {
     await assert.rejects(s.json('https://example.invalid', {}, 10, 'PlantNet'), /PlantNet.*tempo di attesa scaduto/);
   });
   await prova('Creazione schede: nessun nome automatico; data odierna e bozze vuote', async () => {
-    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const app = ['app.js', 'js/guida.js', 'js/mappa.js', 'js/stampa-qr.js', 'js/backup.js'].map(f => fs.readFileSync(path.join(root, f), 'utf8')).join('\n');
     const estrai = (nome, fine) => app.slice(app.indexOf(`function ${nome}(`), app.indexOf(fine, app.indexOf(`function ${nome}(`)));
     const c = vm.createContext({ S: { schede: [] }, CAMPI: [{ k: 'nome' }, { k: 'note' }, { k: 'prog' }, { k: 'data' }, { k: 'numeroZona' }, { k: 'numero' }],
       nuovoId: () => 'test', oraISO: () => '2026-10-02T12:00:00Z', oggi: () => '2026-10-02', calcolaNumeroZona: () => 1 });
@@ -350,7 +350,7 @@ function flussoApplicazione() {
     await assert.rejects(f.esegui("fotoPlantNetAuto({id:'foto-test'})"), /PlantNet: nessuna pianta riconosciuta.*404/);
   });
   await prova('Completamento dalla guida: una dipendenza non cancella osservazioni esistenti', async () => {
-    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const app = ['app.js', 'js/guida.js', 'js/mappa.js', 'js/stampa-qr.js', 'js/backup.js'].map(f => fs.readFileSync(path.join(root, f), 'utf8')).join('\n');
     const estrai = (inizio, fine) => app.slice(app.indexOf(inizio), app.indexOf(fine, app.indexOf(inizio)));
     const r = { tipoFoglia: '', lamina: 'ovata', margine: 'intero' };
     const c = vm.createContext({ r, GS_MAPPA_TIPOLOGIA: {}, GS_CAMPO_GUIDA: { tipoFoglia: 'fogliaTipo', lamina: 'fogliaLamina', margine: 'fogliaMargine' },

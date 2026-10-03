@@ -2,11 +2,9 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.27.6**
+**by Lollo ®2026 — versione 3.28.0**
 
-[Miniatura della slide · 3.27.6](REVISIONE-3.27.6.md) · [Apri scheda locale · 3.27.5](REVISIONE-3.27.5.md) · [Ricerca per nome e gestione AI 503 · 3.27.4](REVISIONE-3.27.4.md) · [Guida all’AI e alle chiavi](ASSISTENTE-AI.md)
-
-[Editor e ricerca automatica](REVISIONE-3.25.md) · [Prima pagina e dimensione interfaccia](REVISIONE-3.24.md) · [Excel più leggero](REVISIONE-3.23.md) · [Unione con Drive Up](REVISIONE-3.22.md)
+[Novità e storico delle versioni](CHANGELOG.md) · [Guida all’AI e alle chiavi](ASSISTENTE-AI.md)
 
 ---
 
@@ -70,19 +68,39 @@ Nella cartella [`manuali/`](manuali/):
 ```
 ├── index.html               Struttura della pagina
 ├── css/app.css              Stili e layout responsive
-├── js/                      Configurazione, utilità e database
-├── tests/                   Prove automatiche nel browser
-├── .github/workflows/       Verifica automatica su GitHub
 ├── app.js                   Logica, archivio, GPS, backup e importazioni
+├── js/                      Configurazione, utilità, database, ricerche e moduli:
+│   ├── guida.js             guida delle 144 specie, catalogo, AI, ricerche web
+│   ├── mappa.js             mappa, tile offline, traccia GPS
+│   ├── stampa-qr.js         QR, scansione etichette, stampa A4
+│   └── backup.js            backup ZIP, ripristino, unione, Excel/CSV, esportazioni
 ├── icone.js                 Disegni dei campi botanici
-├── data/                    Guida locale alle specie
+├── data/                    Guida locale alle 144 specie
+├── slides/                  Slide del corso (scaricate anche per l'uso offline)
 ├── lib/                     Librerie incluse per mappa, QR, ZIP ed Excel
 ├── manifest.json            Manifest PWA (nome, icone, colori)
-├── service-worker.js        Cache offline dell'app shell
+├── service-worker.js        Cache offline dell'app, delle slide e della mappa
+├── versione.json            Versione pubblicata, letta da «Controlla aggiornamenti»
 ├── icons/                   Icone dell'app in varie dimensioni
 ├── manuali/                 Manuale utente e guida rapida (PDF + Word)
-└── screenshot/               Immagini per questo README
+├── screenshot/              Immagini per questo README
+├── scripts/versione.py      Cambia la versione in tutti i file in un colpo solo
+├── scripts/check_public_secrets.py  Controlla che nessun file .env venga pubblicato
+├── tests/                   Prove automatiche (npm test)
+└── CHANGELOG.md             Novità di ogni versione
 ```
+
+## 🔢 Pubblicare una nuova versione
+
+Il numero di versione compare in più file e deve essere uguale ovunque, altrimenti il pulsante «Controlla aggiornamenti» non trova la versione nuova. Uno script lo cambia in tutti i file insieme.
+
+1. Apri Termux ed entra nella cartella del progetto, per esempio: `cd ~/Scheda-botanica-pro`
+2. Scrivi `python scripts/versione.py` e premi Invio: vedi la versione attuale in ogni file.
+3. Scrivi `python scripts/versione.py 3.28.1` (con il numero nuovo) e premi Invio. Lo script aggiorna `js/config.js`, `versione.json`, `package.json`, questo README e alza di uno il numero della cache del service worker, così i telefoni scaricano i file nuovi.
+4. Aggiungi in cima a `CHANGELOG.md` cosa è cambiato.
+5. Pubblica come al solito con `pubblica`.
+
+**Test (facoltativi, servono Node.js e Chromium):** `npm install`, poi `npx playwright install chromium`, poi `npm test`. Il solo controllo della versione si lancia con `node tests/versione.cjs` e non richiede il browser.
 
 ## 🚀 Pubblicare / aggiornare su GitHub Pages
 

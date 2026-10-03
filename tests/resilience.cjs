@@ -40,7 +40,7 @@ const server = http.createServer((req, res) => {
     {
       const { context, page, errors } = await nuovoContesto();
       page.on('dialog', d => d.dismiss());
-      await page.click('#btn-nuova');
+      await page.click('#btn-nuova'); await page.waitForFunction(()=>S.aperta!==null);
       await page.fill('#f-nome','Quercus robur');
       await page.evaluate(() => {
         Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{throw Error('permesso negato simulato');}}});
@@ -82,7 +82,7 @@ const server = http.createServer((req, res) => {
     }
     {
       const { context, page, errors } = await nuovoContesto();
-      await page.click('#btn-nuova');
+      await page.click('#btn-nuova'); await page.waitForFunction(()=>S.aperta!==null);
       await page.fill('#f-nome','Fagus sylvatica');
       await page.click('#btn-chiudi');
       await page.waitForFunction(() => S.aperta===null);
@@ -90,6 +90,8 @@ const server = http.createServer((req, res) => {
       if (!await page.evaluate(() => !!navigator.serviceWorker.controller)) await page.reload();
       await page.waitForFunction(() => !!navigator.serviceWorker.controller && DB.db);
       nuovo=true;
+      // Dalla 3.27.0 l'app chiede conferma prima di scaricare l'aggiornamento.
+      page.once('dialog', d => d.type() === 'confirm' ? d.accept() : d.dismiss());
       await page.evaluate(() => verificaAggiornamenti(true));
       await page.waitForFunction(() => !document.querySelector('#btn-applica-aggiornamento').classList.contains('nascosto'));
       await page.evaluate(()=>{
