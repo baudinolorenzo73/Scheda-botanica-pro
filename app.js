@@ -768,6 +768,10 @@ function costruisciModulo() {
             el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-auto', onclick: cercaAutoDaScheda }, '✨ Cerca intelligente')),
           el('p', { class: 'nome-auto-nota' }, 'La ricerca intelligente confronta guida, Wikipedia, GBIF, foto PlantNet e, se hai caricato una chiave, anche l’AI. Le proposte non modificano la scheda finché non le confermi.'),
           el('p', { id: 'nome-conflitti', class: 'nome-conflitti nascosto', role: 'status' })));
+      } else if (c.k === 'data') {
+        griglia.append(el('div', { class: 'campo' },
+          el('label', { class: 'campo', for: id }, c.label, campoInput),
+          el('div', { id: 'scheda-slide', class: 'scheda-slide nascosto' })));
       } else {
         griglia.append(el('label', { class: 'campo' + (c.largo ? ' largo' : ''), for: id },
           c.label, campoInput, c.k === 'prog' ? el('span', { class: 'avviso-campo', id: 'avviso-prog' }) : null,
@@ -2871,7 +2875,30 @@ function mostraConflittiNome(conflitti) {
 // dal vivo, ricalcolato ad ogni modifica: non serve salvare nulla in più.
 const GS_CAMPI_CONFRONTABILI = ['persistenza', ...Object.keys(GS_CAMPO_GUIDA)];
 
+function aggiornaSlideScheda() {
+  const cont = $('#scheda-slide');
+  if (!cont) return;
+  const nome = nomeRicercaNormalizzato(S.aperta?.nome);
+  const specie = nome ? GUIDA_SPECIE.find(v => nomeRicercaNormalizzato(nomeCatalogo(v)) === nome) : null;
+  if (!specie || !Number.isInteger(specie.pagina) || specie.pagina <= 0) {
+    cont.replaceChildren(); cont.classList.add('nascosto'); cont.dataset.slide = ''; return;
+  }
+  const chiave = `${specie.id}:${specie.pagina}`;
+  if (cont.dataset.slide === chiave) return;
+  cont.dataset.slide = chiave;
+  const src = `./slides/${specie.pagina}.webp`;
+  const descrizione = `Slide ${specie.pagina} · ${nomeCatalogo(specie)}`;
+  cont.replaceChildren(el('button', { type: 'button', class: 'scheda-slide-apri',
+    'aria-label': `Apri ${descrizione}`, onclick: () => {
+      $('#vista-img').src = src; $('#vista-img').alt = descrizione; $('#vista-foto').showModal();
+    } }, el('img', { src, alt: descrizione, loading: 'lazy', onerror: () => {
+      if (cont.dataset.slide === chiave) { cont.classList.add('nascosto'); cont.dataset.slide = ''; }
+    } }), el('span', {}, `Slide ${specie.pagina}`, el('small', {}, 'Tocca per ingrandire'))));
+  cont.classList.remove('nascosto');
+}
+
 function confrontaConCatalogo() {
+  aggiornaSlideScheda();
   const r = S.aperta;
   if (!r) return;
   for (const k of GS_CAMPI_CONFRONTABILI) {
