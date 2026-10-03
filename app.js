@@ -772,6 +772,12 @@ function costruisciModulo() {
         griglia.append(el('div', { class: 'campo' },
           el('label', { class: 'campo', for: id }, c.label, campoInput),
           el('div', { id: 'scheda-slide', class: 'scheda-slide nascosto' })));
+      } else if (c.k === 'altezza') {
+        // Il pulsante sta fuori dall'etichetta: un tocco non porta il cursore nel campo.
+        griglia.append(el('div', { class: 'campo' },
+          el('label', { class: 'campo', for: id }, c.label, campoInput),
+          el('button', { type: 'button', class: 'btn btn-misura', id: 'btn-misura-altezza', onclick: apriMisuraAltezza },
+            '📐 Misura (clinometro, foto, ombra)')));
       } else {
         griglia.append(el('label', { class: 'campo' + (c.largo ? ' largo' : ''), for: id },
           c.label, campoInput, c.k === 'prog' ? el('span', { class: 'avviso-campo', id: 'avviso-prog' }) : null,

@@ -712,3 +712,37 @@ body[data-interfaccia="125"]{zoom:1.25}
 .avviso-rosso{color:var(--ruggine);font-weight:600;font-size:13px}
 .esito-numero{font:700 18px system-ui;color:var(--bosco)}
 .esito-numero.esito-neutro{color:var(--tenue)}
+
+/* ---------- misura altezza (js/altezza.js) ---------- */
+.btn-misura{margin-top:6px;width:100%;min-height:42px;font-size:13.5px}
+.dlg-altezza h3{margin:16px 0 6px;font-size:15px}
+.alt-riga{display:flex;gap:10px}
+.alt-riga > *{flex:1;min-width:0}
+.alt-bottoni{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.alt-bottoni .btn{flex:1 1 40%}
+.alt-passi{margin-top:8px}
+.alt-passi summary{cursor:pointer;color:var(--bosco);font-weight:600;font-size:13.5px}
+.alt-mirino{position:relative;width:100%;aspect-ratio:3/4;max-height:55vh;background:#000;border-radius:var(--r-grande);overflow:hidden;margin-top:6px}
+.alt-mirino video{width:100%;height:100%;object-fit:cover;display:block}
+.alt-croce{position:absolute;inset:0;pointer-events:none}
+.alt-croce::before,.alt-croce::after{content:"";position:absolute;background:rgba(255,50,50,.9)}
+.alt-croce::before{left:0;right:0;top:50%;height:2px;transform:translateY(-1px)}
+.alt-croce::after{top:0;bottom:0;left:50%;width:2px;transform:translateX(-1px)}
+.alt-angolo{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.6);color:#fff;padding:5px 10px;border-radius:8px;font:700 20px ui-monospace,monospace}
+.alt-angolo-grande{font:700 30px ui-monospace,monospace;text-align:center;margin:8px 0 2px}
+.alt-miniature{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.alt-miniature .campo-aiuto{flex-basis:100%;margin:0}
+.alt-miniatura{border:1px solid var(--linea);border-radius:var(--r-piccolo);padding:0;width:64px;height:64px;overflow:hidden;background:none}
+.alt-miniatura img{width:100%;height:100%;object-fit:cover;display:block}
+.alt-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.alt-chip{border:2px solid var(--linea);background:var(--carta);border-radius:16px;padding:5px 10px;font-size:13px}
+.alt-chip.albero{border-left:6px solid #3fcf6a}
+.alt-chip.rif{border-left:6px solid #f08a24}
+.alt-chip.sel{border-color:var(--ruggine)}
+.alt-canvas-box{width:100%;max-height:60vh;overflow:auto;border:1px solid var(--linea);border-radius:var(--r-piccolo);background:#000;margin-top:6px}
+.alt-canvas{display:block}
+.alt-frecce{display:grid;grid-template-columns:repeat(3,52px);gap:4px;justify-content:center;margin:8px 0}
+.alt-frecce button{height:44px;border-radius:var(--r-piccolo);border:1px solid var(--linea);background:var(--foglio);font-size:18px}
+.alt-risultato{border-top:1px solid var(--linea);margin-top:14px;padding-top:10px}
+.alt-esito{font:700 30px system-ui;color:var(--bosco)}
+.alt-formula{font:12.5px ui-monospace,monospace;color:var(--tenue);margin:4px 0 0}

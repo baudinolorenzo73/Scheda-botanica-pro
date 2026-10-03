@@ -608,6 +608,15 @@
     <li><b>GPS</b>: "Rileva posizione" richiede il permesso la prima volta; conviene farlo all'aperto per una precisione migliore.</li>
   </ul>
 
+  <h3>Misura dell’altezza</h3>
+  <p>Sotto il campo «Altezza» il pulsante <b>📐 Misura</b> apre tre metodi, tutti senza rete. Il valore entra nella scheda solo quando premi «Usa nella scheda».</p>
+  <ul>
+    <li><b>Clinometro</b> (il più preciso): misura la distanza orizzontale dal tronco (metro, passi o telemetro), poi mira la cima e la base con la croce rossa della fotocamera. Formula: H = D × (tan α cima − tan α base); vale anche in pendenza. Senza l’angolo della base usa l’altezza degli occhi (solo su terreno piano). Stai a una distanza che dia un angolo cima tra 30° e 50°. «Tara 0°» corregge il sensore: appoggia il dorso del telefono a uno stipite e premi.</li>
+    <li><b>Da foto</b>: serve un oggetto di altezza nota accanto al tronco (persona, bastone, stadia). Scatta da lontano con il telefono verticale, oppure usa una foto già salvata nella scheda, e segna base e cima di albero e riferimento. Precisione tipica ±5–10%.</li>
+    <li><b>Ombra</b>: con il sole, ombra dell’albero × altezza di un bastone ÷ ombra del bastone, su terreno piano.</li>
+  </ul>
+  <p>Se fotocamera o sensore non sono disponibili, gli angoli si possono scrivere a mano, per esempio letti da un clinometro.</p>
+
   <h3>Identificazione specie (PlantNet)</h3>
   <p>Su ogni foto c'è un pulsante "🔎 Identifica" che manda quella foto a PlantNet, un servizio online gratuito, e propone le specie più probabili con una percentuale di confidenza: tu scegli se usarla come nome dell'esemplare. Serve una chiave gratuita (una tantum, si ottiene in due minuti da ⋮ → "Chiave PlantNet", con le istruzioni dentro). Senza chiave configurata l'app non manda mai foto in rete da sola. Anche con un risultato ad alta percentuale, trattalo come un suggerimento da confermare a occhio, non come una certezza.</p>
   <p>Ogni specie confermata resta anche in un piccolo <b>catalogo sul dispositivo</b>, che cresce da solo: da quel momento il campo "Nome esemplare" la propone tra i suggerimenti anche <b>senza connessione</b>, senza dover richiamare PlantNet. Il catalogo viaggia anche dentro il backup completo, così si arricchisce con il lavoro di tutto il gruppo. Ogni specie porta con sé anche l'<b>ID GBIF</b> (il database naturalistico più usato al mondo): compare nella scheda come link "Apri la specie su GBIF", nel report per il cliente e nelle esportazioni CSV/GeoJSON/KML — utile per collegare i tuoi dati a un riferimento tassonomico riconosciuto ovunque.</p>
@@ -736,6 +745,7 @@
 <script src="./js/mappa.js"></script>
 <script src="./js/stampa-qr.js"></script>
 <script src="./js/backup.js"></script>
+<script src="./js/altezza.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

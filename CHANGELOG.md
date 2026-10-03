@@ -2,6 +2,20 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.29.0 · misura dell’altezza
+
+Sotto il campo **Altezza** c’è il pulsante **📐 Misura**, che apre una finestra con tre metodi, tutti offline:
+
+- **Clinometro**: fotocamera con croce di mira e sensore di orientamento del telefono. Si fissano l’angolo della cima e quello della base; con la distanza orizzontale l’app calcola H = D × (tan α cima − tan α base), valido anche in pendenza. Senza angolo base usa l’altezza degli occhi. La distanza si può ricavare dai passi. «Tara 0°» corregge l’errore del sensore e resta salvata sul dispositivo.
+- **Da foto**: si scatta una foto, se ne sceglie una dalla galleria o si usa una foto già salvata nella scheda; si segnano base e cima dell’albero e di un oggetto di altezza nota. Zoom e frecce per posizionare i punti con precisione.
+- **Ombra**: rapporto tra l’ombra dell’albero e quella di un bastone.
+
+Il valore entra nella scheda solo con **Usa nella scheda**; se l’altezza è già compilata chiede conferma prima di sostituirla. La stima di volume e CO₂ si aggiorna subito. Le foto scelte nella finestra non vengono salvate nella scheda. La fotocamera si spegne alla chiusura.
+
+Nuovo file `js/altezza.js`, aggiunto alla cache del service worker. Aiuto aggiornato. Nessuna modifica al database né ai campi esportati.
+
+---
+
 ## 3.28.0 · unione backup sicura, slide offline, pulizie
 
 **Correzioni**
