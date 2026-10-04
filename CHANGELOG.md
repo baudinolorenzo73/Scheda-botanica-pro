@@ -2,6 +2,49 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.31.0 · controllo dei layout di stampa
+
+Verificate con PDF di prova (20 schede, nomi e note molto lunghi, foto di proporzioni diverse) tutte le stampe: schede, etichette QR, mappa, report singolo e pagina HTML mappa+schede.
+
+- **Margini uniformi di 12 mm** su tutti i lati, in verticale e in orizzontale; il report singolo e la pagina HTML (prima stampati a filo del foglio, con margini 0–5 mm) ora hanno gli stessi margini.
+- **Niente più pagine vuote o tagli**: la spaziatura sotto il corpo dell'app e lo zoom dell'interfaccia (110 %/125 %) non influiscono più sulla stampa. Prima aggiungevano una pagina vuota in coda alla mappa orizzontale e potevano spingere il contenuto oltre il foglio.
+- **Foto**: mai più spezzate tra due pagine né ritagliate; vengono mostrate intere (senza tagli ai bordi) in righe che restano insieme.
+- **Sezioni lunghe** (note, fitopatologia): scorrono sulla pagina successiva invece di lasciare mezza pagina bianca.
+- **Tabelle giustificate**: schede, elenco della mappa, report e pagina HTML hanno colonne a larghezza fissa e testo giustificato con sillabazione; l'ultima riga di ogni cella resta allineata a sinistra per evitare spazi anomali. Elenco mappa con intestazione ripetuta se va su più pagine.
+- **Etichette**: il nome lungo va a capo (massimo due righe) invece di essere troncato con «…».
+- Mappa stampata: riquadro ridimensionato per stare sempre nell'area utile del foglio.
+
+---
+
+## 3.30.2 · classe di grandezza: anche «4ª grandezza»
+
+Anche l’ultima voce perde la dicitura tra parentesi: ora le quattro classi sono «1ª grandezza», «2ª grandezza», «3ª grandezza», «4ª grandezza». I file, i backup e gli Excel esportati con le vecchie diciture («1ª grandezza (maggiore)», «4ª grandezza (minore)») si importano come prima. Nessuna modifica ai dati.
+
+---
+
+## 3.30.1 · classe di grandezza
+
+La prima voce di «Classe di grandezza» è ora solo «1ª grandezza» (senza «(maggiore)»), sia nella scheda sia nella ricerca per caratteristiche. I file e i backup già esistenti con la vecchia dicitura si importano come prima. Nessuna modifica ai dati.
+
+---
+
+## 3.30.0 · misura altezza semplificata, foglia composta, stampa ed esportazione della mappa
+
+**Misura altezza, più semplice.** La finestra è diventata una procedura guidata: prima si sceglie il metodo (telefono, foto, ombra), poi ogni schermata chiede una cosa sola con un disegno e istruzioni brevi.
+- *Con il telefono*: distanza (o passi) → mira della cima → mira della base. Per fissare basta toccare l’immagine della fotocamera. La base si può saltare su terreno piano. Il risultato dice se la misura è nelle condizioni consigliate o suggerisce di avvicinarsi/allontanarsi. Taratura e altezza occhi sono in un riquadro a parte. Senza sensore compare l’inserimento a mano.
+- *Da foto*: scelta del riferimento con un tocco (persona 1,70 m, bastone 1 m, stadia 2 m, altro) e 4 punti chiesti uno alla volta, con «Annulla punto» e ingrandimento.
+- *Ombra*: tre misure in ordine.
+
+**Tipo di foglia composta.** Nuovo campo illustrato (imparipennata, paripennata, bipennata, digitata) che compare solo con Tipo di foglia = composta e si svuota cambiando tipo. Le regole di `DIPENDENZE_CAMPI` accettano ora anche `tranne` («mostra solo per questo valore»). Il campo è usato dalla guida delle 144 (compilazione, confronto, ricerca per caratteristiche), dall’importazione Excel, da stampa, CSV e backup. Stampa e report saltano i campi non pertinenti invece di mostrare un trattino.
+
+**Mappa.** Due pulsanti nella vista Mappa:
+- *🖨 Stampa mappa*: area visibile o tutte le schede con GPS, A4 orizzontale/verticale, numeri colorati, scala, nord, traccia facoltativa ed elenco delle schede su una pagina a parte. Funziona anche come «Salva come PDF».
+- *⭳ Pagina HTML mappa + schede*: un unico file .html con mappa interattiva (Leaflet incluso), schede con caratteristiche, foto ridotte (una, tutte o nessuna) e ricerca. Si apre ovunque senza installare nulla.
+
+Nuovo file `js/mappa-export.js`, nella cache offline. Nessuna migrazione del database.
+
+---
+
 ## 3.29.0 · misura dell’altezza
 
 Sotto il campo **Altezza** c’è il pulsante **📐 Misura**, che apre una finestra con tre metodi, tutti offline:

@@ -65,7 +65,7 @@ async function scaricaReportSingolo(r) {
       if (b) fotoInline.push({ ...p, dataUrl: await blobInDataURL(b) });
     }
     const qrTxt = new XMLSerializer().serializeToString(qrSVG(testoQR(r)));
-    const righeDati = CAMPI.filter((c) => !['prog', 'nome', 'data'].includes(c.k)).map((c) => {
+    const righeDati = CAMPI.filter((c) => !['prog', 'nome', 'data'].includes(c.k) && campoPertinente(r, c.k)).map((c) => {
       let v = r[c.k];
       if (c.tipo === 'scelta') v = v ? (c.valori.find(([x]) => x === v) || [, v])[1] : '';
       return `<tr><th>${escHtml(c.label)}</th><td>${escHtml(v || '—')}</td></tr>`;
@@ -90,7 +90,11 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #ddd} th{width:44%
 figure{margin:0} figure img{width:100%;border-radius:8px;display:block} figcaption{font-size:12px;color:#5d6b61;margin-top:4px;font-family:system-ui,sans-serif}
 footer{font-size:11px;color:#889;margin-top:26px;font-family:system-ui,sans-serif}
 a{color:#2f5d3a}
-@media print{body{margin:0}}
+@page{size:A4;margin:12mm}
+td{text-align:justify;hyphens:auto;overflow-wrap:anywhere}
+figure,tr{break-inside:avoid}
+figure img{max-height:120mm;object-fit:contain}
+@media print{body{margin:0;max-width:none;padding:0}header,.stima{break-inside:avoid}}
 </style></head><body>
 <header><div class="num">${escHtml(r.prog)}</div><div><h1>${escHtml(r.nome || 'Esemplare senza nome')}</h1><p>${escHtml(dataBreveIT(r.data))}</p></div><div class="qr">${qrTxt}</div></header>
 <table>${righeDati}</table>
@@ -342,7 +346,7 @@ async function paginaScheda(r, opz) {
       opz.qr ? el('div', { class: 'p-qr' }, qrSVG(testoQR(r))) : null));
 
   for (const sez of SEZIONI) {
-    const campi = CAMPI.filter((c) => c.sez === sez.id && !CAMPI_TESTATA.includes(c.k) && (!opz.campi || opz.campi.has(c.k)));
+    const campi = CAMPI.filter((c) => c.sez === sez.id && !CAMPI_TESTATA.includes(c.k) && (!opz.campi || opz.campi.has(c.k)) && campoPertinente(r, c.k));
     if (!campi.length) continue;
     pagina.append(el('section', { class: 'p-sez' },
       el('h3', { testo: sez.titolo }),
@@ -367,11 +371,12 @@ async function paginaScheda(r, opz) {
     const altezza = { 1: '120mm', 2: '70mm', 3: '48mm' }[opz.colonne];
     const figure = await Promise.all(fotoStampa.map(async (p) =>
       el('figure', {},
-        el('img', { src: await urlFoto(p.id), alt: '', style: `height:${altezza}` }),
+        el('div', { class: 'p-foto-cornice', style: `height:${altezza}` }, el('img', { src: await urlFoto(p.id), alt: '' })),
         el('figcaption', { testo: [p.didascalia, dataIT(p.quando)].filter(Boolean).join(' – ') }))));
     pagina.append(el('section', {},
       el('h3', { class: 'p-titolo-foto', testo: `Foto (${fotoStampa.length}${fotoStampa.length < fotoStampaTutte.length ? ` di ${fotoStampaTutte.length}` : ''})` }),
-      el('div', { class: 'p-foto', style: `grid-template-columns:repeat(${opz.colonne},1fr)` }, figure)));
+      el('div', { class: 'p-foto' }, Array.from({ length: Math.ceil(figure.length / opz.colonne) }, (_, i) =>
+        el('div', { class: 'p-foto-riga', style: `grid-template-columns:repeat(${opz.colonne},1fr)` }, figure.slice(i * opz.colonne, (i + 1) * opz.colonne))))));
   }
   pagina.append(el('p', { class: 'p-piede', testo: `Creata il ${dataIT(r.creato)} – ultima modifica ${dataIT(r.modificato)} – stampata il ${dataIT(oraISO())} · by Lollo ®2026` }));
   return pagina;

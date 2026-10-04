@@ -55,6 +55,7 @@ function normalizza(v) {
     if (c.tipo === 'scelta' && val) {
       const opzione = c.valori.find(([codice, testo]) => val === codice || val === testo);
       if (opzione) val = opzione[0];
+      else if (c.vecchieEtichette?.[val] !== undefined) val = c.vecchieEtichette[val];
     }
     r[c.k] = val;
   }
@@ -777,7 +778,7 @@ function costruisciModulo() {
         griglia.append(el('div', { class: 'campo' },
           el('label', { class: 'campo', for: id }, c.label, campoInput),
           el('button', { type: 'button', class: 'btn btn-misura', id: 'btn-misura-altezza', onclick: apriMisuraAltezza },
-            '📐 Misura (clinometro, foto, ombra)')));
+            '📐 Misura altezza')));
       } else {
         griglia.append(el('label', { class: 'campo' + (c.largo ? ' largo' : ''), for: id },
           c.label, campoInput, c.k === 'prog' ? el('span', { class: 'avviso-campo', id: 'avviso-prog' }) : null,
@@ -915,7 +916,7 @@ function applicaDipendenze() {
   }
   // poi nasconde quelli non pertinenti in base al valore attuale
   for (const dip of DIPENDENZE_CAMPI) {
-    if ((r[dip.se] || '') === dip.valore) {
+    if (dipendenzaAttiva(dip, r[dip.se])) {
       for (const k of dip.nascondi) {
         const etichetta = document.querySelector(`label[for="f-${k}"]`);
         if (etichetta) etichetta.classList.add('nascosto');
@@ -928,7 +929,7 @@ function applicaDipendenze() {
 function svuotaCampiNonPertinenti(kCambiato, vNuovo) {
   const r = S.aperta;
   for (const dip of DIPENDENZE_CAMPI) {
-    if (dip.se !== kCambiato || vNuovo !== dip.valore) continue;
+    if (dip.se !== kCambiato || !dipendenzaAttiva(dip, vNuovo)) continue;
     for (const k of dip.nascondi) {
       if (!r[k]) continue;
       r[k] = '';
@@ -2172,6 +2173,8 @@ function collegaEventi() {
 
   // cache offline delle tile della mappa
   $('#btn-mappa-scarica-area').onclick = apriScaricaAreaMappa;
+  $('#btn-mappa-stampa').onclick = stampaMappa;
+  $('#btn-mappa-html').onclick = esportaMappaHTML;
   $('#mo-margine').onchange = aggiornaStimaAreaMappa;
   $('#btn-mo-scarica').onclick = avviaScaricamentoAreaMappa;
   $('#btn-mo-annulla-scaricamento').onclick = () => { SCARICAMENTO_MAPPA.annulla = true; };

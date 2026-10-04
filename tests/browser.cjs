@@ -133,8 +133,8 @@ const server = http.createServer((req, res) => {
         normalizza({gps:{lat:null,lng:''}}).record.gps,
         normalizza({gps:{lat:0,lng:0}}).record.gps.lat,
         normalizzaData('23/09/2026'),normalizzaData(46288),normalizzaData('31/02/2026'),
-        normalizza({grandezza:'1ª grandezza (maggiore)'}).record.grandezza,mmss(59.8)
-      ]),[null,0,'2026-09-23','2026-09-23','','1','1:00']);
+        normalizza({grandezza:'1ª grandezza (maggiore)'}).record.grandezza,normalizza({grandezza:'4ª grandezza (minore)'}).record.grandezza,normalizza({grandezza:'4ª grandezza'}).record.grandezza,mmss(59.8)
+      ]),[null,0,'2026-09-23','2026-09-23','','1','4','4','1:00']);
     });
     await test('Errore sincrono durante ripristino: rollback completo',async()=>{
       assert.equal(await page.evaluate(async()=>{

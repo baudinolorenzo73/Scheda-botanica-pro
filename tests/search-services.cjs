@@ -358,6 +358,8 @@ function flussoApplicazione() {
       CAMPI: [{ k: 'tipoFoglia', label: 'Tipo di foglia', tipo: 'illustrata', valori: ['aghiforme'] },
         { k: 'lamina', label: 'Lamina', tipo: 'illustrata', valori: ['ovata'] }, { k: 'margine', label: 'Margine', tipo: 'illustrata', valori: ['intero'] }],
       aggiornaBottoneIllustrato() {}, $: () => null });
+    const config = fs.readFileSync(path.join(root, 'js/config.js'), 'utf8');
+    vm.runInContext(config.slice(config.indexOf('function dipendenzaAttiva('), config.indexOf('function campoPertinente(')), c);
     vm.runInContext(estrai('function conflittiConGuida(', 'function mostraConflittiNome(') +
       estrai('function compilaCampiDaGuidaSpecie(', '/* =====================================================================\n   7f.'), c);
     c.specie = { fogliaTipo: 'aghiforme' };
@@ -367,6 +369,19 @@ function flussoApplicazione() {
     assert.equal(r.tipoFoglia, '');
     assert.equal(r.lamina, 'ovata');
     assert.equal(r.margine, 'intero');
+    // Regola «tranne»: la foglia composta si compila solo quando il tipo è «composta».
+    c.DIPENDENZE_CAMPI.push({ se: 'tipoFoglia', tranne: 'composta', nascondi: ['fogliaComposta'] });
+    c.GS_CAMPO_GUIDA.fogliaComposta = 'fogliaComposta';
+    c.CAMPI.push({ k: 'fogliaComposta', label: 'Foglia composta', tipo: 'illustrata', valori: ['imparipennata'] });
+    c.CAMPI[0].valori.push('composta');
+    c.r2 = { tipoFoglia: '' };
+    c.specie = { fogliaTipo: 'composta', fogliaComposta: 'imparipennata' };
+    vm.runInContext('compilaCampiDaGuidaSpecie(r2, specie)', c);
+    assert.equal(c.r2.tipoFoglia, 'composta');
+    assert.equal(c.r2.fogliaComposta, 'imparipennata');
+    c.r3 = { tipoFoglia: 'semplice' };
+    vm.runInContext('compilaCampiDaGuidaSpecie(r3, { fogliaComposta: "imparipennata" })', c);
+    assert.equal(c.r3.fogliaComposta, undefined);
   });
   console.log(`${totale} gruppi di test di ricerca superati. Nessun servizio esterno contattato.`);
 })().catch(e => { console.error(e); process.exitCode = 1; });

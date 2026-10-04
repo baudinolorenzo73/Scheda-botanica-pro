@@ -141,6 +141,8 @@
       <button type="button" class="btn pericolo nascosto" id="btn-traccia-cancella">🗑 Cancella traccia</button>
     </div>
     <div class="traccia-barra" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 2px 10px">
+      <button type="button" class="btn" id="btn-mappa-stampa">🖨 Stampa mappa</button>
+      <button type="button" class="btn" id="btn-mappa-html">⭳ Pagina HTML mappa + schede</button>
       <button type="button" class="btn" id="btn-mappa-scarica-area">⭳ Scarica quest'area offline</button>
       <span id="mappa-cache-info" style="color:var(--tenue);font-size:13px"></span>
     </div>
@@ -508,6 +510,7 @@
       <label>Forma chioma <select id="gs-c-formaChioma" class="campo-base"></select></label>
       <label>Rami (inserzione) <select id="gs-c-rami" class="campo-base"></select></label>
       <label>Tipo di foglia <select id="gs-c-tipoFoglia" class="campo-base"></select></label>
+      <label>Foglia composta <select id="gs-c-fogliaComposta" class="campo-base"></select></label>
       <label>Forma lamina <select id="gs-c-lamina" class="campo-base"></select></label>
       <label>Margine fogliare <select id="gs-c-margine" class="campo-base"></select></label>
       <label>Classe di grandezza <select id="gs-c-grandezza" class="campo-base"></select></label>
@@ -609,13 +612,19 @@
   </ul>
 
   <h3>Misura dell’altezza</h3>
-  <p>Sotto il campo «Altezza» il pulsante <b>📐 Misura</b> apre tre metodi, tutti senza rete. Il valore entra nella scheda solo quando premi «Usa nella scheda».</p>
+  <p>Sotto il campo «Altezza» tocca <b>📐 Misura altezza</b> e scegli come misurare. Ogni schermata chiede una cosa sola; il valore entra nella scheda solo con «Usa nella scheda».</p>
   <ul>
-    <li><b>Clinometro</b> (il più preciso): misura la distanza orizzontale dal tronco (metro, passi o telemetro), poi mira la cima e la base con la croce rossa della fotocamera. Formula: H = D × (tan α cima − tan α base); vale anche in pendenza. Senza l’angolo della base usa l’altezza degli occhi (solo su terreno piano). Stai a una distanza che dia un angolo cima tra 30° e 50°. «Tara 0°» corregge il sensore: appoggia il dorso del telefono a uno stipite e premi.</li>
-    <li><b>Da foto</b>: serve un oggetto di altezza nota accanto al tronco (persona, bastone, stadia). Scatta da lontano con il telefono verticale, oppure usa una foto già salvata nella scheda, e segna base e cima di albero e riferimento. Precisione tipica ±5–10%.</li>
-    <li><b>Ombra</b>: con il sole, ombra dell’albero × altezza di un bastone ÷ ombra del bastone, su terreno piano.</li>
+    <li><b>Con il telefono</b> (consigliato): 1) scrivi quanti metri sei lontano dal tronco (o conta i passi); 2) metti la croce rossa sulla punta più alta e tocca; 3) mettila alla base del tronco e tocca. Se la base è nascosta e il terreno è piano, «Salta» usa l’altezza dei tuoi occhi. La misura è più precisa se la cima si vede tra 25° e 60°: l’app te lo dice.</li>
+    <li><b>Da una foto</b>: metti una persona o un bastone accanto al tronco, scatta da lontano (o usa una foto della scheda), scegli cosa c’è nella foto e tocca i 4 punti che l’app ti chiede uno alla volta.</li>
+    <li><b>Con l’ombra</b>: ombra dell’albero, altezza di un bastone e sua ombra, misurate nello stesso momento.</li>
   </ul>
-  <p>Se fotocamera o sensore non sono disponibili, gli angoli si possono scrivere a mano, per esempio letti da un clinometro.</p>
+  <p>Se fotocamera o sensore non rispondono, l’app chiede di scrivere l’angolo a mano. «Altezza occhi e taratura» corregge il sensore se gli angoli sembrano sbagliati.</p>
+
+  <h3>Foglia composta</h3>
+  <p>Quando «Tipo di foglia» è <b>composta</b> compare «Tipo di foglia composta»: <b>imparipennata</b> (fogliolina singola in punta), <b>paripennata</b> (solo coppie), <b>bipennata</b> (composta due volte) o <b>digitata</b> (foglioline da un unico punto, come l’ippocastano). Con gli altri tipi di foglia il campo sparisce e si svuota.</p>
+
+  <h3>Stampa e pagina HTML della mappa</h3>
+  <p>Nella vista «Mappa»: <b>🖨 Stampa mappa</b> stampa l’area che vedi o tutte le schede con GPS, su A4 orizzontale o verticale, con scala, nord ed elenco delle schede; dalla finestra di stampa puoi anche «Salva come PDF». <b>⭳ Pagina HTML mappa + schede</b> crea un unico file da aprire su qualsiasi telefono o computer: mappa con i numeri, schede con le caratteristiche, foto (una, tutte o nessuna) e una casella di ricerca. Lo sfondo della mappa richiede Internet, schede e foto no.</p>
 
   <h3>Identificazione specie (PlantNet)</h3>
   <p>Su ogni foto c'è un pulsante "🔎 Identifica" che manda quella foto a PlantNet, un servizio online gratuito, e propone le specie più probabili con una percentuale di confidenza: tu scegli se usarla come nome dell'esemplare. Serve una chiave gratuita (una tantum, si ottiene in due minuti da ⋮ → "Chiave PlantNet", con le istruzioni dentro). Senza chiave configurata l'app non manda mai foto in rete da sola. Anche con un risultato ad alta percentuale, trattalo come un suggerimento da confermare a occhio, non come una certezza.</p>
@@ -746,6 +755,7 @@
 <script src="./js/stampa-qr.js"></script>
 <script src="./js/backup.js"></script>
 <script src="./js/altezza.js"></script>
+<script src="./js/mappa-export.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

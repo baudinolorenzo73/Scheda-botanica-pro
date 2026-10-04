@@ -22,7 +22,7 @@ const GS_CHIP_ETICHETTA = {
 
 // Corrispondenza tra i campi illustrati della scheda e i campi strutturati
 // del catalogo (che usano nomi diversi in alcuni casi).
-const GS_CAMPO_GUIDA = { formaChioma: 'chiomaForma', rami: 'ramiInserzione', tipoFoglia: 'fogliaTipo', lamina: 'fogliaLamina', margine: 'fogliaMargine', crescita: 'crescita', estensione: 'estensione' };
+const GS_CAMPO_GUIDA = { formaChioma: 'chiomaForma', rami: 'ramiInserzione', tipoFoglia: 'fogliaTipo', fogliaComposta: 'fogliaComposta', lamina: 'fogliaLamina', margine: 'fogliaMargine', crescita: 'crescita', estensione: 'estensione' };
 
 // La guida inclusa resta la fonte originale. Le integrazioni per dispositivo
 // hanno uno store e un backup propri; non alterano il file distribuito.
@@ -488,6 +488,8 @@ const GS_PAROLE_CHIAVE = {
   },
   rami: { opposti: ['oppost'], alterni: ['altern'], verticillati: ['verticill'] },
   tipoFoglia: { aghiforme: ['aghiform', 'aghi'], semplice: ['semplice'], composta: ['compost'], squamiforme: ['squam'] },
+  // " paripennat" con lo spazio: senza, la parola si troverebbe anche dentro «imparipennata».
+  fogliaComposta: { imparipennata: ['imparipennat'], paripennata: [' paripennat', '(paripennat'], bipennata: ['bipennat'], digitata: ['digitat', 'palmato-compost'] },
   lamina: { ovata: ['ovat'], lanceolata: ['lanceolat'], ellittica: ['ellittic'], aghiforme: ['aghiform'], squamiforme: ['squam'], palmata: ['palmat'] },
   margine: { intero: ['margine inter'], seghettato: ['seghettat'], dentato: ['dentat'], lobato: ['lobat'], ondulato: ['ondulat'] },
 };
@@ -524,7 +526,7 @@ function leggiFiltriCaratteristiche() {
   return {
     campi: {
       persistenza: $('#gs-c-persistenza').value, formaChioma: $('#gs-c-formaChioma').value, rami: $('#gs-c-rami').value,
-      tipoFoglia: $('#gs-c-tipoFoglia').value, lamina: $('#gs-c-lamina').value, margine: $('#gs-c-margine').value,
+      tipoFoglia: $('#gs-c-tipoFoglia').value, fogliaComposta: $('#gs-c-fogliaComposta').value, lamina: $('#gs-c-lamina').value, margine: $('#gs-c-margine').value,
     },
     grandezza: $('#gs-c-grandezza').value,
     altro: $('#gs-c-altro').value.trim().toLowerCase(),
@@ -553,10 +555,11 @@ function inizializzaSelectCaratteristiche() {
   popolaSelectCaratteristica('#gs-c-formaChioma', campo('formaChioma'));
   popolaSelectCaratteristica('#gs-c-rami', campo('rami'));
   popolaSelectCaratteristica('#gs-c-tipoFoglia', campo('tipoFoglia'));
+  popolaSelectCaratteristica('#gs-c-fogliaComposta', campo('fogliaComposta'));
   popolaSelectCaratteristica('#gs-c-lamina', campo('lamina'));
   popolaSelectCaratteristica('#gs-c-margine', campo('margine'));
   $('#gs-c-grandezza').replaceChildren(
-    el('option', { value: '' }, '—'), el('option', { value: '1' }, '1ª grandezza (maggiore)'),
+    el('option', { value: '' }, '—'), el('option', { value: '1' }, '1ª grandezza'),
     el('option', { value: '2' }, '2ª grandezza'), el('option', { value: '3' }, '3ª grandezza'));
   // (il catalogo del corso non arriva a citare una 4ª classe)
 }
@@ -680,7 +683,7 @@ function mostraDettaglioGuidaSpecie(v) {
     schedaGuidaSpecie(v));
 }
 
-const GS_CAMPI_SCHEDA = ['persistenza', 'formaChioma', 'rami', 'tipoFoglia', 'lamina', 'margine'];
+const GS_CAMPI_SCHEDA = ['persistenza', 'formaChioma', 'rami', 'tipoFoglia', 'fogliaComposta', 'lamina', 'margine'];
 
 // Copia nei filtri "Per caratteristiche" quello che è già scritto nella
 // scheda aperta — così non tocchi due volte le stesse informazioni.
@@ -1104,9 +1107,9 @@ function conflittiConGuida(r, specie) {
   const conflitti = Object.entries(attesi).filter(([k, valore]) => valore && r[k] && r[k] !== valore)
     .map(([k, valore]) => `${CAMPI.find(c => c.k === k)?.label || k}: ${r[k]} / guida ${valore}`);
   for (const dip of DIPENDENZE_CAMPI) {
-    if (r[dip.se] || attesi[dip.se] !== dip.valore) continue;
+    if (r[dip.se] || !attesi[dip.se] || !dipendenzaAttiva(dip, attesi[dip.se])) continue;
     const compilati = dip.nascondi.filter(k => r[k]);
-    if (compilati.length) conflitti.push(`${CAMPI.find(c => c.k === dip.se)?.label || dip.se}: guida ${dip.valore} non applicato, per conservare ${compilati.map(k => CAMPI.find(c => c.k === k)?.label || k).join(', ')} già osservati`);
+    if (compilati.length) conflitti.push(`${CAMPI.find(c => c.k === dip.se)?.label || dip.se}: guida ${attesi[dip.se]} non applicato, per conservare ${compilati.map(k => CAMPI.find(c => c.k === k)?.label || k).join(', ')} già osservati`);
   }
   return conflitti;
 }
@@ -1188,8 +1191,8 @@ function compilaCampiDaGuidaSpecie(r, specie) {
   for (const [campoScheda, campoGuida] of Object.entries(GS_CAMPO_GUIDA)) {
     if (r[campoScheda] || !specie[campoGuida]) continue;
     // La ricerca non deve cancellare o nascondere osservazioni già inserite.
-    if (DIPENDENZE_CAMPI.some(dip => (dip.se === campoScheda && dip.valore === specie[campoGuida] && dip.nascondi.some(k => r[k])) ||
-        (dip.nascondi.includes(campoScheda) && r[dip.se] === dip.valore))) continue;
+    if (DIPENDENZE_CAMPI.some(dip => (dip.se === campoScheda && dipendenzaAttiva(dip, specie[campoGuida]) && dip.nascondi.some(k => r[k])) ||
+        (dip.nascondi.includes(campoScheda) && dipendenzaAttiva(dip, r[dip.se])))) continue;
     const valori = CAMPI.find((c) => c.k === campoScheda)?.valori || [];
     if (valori.includes(specie[campoGuida])) {
       r[campoScheda] = specie[campoGuida];

@@ -112,7 +112,7 @@ function stessoGPS(a, b) {
 
 // Un campo è da ignorare se, con entrambe le versioni, una dipendenza lo rende non pertinente.
 function campoNonPertinente(k, mio, suo) {
-  return DIPENDENZE_CAMPI.some((d) => d.nascondi.includes(k) && mio[d.se] === d.valore && suo[d.se] === d.valore);
+  return DIPENDENZE_CAMPI.some((d) => d.nascondi.includes(k) && dipendenzaAttiva(d, mio[d.se]) && dipendenzaAttiva(d, suo[d.se]));
 }
 
 function unisciScheda(mio, suo) {
@@ -579,7 +579,7 @@ const ALIAS_EXCEL = {
   grandezza: ['grandezza'], altezza: ['altezza'], circonferenza: ['circonferenza'],
   persistenza: ['persistenza'], formaChioma: ['chioma'], rami: ['rami'],
   crescita: ['crescita'], estensione: ['estensione'],
-  tipoFoglia: ['tipo di foglia', 'tipofoglia'], lamina: ['lamina'],
+  tipoFoglia: ['tipo di foglia', 'tipofoglia'], fogliaComposta: ['foglia composta', 'fogliacomposta'], lamina: ['lamina'],
   margine: ['margine'], terreno: ['terreno'], problemi: ['problemi'],
   note: ['altro notato', 'note'],
 };

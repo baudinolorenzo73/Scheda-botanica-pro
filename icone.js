@@ -178,3 +178,38 @@ ICONE.estensione = {
     '<path d="M20 7 l3 -3 l3 3.4 l3 -3.4 l3 3" stroke-width="1.6" fill="none"/>',
 };
 
+
+// ================= FOGLIA COMPOSTA (solo se Tipo di foglia = composta) =================
+// Fogliolina laterale attaccata all'asse in (x, y): lato -1 sinistra, +1 destra.
+function fogliolina(x, y, lato, lung = 12, larg = 4.5) {
+  const cx = x + lato * (lung / 2 + 1);
+  return `<g transform="rotate(${lato * 72} ${cx} ${y})">${foglia(cx, y, lung, larg, true, true)}</g>`;
+}
+ICONE.fogliaComposta = {
+  imparipennata: '<line x1="30" y1="57" x2="30" y2="14" stroke-width="2.2"/>' +
+    [47, 37, 27].map((y) => fogliolina(30, y, -1) + fogliolina(30, y, 1)).join('') +
+    foglia(30, 8, 13, 4.5, true, true),
+  paripennata: '<line x1="30" y1="57" x2="30" y2="13" stroke-width="2.2"/>' +
+    [47, 37, 27, 17].map((y) => fogliolina(30, y, -1) + fogliolina(30, y, 1)).join('') +
+    '<circle cx="30" cy="12" r="1.6" fill="currentColor"/>',
+  bipennata: '<line x1="30" y1="57" x2="30" y2="8" stroke-width="2.2"/>' +
+    [[44, 1], [34, -1], [24, 1], [14, -1]].map(([y, l]) => {
+      const x2 = 30 + l * 20, y2 = y - 8;
+      const punti = [0.35, 0.6, 0.85].map((t) => [30 + (x2 - 30) * t, y + (y2 - y) * t]);
+      return `<line x1="30" y1="${y}" x2="${x2}" y2="${y2}" stroke-width="1.6"/>` +
+        punti.map(([px, py]) => `<ellipse cx="${px}" cy="${py - 3}" rx="1.6" ry="2.6" stroke-width="1.2" fill="currentColor" fill-opacity=".25"/>` +
+          `<ellipse cx="${px}" cy="${py + 3}" rx="1.6" ry="2.6" stroke-width="1.2" fill="currentColor" fill-opacity=".25"/>`).join('');
+    }).join(''),
+  digitata: '<line x1="30" y1="57" x2="30" y2="34" stroke-width="2.2"/>' +
+    [-72, -36, 0, 36, 72].map((ang) => {
+      const rad = ang * Math.PI / 180, l = ang === 0 ? 26 : 22;
+      const cx = 30 + Math.sin(rad) * (l / 2 + 1), cy = 34 - Math.cos(rad) * (l / 2 + 1);
+      return `<g transform="rotate(${ang} ${cx} ${cy})">${foglia(cx, cy, l, 5, true, true)}</g>`;
+    }).join(''),
+};
+DEFINIZIONI.fogliaComposta = {
+  imparipennata: 'Foglioline a coppie lungo l’asse e una fogliolina singola in punta: in tutto sono in numero dispari (es. frassino, noce, sorbo degli uccellatori, robinia).',
+  paripennata: 'Foglioline solo a coppie, senza la fogliolina singola in punta: in tutto sono in numero pari (es. carrubo).',
+  bipennata: 'Composta due volte: dall’asse principale partono assi secondari, ognuno con le sue piccole foglioline (es. albizia, gleditsia).',
+  digitata: 'Tutte le foglioline partono dallo stesso punto in cima al picciolo, aperte come le dita di una mano (es. ippocastano).',
+};
