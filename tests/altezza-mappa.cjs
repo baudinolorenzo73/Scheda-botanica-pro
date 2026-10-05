@@ -132,12 +132,16 @@ assert.equal(await p.locator('#stampa .p-mappa-box .leaflet-marker-icon').count(
 assert.equal(await p.locator('#stampa .p-mappa-legenda tbody tr').count(),4);
 assert.match(await p.evaluate(()=>document.getElementById('stile-pagina-mappa').textContent),/landscape/);
 await p.emulateMedia({media:'print'});await p.screenshot({path:out+'/c2-stampa.png',fullPage:true});
-// margini di stampa: niente padding/zoom del corpo (pagine vuote o tagli), @page con margine 12 mm, nessuna pagina vuota in coda
+// margini di stampa: niente padding/zoom del corpo (pagine vuote o tagli), @page con margine 15 mm, nessuna pagina vuota in coda
 for(const z of ['110','125']){await p.evaluate(v=>document.body.setAttribute('data-interfaccia',v),z);
  const m=await p.evaluate(()=>{const c=getComputedStyle(document.body);return [c.paddingBottom,c.zoom]});
  assert.deepEqual(m,['0px','1'],'in stampa il corpo non deve avere padding né zoom (interfaccia '+z+')');}
 await p.evaluate(()=>document.body.removeAttribute('data-interfaccia'));
-assert.match(await p.evaluate(()=>document.getElementById('stile-pagina-mappa').textContent),/margin:12mm/);
+// tema scuro: in stampa la pagina (margini compresi) deve restare bianca, non nera
+await p.evaluate(()=>document.documentElement.dataset.tema='scuro');
+assert.deepEqual(await p.evaluate(()=>{const c=getComputedStyle(document.documentElement);return [c.colorScheme,c.backgroundColor]}),['light','rgb(255, 255, 255)'],'tema scuro: margini di stampa bianchi');
+await p.evaluate(()=>delete document.documentElement.dataset.tema);
+assert.match(await p.evaluate(()=>document.getElementById('stile-pagina-mappa').textContent),/margin:15mm/);
 const pdf=await p.pdf({preferCSSPageSize:true,printBackground:true});
 assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g)||[]).length,2,'mappa + elenco = 2 pagine, nessuna pagina vuota');
 await p.emulateMedia({media:'screen'});

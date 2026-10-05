@@ -2,6 +2,13 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.35.3 · margini di stampa
+
+- **Tema scuro:** in stampa e in «Salva come PDF» i margini della pagina venivano neri, e il foglio sembrava senza margini. Ora la pagina è sempre bianca, margini compresi.
+- **Margini più ampi:** passano da 12 a **15 mm** per schede A4, report singolo, stampa della mappa e pagina HTML. Il riquadro della mappa è stato ridotto di conseguenza.
+
+---
+
 ## 3.35.2 · stima ambientale facoltativa
 
 - Nuova casella **«Stima ambientale»** (volume chioma, ombra, CO₂) nella finestra **Stampa** delle schede A4, nella creazione della **pagina HTML mappa + schede** e nel **report singolo** di una scheda: spuntata la stima c'è, tolta la spunta no.

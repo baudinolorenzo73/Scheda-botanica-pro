@@ -75,11 +75,11 @@ async function stampaMappa() {
 
   pulisciStampaMappa();
   const orizzontale = scelta.verso === 'orizzontale';
-  const stilePagina = el('style', { id: 'stile-pagina-mappa' }, `@page{size:A4 ${orizzontale ? 'landscape' : 'portrait'};margin:12mm}`);
+  const stilePagina = el('style', { id: 'stile-pagina-mappa' }, `@page{size:A4 ${orizzontale ? 'landscape' : 'portrait'};margin:15mm}`);
   document.head.append(stilePagina);
 
   const area = $('#stampa');
-  const box = el('div', { class: 'p-mappa-box', style: `width:${orizzontale ? 273 : 186}mm;height:${orizzontale ? 148 : 232}mm` });
+  const box = el('div', { class: 'p-mappa-box', style: `width:${orizzontale ? 267 : 180}mm;height:${orizzontale ? 142 : 226}mm` });
   const pagina = el('article', { class: 'p-mappa' },
     el('h2', {}, scelta.titolo || 'Mappa dei rilievi'),
     el('p', { class: 'p-mappa-sotto' }, `${conGps.length} schede con GPS · stampata il ${dataIT(oraISO())} · by Lollo ®2026`),
@@ -381,7 +381,7 @@ dt{color:var(--tenue);overflow-wrap:anywhere} dd{margin:0;min-width:0;text-align
 #zoom img{max-width:96vw;max-height:92vh}
 #zoom.aperto{display:flex}
 footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
-@page{size:A4;margin:12mm}
+@page{size:A4;margin:15mm}
 @media print{#cerca,.azioni,#zoom{display:none!important}#mappa{height:150mm}.scheda{break-inside:auto;box-shadow:none}dl>*{break-inside:avoid}h3.sez{break-after:avoid}.galleria{grid-template-columns:repeat(3,1fr)}.galleria figure{break-inside:avoid}.galleria img{max-height:60mm;object-fit:contain}body{background:#fff}main{max-width:none;padding:6px 0}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
 <header><h1></h1><p id="sotto"></p></header>

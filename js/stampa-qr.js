@@ -97,7 +97,7 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #ddd} th{width:44%
 figure{margin:0} figure img{width:100%;border-radius:8px;display:block} figcaption{font-size:12px;color:#5d6b61;margin-top:4px;font-family:system-ui,sans-serif}
 footer{font-size:11px;color:#889;margin-top:26px;font-family:system-ui,sans-serif}
 a{color:#2f5d3a}
-@page{size:A4;margin:12mm}
+@page{size:A4;margin:15mm}
 td{text-align:justify;hyphens:auto;overflow-wrap:anywhere}
 figure,tr{break-inside:avoid}
 figure img{max-height:120mm;object-fit:contain}
