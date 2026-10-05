@@ -14,8 +14,8 @@ function png(r,g,b){const ck=(t,d)=>{const l=Buffer.alloc(4);l.writeUInt32BE(d.l
  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),ck('IHDR',ih),ck('IDAT',zlib.deflateSync(Buffer.concat(Array(256).fill(riga)))),ck('IEND',Buffer.alloc(0))]);}
 const TILE_STRADA=png(200,40,40), TILE_SAT=png(40,40,200);
 let richiesteSfondo=0;
-const sfondi=async(pg)=>{await pg.route(/basemaps\.cartocdn\.com/,r=>{richiesteSfondo++;r.fulfill({status:200,contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:TILE_STRADA});});
- await pg.route(/server\.arcgisonline\.com/,r=>{richiesteSfondo++;r.fulfill({status:200,contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:TILE_SAT});});};
+const sfondi=async(pg)=>{await pg.route(/World_Street_Map/,r=>{richiesteSfondo++;r.fulfill({status:200,contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:TILE_STRADA});});
+ await pg.route(/World_Imagery|World_Topo_Map/,r=>{richiesteSfondo++;r.fulfill({status:200,contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:TILE_SAT});});};
 (async()=>{await new Promise(o=>srv.listen(0,'127.0.0.1',o));
 const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined,args:['--no-sandbox']});
 const ctx=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,acceptDownloads:true});const p=await ctx.newPage();
@@ -153,7 +153,7 @@ await p.locator('.dlg-mappa-opzioni input[value=entrambe]').check();
 const [dl]=await Promise.all([p.waitForEvent('download',{timeout:30000}),p.locator('.dlg-mappa-opzioni').getByRole('button',{name:'⭳ Crea pagina'}).click()]);
 const file=out+'/'+dl.suggestedFilename();await dl.saveAs(file);
 const html=fs.readFileSync(file,'utf8');assert(html.includes('L.map(')&&html.includes('Fraxinus excelsior'));
-assert(!html.includes('tile.openstreetmap.org/{z}'),'niente tile OSM (403 senza Referer)');
+assert(!html.includes('tile.openstreetmap.org/{z}'),'niente tile OSM (403 senza Referer)');assert(!html.includes('cartocdn'),'niente CARTO (chiede una chiave)');
 const Dp=JSON.parse(html.match(/<script type="application\/json" id="dati">([\s\S]*?)<\/script>/)[1]);
 const nStr=Object.keys(Dp.sfondi.stradale.tile).length,nSat=Object.keys(Dp.sfondi.satellite.tile).length;
 assert(nStr>20&&nStr<=260&&nSat===nStr,'tile salvate: '+nStr+'/'+nSat);assert(Dp.sfondi.stradale.zMax>=17,'zoom massimo salvato '+Dp.sfondi.stradale.zMax);
@@ -161,16 +161,17 @@ assert(nStr>20&&nStr<=260&&nSat===nStr,'tile salvate: '+nStr+'/'+nSat);assert(Dp
 const ctxOff=await b.newContext({viewport:{width:390,height:844},offline:true});const pOff=await ctxOff.newPage();const eOff=[];pOff.on('pageerror',e=>eOff.push(e.message));
 await pOff.goto('file://'+file);await pOff.waitForSelector('.leaflet-marker-icon');await pOff.waitForTimeout(800);
 assert.match(await pOff.locator('.stato-rete').textContent(),/Offline · sfondo salvato nel file/);
+const vicino=(c,r,g,b)=>{const v=c.split(',').map(Number);return Math.abs(v[0]-r)<=20&&Math.abs(v[1]-g)<=20&&Math.abs(v[2]-b)<=20;};
 const colore=(pg)=>pg.evaluate(()=>{const cs=[...document.querySelectorAll('.leaflet-tile-container canvas')].filter(c=>c.getBoundingClientRect().width>0);
  return cs.map(c=>{try{const d=c.getContext('2d').getImageData(128,128,1,1).data;return d[0]+','+d[1]+','+d[2];}catch{return 'tainted'}});});
-let cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>c==='200,40,40'),'offline: tile stradali dal file '+cols.slice(0,4));
+let cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>vicino(c,200,40,40)),'offline: tile stradali dal file '+cols.slice(0,4));
 await pOff.screenshot({path:out+'/d0-pagina-offline.png'});
 // zoom oltre il salvato: ingrandisce la tile salvata (niente grigio)
 for(let i=0;i<3;i++){await pOff.locator('.leaflet-control-zoom-in').click({force:true});await pOff.waitForTimeout(400);}assert.equal(await pOff.evaluate(()=>document.querySelector('.leaflet-tile-container canvas')&&1),1);await pOff.waitForTimeout(800);
-cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>c==='200,40,40'),'offline zoom 20: '+cols.slice(0,4));
+cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>vicino(c,200,40,40)),'offline zoom 20: '+cols.slice(0,4));
 // satellite salvato anche lui
 await pOff.locator('.leaflet-control-layers').hover();await pOff.getByLabel(/Satellite · salvato nel file/).check();await pOff.waitForTimeout(800);
-cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>c==='40,40,200'),'offline satellite '+cols.slice(0,4));
+cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>vicino(c,40,40,200)),'offline satellite '+cols.slice(0,4));
 assert.deepEqual(eOff,[]);await ctxOff.close();
 ok('pagina HTML offline: sfondo stradale e satellite salvati nel file ('+nStr+' tile, zoom '+Dp.sfondi.stradale.zMin+'–'+Dp.sfondi.stradale.zMax+'), ingrandimento oltre il salvato');
 const p2=await ctx.newPage();const e2=[];p2.on('pageerror',e=>e2.push(e.message));await p2.route(/tile\.openstreetmap\.org/,r=>r.abort());await sfondi(p2);
@@ -179,16 +180,31 @@ assert.equal(await p2.locator('.leaflet-marker-icon').count(),4);
 assert.equal(await p2.locator('article.scheda').count(),4);
 assert.equal(await p2.locator('.leaflet-marker-icon').first().textContent()!=='',true);
 assert.match(await p2.locator('.stato-rete').textContent(),/Online/);
-// online, oltre lo zoom salvato: chiede le tile alla rete
-const prima=richiesteSfondo;await p2.evaluate(()=>{});for(let i=0;i<4;i++){await p2.locator('.leaflet-control-zoom-in').click({force:true});await p2.waitForTimeout(400);}await p2.waitForTimeout(800);
-assert(richiesteSfondo>prima,'online: tile scaricate dalla rete oltre lo zoom salvato');
-for(let i=0;i<4;i++){await p2.locator('.leaflet-control-zoom-out').click();await p2.waitForTimeout(400);}
+// online, sfondo non salvato nel file (topografica): le tile arrivano dalla rete
+const prima=richiesteSfondo;await p2.locator('.leaflet-control-layers').hover();await p2.getByLabel(/Topografica · solo online/).check();await p2.waitForTimeout(800);
+assert(richiesteSfondo>prima,'online: tile topografiche scaricate dalla rete');
+await p2.getByLabel(/Stradale · salvato nel file/).check();await p2.mouse.move(5,5);await p2.waitForTimeout(300);
 await p2.screenshot({path:out+'/d1-pagina-html.png'});
 await p2.fill('#cerca','tilia');assert.equal(await p2.locator('article.scheda:visible').count(),1);assert.equal(await p2.locator('.leaflet-marker-icon').count(),1);
 await p2.fill('#cerca','');
 await p2.locator('.leaflet-marker-icon').first().click();await p2.getByRole('link',{name:'Vai alla scheda ↓'}).click();
 await p2.waitForTimeout(500);await p2.screenshot({path:out+'/d2-pagina-scheda.png'});
-assert.equal(await p2.locator('.galleria img').count(),1);assert.match(await p2.locator('.galleria img').getAttribute('src'),/^data:image\/jpeg/);assert.deepEqual(e2,[]);
+assert.equal(await p2.locator('.galleria img').count(),1);assert.match(await p2.locator('.galleria img').getAttribute('src'),/^data:image\/(webp|jpeg)/);assert.deepEqual(e2,[]);
 ok('pagina HTML: mappa con 4 numeri, 4 schede, ricerca, popup → scheda, nessun errore ('+(html.length/1024|0)+' KB)');
+// ---- note: solo dell'utente (le righe automatiche PlantNet vengono tolte, anche dalle schede vecchie)
+const RIGA='Identificato con PlantNet: Cercis siliquastrum (Albero di-Giuda) — 7%, 03/10/2026, 09:18 — GBIF: https://www.gbif.org/species/5353590';
+await p.evaluate(async(riga)=>{const r=S.schede[0];await DB.scrivi('schede',{...r,uid:'vecchia-nota',note:'Mia osservazione\n'+riga+'\nAltra riga mia',plantnetNome:'Cercis siliquastrum L.',nome:'Cercis siliquastrum'});},RIGA);
+await p.reload();await p.waitForFunction(()=>S.schede.some(s=>s.uid==='vecchia-nota'));
+let v=await p.evaluate(()=>{const r=S.schede.find(s=>s.uid==='vecchia-nota');return {note:r.note,ident:r.identPlantNet};});
+assert.equal(v.note,'Mia osservazione\nAltra riga mia');assert.deepEqual(v.ident,{nome:'Cercis siliquastrum',comune:'Albero di-Giuda',conf:7,quando:'03/10/2026, 09:18'});
+assert.equal(await p.evaluate(async()=>(await DB.leggi('schede','vecchia-nota')).note),'Mia osservazione\nAltra riga mia','ripulita anche nell\'archivio');
+// solo la riga automatica: la nota resta vuota
+assert.equal(await p.evaluate((riga)=>normalizza({note:riga}).record.note,RIGA),'');
+// nuova identificazione: la nota non cambia
+await p.evaluate(()=>apriEditor('vecchia-nota'));await p.waitForFunction(()=>S.aperta&&S.aperta.uid==='vecchia-nota');
+assert.equal(await p.inputValue('#f-note'),'Mia osservazione\nAltra riga mia');
+v=await p.evaluate(()=>{const r=S.aperta;IDENT.riga=r;IDENT.foto={};usaIdentificazione('Cercis siliquastrum','Albero di Giuda',64,'5353590','Cercis siliquastrum L.');return {note:r.note,ident:r.identPlantNet};});
+assert.equal(v.note,'Mia osservazione\nAltra riga mia');assert.equal(v.ident.conf,64);assert.equal(await p.inputValue('#f-note'),'Mia osservazione\nAltra riga mia');assert.match(await p.locator('#plantnet-link').textContent(),/64%/);
+ok('note: righe automatiche PlantNet tolte dalle schede esistenti e mai più aggiunte; identificazione conservata a parte');
 assert.deepEqual(errs,[]);
 await b.close();srv.close();})().catch(e=>{console.error(e);process.exit(1);});

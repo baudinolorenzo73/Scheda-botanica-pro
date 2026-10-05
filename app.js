@@ -28,6 +28,27 @@ function schedaVuota() {
   return r;
 }
 
+// «Altro notato» contiene solo ciò che scrive l'utente. Fino alla 3.32 l'app vi
+// aggiungeva da sola una riga «Identificato con PlantNet: …» a ogni identificazione:
+// qui la si toglie (anche da backup e file importati) e i suoi dati passano nel
+// campo tecnico identPlantNet, che non finisce nelle note né nelle stampe.
+const RIGA_NOTA_PLANTNET = /^\s*Identificato con PlantNet: (.+?)(?: \(([^()]*)\))? — (\d{1,3})%, (.+?)(?: — GBIF: \S+)?\s*$/;
+function separaNoteAutomatiche(testo) {
+  let ident = null; const tenute = [];
+  for (const riga of String(testo || '').split('\n')) {
+    const m = RIGA_NOTA_PLANTNET.exec(riga);
+    if (m) { ident = { nome: m[1].slice(0, 180), comune: (m[2] || '').slice(0, 180), conf: Math.min(100, Number(m[3])), quando: m[4].slice(0, 40) }; continue; }
+    tenute.push(riga);
+  }
+  return { testo: tenute.join('\n').replace(/\n{3,}/g, '\n\n').trim(), ident };
+}
+function identPlantNetValido(v) {
+  if (!v || typeof v !== 'object' || typeof v.nome !== 'string' || !v.nome.trim()) return null;
+  const conf = Number(v.conf);
+  return { nome: v.nome.slice(0, 180), comune: typeof v.comune === 'string' ? v.comune.slice(0, 180) : '',
+    conf: Number.isFinite(conf) ? Math.max(0, Math.min(100, Math.round(conf))) : null, quando: typeof v.quando === 'string' ? v.quando.slice(0, 40) : '' };
+}
+
 // Rende compatibile un record di qualsiasi versione (vecchia app inclusa).
 // Restituisce { record, fotoDaSalvare: [{id, dataUrl}], audioDaSalvare: [{id, dataUrl}] }
 function normalizza(v) {
@@ -59,6 +80,9 @@ function normalizza(v) {
     }
     r[c.k] = val;
   }
+  const note = separaNoteAutomatiche(r.note);
+  r.note = note.testo;
+  r.identPlantNet = identPlantNetValido(v.identPlantNet) || note.ident;
   r.gps = null;
   if (v.gps && numeroFinito(v.gps.lat) && numeroFinito(v.gps.lng) &&
       Math.abs(v.gps.lat) <= 90 && Math.abs(v.gps.lng) <= 180) {
@@ -1521,10 +1545,8 @@ function usaIdentificazione(nomeSci, nomeComune, conf, gbifId, nomePlantNet = ''
       mostraConflittiNome(conflitti);
     }
   }
-  const linkGbif = gbifId ? ` — GBIF: https://www.gbif.org/species/${gbifId}` : '';
-  const nota = `Identificato con PlantNet: ${nomeSci}${nomeComune ? ' (' + nomeComune + ')' : ''} — ${conf}%, ${dataIT(oraISO())}${linkGbif}`;
-  r.note = r.note ? r.note + '\n' + nota : nota;
-  if (S.aperta === r) $('#f-note').value = r.note;
+  // L'identificazione resta registrata a parte: «Altro notato» è solo dell'utente.
+  r.identPlantNet = identPlantNetValido({ nome: nomeSci, comune: nomeComune || '', conf, quando: dataIT(oraISO()) });
   IDENT.foto.identificata = true;
   r.modificato = oraISO();
   salvaOra(r);
@@ -1612,7 +1634,9 @@ function aggiornaLinkPlantNet(r) {
   link.classList.toggle('nascosto', !(r.plantnetNome && r.nome));
   if (r.plantnetNome && r.nome) {
     link.href = `https://identify.plantnet.org/it/k-world-flora/species/${encodeURIComponent(r.plantnetNome)}/data`;
-    link.textContent = '↗ Scheda PlantNet';
+    const id = r.identPlantNet;
+    link.textContent = '↗ Scheda PlantNet' + (id && id.conf != null ? ` · ${id.conf}%${id.quando ? ' il ' + id.quando.split(',')[0] : ''}` : '');
+    link.title = id ? `Identificato con PlantNet: ${id.nome}${id.comune ? ' (' + id.comune + ')' : ''}${id.conf != null ? ', ' + id.conf + '%' : ''}${id.quando ? ', ' + id.quando : ''}` : '';
   } else {
     link.removeAttribute('href');
   }
@@ -2354,7 +2378,11 @@ async function avvio() {
   $('#btn-nuova').disabled = false;
   navigator.storage?.persist?.().catch(() => {});
 
-  const tutte = (await DB.tutte('schede')).map((r) => normalizza(r).record);
+  const grezze = await DB.tutte('schede');
+  const tutte = grezze.map((r) => normalizza(r).record);
+  // Una volta sola: salva ripulite le schede che avevano righe automatiche in «Altro notato».
+  const ripulite = tutte.filter((r, i) => String(grezze[i].note ?? '').trim() !== r.note);
+  if (ripulite.length) await Promise.all(ripulite.map((r) => DB.scrivi('schede', r).catch(() => {})));
   // Se il browser e stato chiuso mentre era aperta una nuova scheda ancora
   // vuota, la bozza tecnica non deve riapparire come se fosse un rilievo.
   const bozzeVuote = tutte.filter((r) => !r.cancellata && r.bozzaVuota && schedaSenzaContenuto(r));

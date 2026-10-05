@@ -137,8 +137,17 @@ function pulisciStampaMappa() {
 }
 
 /* ------------------------- PAGINA HTML ------------------------- */
-// Riduce una foto per la pagina esportata (lato lungo "lato" px, JPEG).
-async function fotoRidotta(blob, lato) {
+// WebP pesa circa un terzo meno del JPEG a parità di aspetto; se il browser
+// non lo sa scrivere (restituisce PNG), si ripiega sul JPEG.
+function canvasInDataURL(c, qualita) {
+  const w = c.toDataURL('image/webp', qualita);
+  return w.startsWith('data:image/webp') ? w : c.toDataURL('image/jpeg', qualita);
+}
+// Misure delle foto nella pagina esportata: lato lungo in pixel e qualità.
+const FOTO_PAGINA = { piccole: [720, 0.6], medie: [1080, 0.68], grandi: [1600, 0.78] };
+// Riduce una foto per la pagina esportata.
+async function fotoRidotta(blob, misura = 'piccole') {
+  const [lato, qualita] = FOTO_PAGINA[misura] || FOTO_PAGINA.piccole;
   const img = await createImageBitmap(blob);
   const k = Math.min(1, lato / Math.max(img.width, img.height));
   const c = document.createElement('canvas');
@@ -146,10 +155,21 @@ async function fotoRidotta(blob, lato) {
   c.height = Math.round(img.height * k);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   img.close?.();
-  return c.toDataURL('image/jpeg', 0.72);
+  return canvasInDataURL(c, qualita);
+}
+// Ricomprime una tile dello sfondo (WebP): tiene la versione più leggera.
+async function tileCompatta(blob) {
+  const orig = await blobInDataURL(blob);
+  try {
+    const img = await createImageBitmap(blob);
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    c.getContext('2d').drawImage(img, 0, 0); img.close?.();
+    const nuova = canvasInDataURL(c, 0.7);
+    return nuova.length < orig.length ? nuova : orig;
+  } catch { return orig; }
 }
 
-async function datiPaginaMappa(lista, modoFoto) {
+async function datiPaginaMappa(lista, modoFoto, misuraFoto) {
   const schede = [];
   for (const r of lista) {
     const campi = [];
@@ -165,7 +185,7 @@ async function datiPaginaMappa(lista, modoFoto) {
     for (const p of daIncludere) {
       try {
         const b = await DB.leggi('foto', p.id);
-        if (b) foto.push({ src: await fotoRidotta(b, 1000), didascalia: p.didascalia || '' });
+        if (b) foto.push({ src: await fotoRidotta(b, misuraFoto), didascalia: p.didascalia || '' });
       } catch { /* foto illeggibile: la scheda esce senza */ }
     }
     schede.push({
@@ -186,8 +206,10 @@ async function datiPaginaMappa(lista, modoFoto) {
    crea la pagina, le tile della zona delle schede vengono salvate DENTRO il
    file e la mappa si vede anche senza Internet. */
 const SFONDI_PAGINA = {
-  stradale: { nome: 'Stradale', url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', sub: 'abcd', max: 20, attr: '© OpenStreetMap contributors © CARTO' },
+  // CARTO (usato nella 3.32.0) ora chiede una chiave e risponde con tile «API KEY REQUIRED».
+  stradale: { nome: 'Stradale', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', sub: '', max: 19, attr: 'Mappa © Esri, HERE, Garmin, OpenStreetMap contributors' },
   satellite: { nome: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', sub: '', max: 19, attr: 'Immagini © Esri, Maxar, Earthstar Geographics' },
+  topografica: { nome: 'Topografica', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', sub: '', max: 19, attr: 'Mappa © Esri, HERE, Garmin, USGS, OpenStreetMap contributors' },
 };
 const urlSfondo = (sf, z, x, y) => sf.url.replace('{s}', sf.sub ? sf.sub[(x + y) % sf.sub.length] : '')
   .replace('{z}', z).replace('{x}', x).replace('{y}', y);
@@ -224,7 +246,7 @@ async function scaricaSfondo(sf, elenco, avanza) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const b = await r.blob();
         if (!/^image\//.test(b.type)) throw new Error('non è un\'immagine');
-        tile[`${t.z}/${t.x}/${t.y}`] = await blobInDataURL(b); ok++; difila = 0;
+        tile[`${t.z}/${t.x}/${t.y}`] = await tileCompatta(b); ok++; difila = 0;
       } catch { err++; difila++; } finally { clearTimeout(timer); avanza(); }
     }
   };
@@ -239,7 +261,8 @@ async function esportaMappaHTML() {
     [
       sceltaRadio('quali', 'Quali schede', [['visibili', `Quelle visibili con il filtro attuale (${visibili.length})`], ['tutte', `Tutte (${S.schede.length})`]], 'visibili'),
       sceltaRadio('foto', 'Foto', [['una', 'Una foto per scheda (consigliato)'], ['tutte', 'Tutte le foto (file più pesante)'], ['nessuna', 'Nessuna foto']], 'una'),
-      sceltaRadio('offline', 'Mappa senza Internet', [['stradale', 'Salva nel file lo sfondo stradale (consigliato)'], ['entrambe', 'Salva stradale e satellite (file più pesante)'], ['satellite', 'Salva solo il satellite'], ['nessuna', 'Non salvare: lo sfondo si vedrà solo con Internet']], 'stradale'),
+      sceltaRadio('misura', 'Dimensione delle foto', [['piccole', 'Piccole: bastano sul telefono (file leggero, consigliato)'], ['medie', 'Medie: buone anche sul computer'], ['grandi', 'Grandi: per ingrandire i dettagli (file pesante)']], 'piccole'),
+      sceltaRadio('offline', 'Mappa senza Internet', [['stradale', 'Salva nel file lo sfondo stradale (consigliato)'], ['entrambe', 'Salva stradale e satellite (file più pesante)'], ['satellite', 'Salva solo il satellite'], ['topografica', 'Salva solo la topografica'], ['tutte', 'Salva stradale, satellite e topografica (il più pesante)'], ['nessuna', 'Non salvare: lo sfondo si vedrà solo con Internet']], 'stradale'),
       sceltaTesto('titolo', 'Titolo della pagina', `Censimento alberi – ${dataBreveIT(oggi())}`),
     ], '⭳ Crea pagina');
   if (!scelta) return;
@@ -253,9 +276,9 @@ async function esportaMappaHTML() {
       if (!risposta.ok) throw new Error('libreria della mappa non disponibile');
       return risposta.text();
     }));
-    const dati = { titolo: scelta.titolo || 'Censimento alberi', creato: dataIT(oraISO()), schede: await datiPaginaMappa(lista, scelta.foto) };
+    const dati = { titolo: scelta.titolo || 'Censimento alberi', creato: dataIT(oraISO()), schede: await datiPaginaMappa(lista, scelta.foto, scelta.misura) };
     const punti = lista.filter((r) => r.gps).map((r) => r.gps);
-    const daSalvare = { stradale: ['stradale'], satellite: ['satellite'], entrambe: ['stradale', 'satellite'] }[scelta.offline] || [];
+    const daSalvare = { stradale: ['stradale'], satellite: ['satellite'], topografica: ['topografica'], entrambe: ['stradale', 'satellite'], tutte: ['stradale', 'satellite', 'topografica'] }[scelta.offline] || [];
     const avvisi = [];
     dati.sfondi = {};
     for (const [k, sf] of Object.entries(SFONDI_PAGINA)) dati.sfondi[k] = { ...sf, tile: {}, zMin: null, zMax: null };
@@ -275,8 +298,10 @@ async function esportaMappaHTML() {
     const html = paginaMappaHTML(dati, leafletJs, leafletCss);
     const nome = `mappa-schede-${oggi()}.html`;
     const dove = await scarica(new Blob([html], { type: 'text/html' }), nome);
-    const mb = (html.length / 1048576).toFixed(1).replace('.', ',');
-    stato(`Pagina creata: ${nome} (${lista.length} schede, ${mb} MB)${dove === 'cartella' ? ' in Download/Botanica' : ''}`);
+    const mbDi = (n) => (n / 1048576).toFixed(1).replace('.', ',');
+    const pesoFoto = dati.schede.reduce((t, x) => t + x.foto.reduce((u, f) => u + f.src.length, 0), 0);
+    const pesoMappa = Object.values(dati.sfondi).reduce((t, x) => t + Object.values(x.tile).reduce((u, v) => u + v.length, 0), 0);
+    stato(`Pagina creata: ${nome} (${lista.length} schede, ${mbDi(html.length)} MB: foto ${mbDi(pesoFoto)} MB, mappa offline ${mbDi(pesoMappa)} MB)${dove === 'cartella' ? ' in Download/Botanica' : ''}`);
     if (avvisi.length) alert('Pagina creata, con un avviso:\n\n' + avvisi.join('\n'));
   } catch (e) {
     alert('Pagina non creata: ' + e.message);
@@ -389,7 +414,7 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
     }
   });
   var strati = {}, corrente = null, salvato = null;
-  ['stradale', 'satellite'].forEach(function (k) {
+  ['stradale', 'satellite', 'topografica'].forEach(function (k) {
     var sf = SF[k]; if (!sf) return;
     var n = Object.keys(sf.tile || {}).length; sf.tile = sf.tile || {};
     var l = new Sfondo({ sf: sf, maxZoom: 20, maxNativeZoom: sf.max, attribution: sf.attr });
@@ -417,9 +442,9 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
   window.addEventListener('offline', function () { aggiornaStato(); });
   if (salvato) {
     document.getElementById('nota-mappa').textContent += ' Lo sfondo della zona delle schede è salvato nel file (zoom ' + salvato.sf.zMin + '–' + salvato.sf.zMax +
-      '): si vede anche senza Internet. Più da vicino o fuori zona serve Internet. Con il pulsante in alto a destra scegli stradale o satellite.';
+      '): si vede anche senza Internet. Più da vicino o fuori zona serve Internet. Con il pulsante 🗺️ in alto a destra scegli stradale, satellite o topografica.';
   } else {
-    document.getElementById('nota-mappa').textContent += ' Lo sfondo della mappa si vede con Internet. Con il pulsante in alto a destra scegli stradale o satellite.';
+    document.getElementById('nota-mappa').textContent += ' Lo sfondo della mappa si vede con Internet. Con il pulsante 🗺️ in alto a destra scegli stradale, satellite o topografica.';
   }
   var marcatori = {}, punti = [];
   var schede = {};

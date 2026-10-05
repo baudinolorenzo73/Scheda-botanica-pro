@@ -2,6 +2,30 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.33.0 · pagina HTML più leggera
+
+- Nuova scelta **«Dimensione delle foto»** nella creazione della pagina HTML: piccole (720 px, predefinita), medie (1080 px), grandi (1600 px).
+- Foto e tile della mappa salvate in **WebP** quando il browser lo permette (altrimenti JPEG): a parità di aspetto pesano molto meno. Nelle prove una foto «piccola» pesa circa un terzo di prima, una «media» circa la metà.
+- Alla fine il messaggio indica quanto pesano il file, le foto e la mappa offline, per capire cosa alleggerire.
+
+---
+
+## 3.32.2 · pagina HTML: sfondo stradale senza «API KEY REQUIRED»
+
+- Il servizio CARTO usato dalla 3.32.0 per lo sfondo stradale ora chiede una chiave e manda tile con la scritta «API KEY REQUIRED» (finite anche nelle mappe salvate nel file). Lo stradale ora viene da **Esri World Street Map**, come il satellite: nessuna chiave, funziona aprendo il file dal telefono.
+- Nuovo sfondo **Topografica** (Esri World Topo Map), da scegliere con il pulsante 🗺️ e salvabile nel file per l'uso offline.
+- Le pagine create con la 3.32.0 vanno ricreate dall'app per avere lo sfondo corretto.
+
+---
+
+## 3.32.1 · «Altro notato» solo tue
+
+- L'identificazione con PlantNet **non scrive più nulla** in «Altro notato»: le note sono solo quelle che scrivi tu.
+- Le righe «Identificato con PlantNet: …» aggiunte dalle versioni precedenti vengono **tolte da sole** da tutte le schede all'apertura dell'app, e anche da backup, ZIP ed Excel importati. Il resto delle tue note resta identico.
+- I dati dell'identificazione (specie, nome comune, percentuale, data) restano salvati a parte e si vedono accanto al collegamento «↗ Scheda PlantNet» (es. «· 7% il 03/10/2026»).
+
+---
+
 ## 3.32.0 · pagina HTML della mappa: sfondo online e offline
 
 - **Risolto lo sfondo bloccato («403 Access blocked»)**: aperta dal telefono come file, la pagina non può usare i server di OpenStreetMap (rifiutano le richieste senza indirizzo di provenienza). Ora usa lo sfondo **stradale** (dati OpenStreetMap, servizio CARTO) e il **satellite** (Esri), che si scelgono con il pulsante 🗺️.
