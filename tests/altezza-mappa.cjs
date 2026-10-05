@@ -178,6 +178,14 @@ const p2=await ctx.newPage();const e2=[];p2.on('pageerror',e=>e2.push(e.message)
 await p2.goto('file://'+file);await p2.waitForSelector('.leaflet-marker-icon');
 assert.equal(await p2.locator('.leaflet-marker-icon').count(),4);
 assert.equal(await p2.locator('article.scheda').count(),4);
+// scheda completa: sezioni come nella stampa, campi vuoti con «—», data di modifica
+const sez=await p2.locator('article.scheda').first().locator('h3.sez').allTextContents();
+assert.deepEqual(sez.slice(0,5),['Osservazioni','Vegetazione','Pedologia','Fitopatologia','Note'],'sezioni: '+sez);
+const attesi=await p.evaluate(()=>{const r=[...S.schede].sort(perProg)[0];return CAMPI.filter(c=>!['prog','nome','data'].includes(c.k)&&campoPertinente(r,c.k)).length;});
+const dtPrimi=await p2.locator('article.scheda').first().locator('dt').count();
+assert(dtPrimi>=attesi,'tutti i campi della scheda: '+dtPrimi+' su '+attesi);
+assert.match(await p2.locator('article.scheda').first().locator('dl').first().textContent(),/—/);
+assert.match(await p2.locator('article.scheda .modifica').first().textContent(),/^Creata il .* – ultima modifica /);
 assert.equal(await p2.locator('.leaflet-marker-icon').first().textContent()!=='',true);
 assert.match(await p2.locator('.stato-rete').textContent(),/Online/);
 // online, sfondo non salvato nel file (topografica): le tile arrivano dalla rete

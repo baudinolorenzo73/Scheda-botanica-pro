@@ -169,17 +169,34 @@ async function tileCompatta(blob) {
   } catch { return orig; }
 }
 
-async function datiPaginaMappa(lista, modoFoto, misuraFoto) {
-  const schede = [];
-  for (const r of lista) {
+// Contenuto di una scheda per la pagina: per sezioni, come nella stampa.
+// «completa» = tutti i campi pertinenti (vuoti con «—») + stima ambientale;
+// «compilati» = solo i campi con un valore.
+function sezioniScheda(r, contenuto) {
+  const completa = contenuto !== 'compilati';
+  const sezioni = [];
+  for (const sez of SEZIONI) {
     const campi = [];
     for (const c of CAMPI) {
-      // Numerazione del giorno e «1 esemplare» (il valore di partenza) non dicono nulla a chi legge.
-      if (['prog', 'nome', 'data', 'numeroZona'].includes(c.k) || !campoPertinente(r, c.k)) continue;
-      if (c.k === 'numero' && String(r.numero ?? '') === '1') continue;
+      if (c.sez !== sez.id || ['prog', 'nome', 'data'].includes(c.k) || !campoPertinente(r, c.k)) continue;
+      // nella versione ridotta la numerazione del giorno e «1 esemplare» (il valore di partenza) non dicono nulla
+      if (!completa && (c.k === 'numeroZona' || (c.k === 'numero' && String(r.numero ?? '') === '1'))) continue;
       const v = valoreLeggibile(c, r[c.k]);
-      if (v) campi.push([c.etichettaStampa || c.label, c.tipo === 'numero' ? v.replace('.', ',') : v]);
+      if (v || completa) campi.push([c.etichettaStampa || c.label, v ? (c.tipo === 'numero' ? v.replace('.', ',') : v) : '—']);
     }
+    if (campi.length) sezioni.push({ titolo: sez.titolo, campi });
+  }
+  if (completa) {
+    const stima = righeStima(stimaAlbero(r));
+    if (stima.length) sezioni.push({ titolo: 'Stima ambientale (indicativa)', campi: stima });
+  }
+  return sezioni;
+}
+
+async function datiPaginaMappa(lista, modoFoto, misuraFoto, contenuto = 'completa') {
+  const schede = [];
+  for (const r of lista) {
+    const sezioni = sezioniScheda(r, contenuto);
     const foto = [];
     const daIncludere = modoFoto === 'tutte' ? r.foto : modoFoto === 'una' ? r.foto.slice(0, 1) : [];
     for (const p of daIncludere) {
@@ -192,7 +209,8 @@ async function datiPaginaMappa(lista, modoFoto, misuraFoto) {
       id: r.uid, prog: String(r.prog ?? ''), nome: r.nome || '', data: dataBreveIT(r.data),
       problemi: !!r.problemi,
       gps: r.gps ? { lat: r.gps.lat, lng: r.gps.lng, acc: r.gps.acc ?? null } : null,
-      gbif: r.gbifId || '', campi, foto,
+      gbif: r.gbifId || '', sezioni, foto,
+      modifica: contenuto === 'compilati' ? '' : `Creata il ${dataIT(r.creato)} – ultima modifica ${dataIT(r.modificato)}`,
     });
   }
   return schede;
@@ -260,6 +278,7 @@ async function esportaMappaHTML() {
     'Crea un unico file .html da aprire su qualsiasi telefono o computer, anche da inviare. Contiene la mappa con i numeri e le schede delle piante. Schede e foto si vedono sempre; lo sfondo della mappa della zona può essere salvato nel file per vederlo anche senza Internet (serve la rete adesso, mentre crei la pagina).',
     [
       sceltaRadio('quali', 'Quali schede', [['visibili', `Quelle visibili con il filtro attuale (${visibili.length})`], ['tutte', `Tutte (${S.schede.length})`]], 'visibili'),
+      sceltaRadio('contenuto', 'Schede', [['completa', 'Scheda completa: tutte le sezioni e i campi, come nella stampa (consigliato)'], ['compilati', 'Solo i campi compilati (più breve)']], 'completa'),
       sceltaRadio('foto', 'Foto', [['una', 'Una foto per scheda (consigliato)'], ['tutte', 'Tutte le foto (file più pesante)'], ['nessuna', 'Nessuna foto']], 'una'),
       sceltaRadio('misura', 'Dimensione delle foto', [['piccole', 'Piccole: bastano sul telefono (file leggero, consigliato)'], ['medie', 'Medie: buone anche sul computer'], ['grandi', 'Grandi: per ingrandire i dettagli (file pesante)']], 'piccole'),
       sceltaRadio('offline', 'Mappa senza Internet', [['stradale', 'Salva nel file lo sfondo stradale (consigliato)'], ['entrambe', 'Salva stradale e satellite (file più pesante)'], ['satellite', 'Salva solo il satellite'], ['topografica', 'Salva solo la topografica'], ['tutte', 'Salva stradale, satellite e topografica (il più pesante)'], ['nessuna', 'Non salvare: lo sfondo si vedrà solo con Internet']], 'stradale'),
@@ -276,7 +295,7 @@ async function esportaMappaHTML() {
       if (!risposta.ok) throw new Error('libreria della mappa non disponibile');
       return risposta.text();
     }));
-    const dati = { titolo: scelta.titolo || 'Censimento alberi', creato: dataIT(oraISO()), schede: await datiPaginaMappa(lista, scelta.foto, scelta.misura) };
+    const dati = { titolo: scelta.titolo || 'Censimento alberi', creato: dataIT(oraISO()), schede: await datiPaginaMappa(lista, scelta.foto, scelta.misura, scelta.contenuto) };
     const punti = lista.filter((r) => r.gps).map((r) => r.gps);
     const daSalvare = { stradale: ['stradale'], satellite: ['satellite'], topografica: ['topografica'], entrambe: ['stradale', 'satellite'], tutte: ['stradale', 'satellite', 'topografica'] }[scelta.offline] || [];
     const avvisi = [];
@@ -349,6 +368,9 @@ main{max-width:1000px;margin:0 auto;padding:12px 16px 40px}
 .galleria figure{margin:0}
 .galleria figcaption{font-size:12px;color:var(--tenue)}
 dl{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:4px 12px;margin:12px 0 0;font-size:14px}
+h3.sez{margin:16px 0 0;padding-bottom:3px;border-bottom:1.5px solid var(--bosco);font:600 15px Georgia,serif;color:var(--bosco)}
+.sez + dl{margin-top:6px}
+.modifica{color:var(--tenue);font-size:12px;margin:10px 0 0}
 dt{color:var(--tenue);overflow-wrap:anywhere} dd{margin:0;min-width:0;text-align:justify;text-align-last:left;hyphens:auto;overflow-wrap:anywhere}
 .azioni{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .azioni button,.azioni a{border:1px solid var(--linea);background:var(--carta);color:var(--ink);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
@@ -358,7 +380,7 @@ dt{color:var(--tenue);overflow-wrap:anywhere} dd{margin:0;min-width:0;text-align
 #zoom.aperto{display:flex}
 footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
 @page{size:A4;margin:12mm}
-@media print{#cerca,.azioni,#zoom{display:none!important}#mappa{height:150mm}.scheda{break-inside:auto;box-shadow:none}dl>*{break-inside:avoid}.galleria{grid-template-columns:repeat(3,1fr)}.galleria figure{break-inside:avoid}.galleria img{max-height:60mm;object-fit:contain}body{background:#fff}main{max-width:none;padding:6px 0}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{#cerca,.azioni,#zoom{display:none!important}#mappa{height:150mm}.scheda{break-inside:auto;box-shadow:none}dl>*{break-inside:avoid}h3.sez{break-after:avoid}.galleria{grid-template-columns:repeat(3,1fr)}.galleria figure{break-inside:avoid}.galleria img{max-height:60mm;object-fit:contain}body{background:#fff}main{max-width:none;padding:6px 0}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
 <header><h1></h1><p id="sotto"></p></header>
 <main>
@@ -469,11 +491,13 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
       });
       art.appendChild(gal);
     }
-    if (s.campi.length) {
+    s.sezioni.forEach(function (z) {
+      art.appendChild(el('h3', 'sez', z.titolo));
       var dl = el('dl');
-      s.campi.forEach(function (c) { dl.appendChild(el('dt', null, c[0])); dl.appendChild(el('dd', null, c[1])); });
+      z.campi.forEach(function (c) { dl.appendChild(el('dt', null, c[0])); dl.appendChild(el('dd', null, c[1])); });
       art.appendChild(dl);
-    }
+    });
+    if (s.modifica) art.appendChild(el('p', 'modifica', s.modifica));
     var az = el('div', 'azioni');
     if (s.gps) {
       var vai = el('button', null, '📍 Mostra sulla mappa');
@@ -497,7 +521,7 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
     }
     if (az.childNodes.length) art.appendChild(az);
     document.getElementById('elenco').appendChild(art);
-    schede[s.id] = { s: s, art: art, testo: [s.prog, s.nome, s.data].concat(s.campi.map(function (c) { return c[1]; })).join(' ').toLowerCase() };
+    schede[s.id] = { s: s, art: art, testo: [s.prog, s.nome, s.data].concat([].concat.apply([], s.sezioni.map(function (z) { return z.campi.map(function (c) { return c[1]; }); }))).join(' ').toLowerCase() };
 
     if (s.gps) {
       var icona = L.divIcon({ className: '', iconSize: [28, 28], iconAnchor: [14, 14],

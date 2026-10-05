@@ -2,6 +2,14 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.34.0 · pagina HTML con la scheda completa
+
+- Nella pagina HTML mappa + schede ogni pianta mostra, insieme alle foto, la **scheda completa** come nella stampa: sezioni Osservazioni, Vegetazione, Pedologia, Fitopatologia e Note con tutti i campi (quelli vuoti con «—»), stima ambientale e date di creazione e ultima modifica.
+- Nuova scelta **«Schede»** nella finestra di creazione: scheda completa (predefinita) oppure solo i campi compilati, come prima.
+- La ricerca della pagina trova anche i valori di tutti i campi.
+
+---
+
 ## 3.33.0 · pagina HTML più leggera
 
 - Nuova scelta **«Dimensione delle foto»** nella creazione della pagina HTML: piccole (720 px, predefinita), medie (1080 px), grandi (1600 px).
