@@ -178,13 +178,68 @@ async function datiPaginaMappa(lista, modoFoto) {
   return schede;
 }
 
+/* ---------------- SFONDO DELLA PAGINA (online e offline) ----------------
+   La pagina esportata si apre di solito dal telefono come file (content:// o
+   file://): il browser non invia il «Referer» e i server di OpenStreetMap
+   rispondono 403 «Access blocked». Si usano quindi due servizi che accettano
+   queste richieste e permettono di copiare le tile (CORS): così, mentre si
+   crea la pagina, le tile della zona delle schede vengono salvate DENTRO il
+   file e la mappa si vede anche senza Internet. */
+const SFONDI_PAGINA = {
+  stradale: { nome: 'Stradale', url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', sub: 'abcd', max: 20, attr: '© OpenStreetMap contributors © CARTO' },
+  satellite: { nome: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', sub: '', max: 19, attr: 'Immagini © Esri, Maxar, Earthstar Geographics' },
+};
+const urlSfondo = (sf, z, x, y) => sf.url.replace('{s}', sf.sub ? sf.sub[(x + y) % sf.sub.length] : '')
+  .replace('{z}', z).replace('{x}', x).replace('{y}', y);
+const tileX = (lng, z) => Math.floor((lng + 180) / 360 * 2 ** z);
+const tileY = (lat, z) => { const r = lat * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** z); };
+
+// Tile che coprono le schede con un margine (≈ 90 m o 20 %), dallo zoom più
+// largo in su, finché si resta nel budget: area piccola = si arriva vicinissimi.
+function tileZonaSchede(punti, budget = 260, zMin = 10, zMax = 19) {
+  let s = Math.min(...punti.map((p) => p.lat)), n = Math.max(...punti.map((p) => p.lat));
+  let w = Math.min(...punti.map((p) => p.lng)), e = Math.max(...punti.map((p) => p.lng));
+  const mLat = Math.max((n - s) * 0.2, 0.0008), mLng = Math.max((e - w) * 0.2, 0.0011);
+  s = Math.max(s - mLat, -85); n = Math.min(n + mLat, 85); w -= mLng; e += mLng;
+  const elenco = []; let ultimo = zMin - 1;
+  for (let z = zMin; z <= zMax; z++) {
+    const x0 = tileX(w, z), x1 = tileX(e, z), y0 = tileY(n, z), y1 = tileY(s, z);
+    if (elenco.length + (x1 - x0 + 1) * (y1 - y0 + 1) > budget) break;
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) elenco.push({ z, x, y });
+    ultimo = z;
+  }
+  return { elenco, zMin, zMax: ultimo };
+}
+
+// Scarica le tile come immagini leggibili (CORS) e le trasforma in data URL.
+// Dopo 8 errori di fila si ferma: servizio irraggiungibile o connessione persa.
+async function scaricaSfondo(sf, elenco, avanza) {
+  const tile = {}; let i = 0, ok = 0, err = 0, difila = 0;
+  const lavora = async () => {
+    while (i < elenco.length && difila < 8) {
+      const t = elenco[i++];
+      const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 15000);
+      try {
+        const r = await fetch(urlSfondo(sf, t.z, t.x, t.y), { mode: 'cors', credentials: 'omit', signal: ctl.signal });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const b = await r.blob();
+        if (!/^image\//.test(b.type)) throw new Error('non è un\'immagine');
+        tile[`${t.z}/${t.x}/${t.y}`] = await blobInDataURL(b); ok++; difila = 0;
+      } catch { err++; difila++; } finally { clearTimeout(timer); avanza(); }
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, lavora));
+  return { tile, ok, err: err + (elenco.length - ok - err) };
+}
+
 async function esportaMappaHTML() {
   const visibili = schedeVisibili();
   const scelta = await chiediOpzioniMappa('Pagina HTML con mappa e schede',
-    'Crea un unico file .html da aprire su qualsiasi telefono o computer, anche da inviare. Contiene la mappa con i numeri e le schede delle piante. Lo sfondo della mappa si vede con Internet; schede e foto anche senza.',
+    'Crea un unico file .html da aprire su qualsiasi telefono o computer, anche da inviare. Contiene la mappa con i numeri e le schede delle piante. Schede e foto si vedono sempre; lo sfondo della mappa della zona può essere salvato nel file per vederlo anche senza Internet (serve la rete adesso, mentre crei la pagina).',
     [
       sceltaRadio('quali', 'Quali schede', [['visibili', `Quelle visibili con il filtro attuale (${visibili.length})`], ['tutte', `Tutte (${S.schede.length})`]], 'visibili'),
       sceltaRadio('foto', 'Foto', [['una', 'Una foto per scheda (consigliato)'], ['tutte', 'Tutte le foto (file più pesante)'], ['nessuna', 'Nessuna foto']], 'una'),
+      sceltaRadio('offline', 'Mappa senza Internet', [['stradale', 'Salva nel file lo sfondo stradale (consigliato)'], ['entrambe', 'Salva stradale e satellite (file più pesante)'], ['satellite', 'Salva solo il satellite'], ['nessuna', 'Non salvare: lo sfondo si vedrà solo con Internet']], 'stradale'),
       sceltaTesto('titolo', 'Titolo della pagina', `Censimento alberi – ${dataBreveIT(oggi())}`),
     ], '⭳ Crea pagina');
   if (!scelta) return;
@@ -199,11 +254,30 @@ async function esportaMappaHTML() {
       return risposta.text();
     }));
     const dati = { titolo: scelta.titolo || 'Censimento alberi', creato: dataIT(oraISO()), schede: await datiPaginaMappa(lista, scelta.foto) };
+    const punti = lista.filter((r) => r.gps).map((r) => r.gps);
+    const daSalvare = { stradale: ['stradale'], satellite: ['satellite'], entrambe: ['stradale', 'satellite'] }[scelta.offline] || [];
+    const avvisi = [];
+    dati.sfondi = {};
+    for (const [k, sf] of Object.entries(SFONDI_PAGINA)) dati.sfondi[k] = { ...sf, tile: {}, zMin: null, zMax: null };
+    if (daSalvare.length && punti.length) {
+      if (navigator.onLine === false) avvisi.push('Sei offline: lo sfondo della mappa non è stato salvato nel file (si vedrà solo con Internet).');
+      else {
+        const zona = tileZonaSchede(punti);
+        for (const k of daSalvare) {
+          const sf = SFONDI_PAGINA[k]; let fatte = 0;
+          const esito = await scaricaSfondo(sf, zona.elenco, () => stato(`Salvo lo sfondo ${sf.nome.toLowerCase()} per l'uso offline… ${++fatte}/${zona.elenco.length}`));
+          if (esito.ok) Object.assign(dati.sfondi[k], { tile: esito.tile, zMin: zona.zMin, zMax: zona.zMax });
+          if (!esito.ok) avvisi.push(`Sfondo ${sf.nome.toLowerCase()} non salvato: servizio non raggiungibile adesso (si vedrà solo con Internet).`);
+          else if (esito.err) avvisi.push(`Sfondo ${sf.nome.toLowerCase()}: ${esito.err} tile su ${zona.elenco.length} non scaricate; quelle zone senza Internet restano grigie.`);
+        }
+      }
+    }
     const html = paginaMappaHTML(dati, leafletJs, leafletCss);
     const nome = `mappa-schede-${oggi()}.html`;
     const dove = await scarica(new Blob([html], { type: 'text/html' }), nome);
     const mb = (html.length / 1048576).toFixed(1).replace('.', ',');
     stato(`Pagina creata: ${nome} (${lista.length} schede, ${mb} MB)${dove === 'cartella' ? ' in Download/Botanica' : ''}`);
+    if (avvisi.length) alert('Pagina creata, con un avviso:\n\n' + avvisi.join('\n'));
   } catch (e) {
     alert('Pagina non creata: ' + e.message);
     stato('');
@@ -229,7 +303,13 @@ header{background:#2f5d3a;color:#fff;padding:18px 16px}
 header h1{margin:0;font:600 22px Georgia,serif}
 header p{margin:4px 0 0;opacity:.85;font-size:13px}
 main{max-width:1000px;margin:0 auto;padding:12px 16px 40px}
-#mappa{height:60vh;min-height:320px;border-radius:14px;border:1px solid var(--linea)}
+#mappa{height:60vh;min-height:320px;border-radius:14px;border:1px solid var(--linea);background:#dfe4dc}
+.stato-rete{background:#fff;color:#1d2a22;border-radius:8px;padding:4px 9px;font:600 12px system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.stato-rete.off{color:#8a5a00}
+.leaflet-control-layers{font:14px system-ui,sans-serif}
+.leaflet-control-layers-toggle{background-image:none!important;display:flex!important;align-items:center;justify-content:center;font-size:21px;text-decoration:none}
+.leaflet-control-layers-toggle::before{content:"🗺️"}
+.leaflet-control-layers label{padding:4px 2px}
 .nota{color:var(--tenue);font-size:12.5px;margin:6px 2px 14px}
 #cerca{width:100%;padding:12px;border:1px solid var(--linea);border-radius:10px;background:var(--foglio);color:var(--ink);font-size:16px;margin-bottom:12px}
 .scheda{background:var(--foglio);border:1px solid var(--linea);border-radius:14px;padding:14px;margin-bottom:12px;scroll-margin-top:12px}
@@ -258,7 +338,7 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
 <header><h1></h1><p id="sotto"></p></header>
 <main>
   <div id="mappa" role="region" aria-label="Mappa delle schede"></div>
-  <p class="nota">Tocca un numero sulla mappa per aprire la scheda. Verde: scheda · rosso: problemi segnalati. Lo sfondo della mappa (© OpenStreetMap) richiede Internet.</p>
+  <p class="nota" id="nota-mappa">Tocca un numero sulla mappa per aprire la scheda. Verde: scheda · rosso: problemi segnalati.</p>
   <input id="cerca" type="search" placeholder="Cerca per nome, numero o caratteristica…" aria-label="Cerca nelle schede">
   <div id="elenco"></div>
 </main>
@@ -274,9 +354,73 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
   document.querySelector('header h1').textContent = D.titolo;
   document.getElementById('sotto').textContent = D.schede.length + ' schede · creata il ' + D.creato;
 
-  var mappa = L.map('mappa').setView([45.5, 10], 6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mappa);
+  var mappa = L.map('mappa', { maxZoom: 20 }).setView([45.5, 10], 6);
+
+  /* Sfondo: prima le tile salvate nel file (funzionano senza Internet), poi la rete;
+     se manca tutto, si ingrandisce una tile salvata di livello inferiore; se no, grigio. */
+  var SF = D.sfondi || {};
+  function urlT(sf, c) { return sf.url.replace('{s}', sf.sub ? sf.sub.charAt((c.x + c.y) % sf.sub.length) : '').replace('{z}', c.z).replace('{x}', c.x).replace('{y}', c.y); }
+  var Sfondo = L.GridLayer.extend({
+    createTile: function (c, done) {
+      var sf = this.options.sf, cv = document.createElement('canvas'), g;
+      cv.width = cv.height = 256; g = cv.getContext('2d');
+      function disegna(src, sx, sy, lato, altrimenti) {
+        var im = new Image();
+        im.onload = function () { g.drawImage(im, sx, sy, lato, lato, 0, 0, 256, 256); done(null, cv); };
+        im.onerror = altrimenti; im.src = src;
+      }
+      function vuota() {
+        g.fillStyle = '#dfe4dc'; g.fillRect(0, 0, 256, 256); g.strokeStyle = 'rgba(0,0,0,.07)';
+        for (var i = -256; i < 256; i += 16) { g.beginPath(); g.moveTo(i, 256); g.lineTo(i + 256, 0); g.stroke(); }
+        done(null, cv);
+      }
+      function antenato() {
+        for (var d = 1; d <= 8 && c.z - d >= 0; d++) {
+          var px = c.x >> d, py = c.y >> d, a = sf.tile[(c.z - d) + '/' + px + '/' + py];
+          if (a) { var lato = 256 / (1 << d); return disegna(a, (c.x - (px << d)) * lato, (c.y - (py << d)) * lato, lato, vuota); }
+        }
+        vuota();
+      }
+      var k = c.z + '/' + c.x + '/' + c.y;
+      if (sf.tile[k]) disegna(sf.tile[k], 0, 0, 256, antenato);
+      else if (navigator.onLine !== false) disegna(urlT(sf, c), 0, 0, 256, antenato);
+      else antenato();
+      return cv;
+    }
+  });
+  var strati = {}, corrente = null, salvato = null;
+  ['stradale', 'satellite'].forEach(function (k) {
+    var sf = SF[k]; if (!sf) return;
+    var n = Object.keys(sf.tile || {}).length; sf.tile = sf.tile || {};
+    var l = new Sfondo({ sf: sf, maxZoom: 20, maxNativeZoom: sf.max, attribution: sf.attr });
+    l._salvate = n;
+    strati[sf.nome + (n ? ' · salvato nel file' : ' · solo online')] = l;
+    if (n && !salvato) salvato = { l: l, sf: sf };
+  });
+  var nomi = Object.keys(strati);
+  // senza rete parte dallo sfondo salvato; con la rete dallo stradale
+  corrente = (navigator.onLine === false && salvato) ? salvato.l : strati[nomi[0]];
+  if (corrente) corrente.addTo(mappa);
+  if (nomi.length > 1) L.control.layers(strati, null, { collapsed: true }).addTo(mappa);
   L.control.scale({ imperial: false }).addTo(mappa);
+  var StatoRete = L.Control.extend({ options: { position: 'topright' }, onAdd: function () { this._d = L.DomUtil.create('div', 'stato-rete'); aggiornaStato(this._d); return this._d; } });
+  var statoRete = new StatoRete();
+  function aggiornaStato(d) {
+    d = d || statoRete._d; if (!d) return;
+    var off = navigator.onLine === false, n = corrente ? corrente._salvate : 0;
+    d.className = 'stato-rete' + (off ? ' off' : '');
+    d.textContent = off ? (n ? '● Offline · sfondo salvato nel file' : '● Offline · sfondo non salvato') : '● Online';
+  }
+  statoRete.addTo(mappa);
+  mappa.on('baselayerchange', function (e) { corrente = e.layer; aggiornaStato(); });
+  window.addEventListener('online', function () { aggiornaStato(); if (corrente) corrente.redraw(); });
+  window.addEventListener('offline', function () { aggiornaStato(); });
+  if (salvato) {
+    document.getElementById('nota-mappa').textContent += ' Lo sfondo della zona delle schede è salvato nel file (zoom ' + salvato.sf.zMin + '–' + salvato.sf.zMax +
+      '): si vede anche senza Internet. Più da vicino o fuori zona serve Internet. Con il pulsante in alto a destra scegli stradale o satellite.';
+  } else {
+    document.getElementById('nota-mappa').textContent += ' Lo sfondo della mappa si vede con Internet. Con il pulsante in alto a destra scegli stradale o satellite.';
+  }
   var marcatori = {}, punti = [];
   var schede = {};
 

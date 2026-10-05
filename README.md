@@ -2,7 +2,7 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.31.0**
+**by Lollo ®2026 — versione 3.32.0**
 
 [Novità e storico delle versioni](CHANGELOG.md) · [Guida all’AI e alle chiavi](ASSISTENTE-AI.md)
 

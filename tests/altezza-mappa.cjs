@@ -7,11 +7,20 @@ const srv=http.createServer((q,r)=>{const u=new URL(q.url,'http://x');const f=pa
  const m={'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
  try{r.setHeader('Content-Type',m[path.extname(f)]||'application/octet-stream');r.end(fs.readFileSync(f));}catch{r.writeHead(404);r.end();}});
 const ok=(t)=>console.log('OK',t);
+// PNG 256×256 a tinta unita (per simulare le tile dei servizi di sfondo)
+const zlib=require('zlib');
+function png(r,g,b){const ck=(t,d)=>{const l=Buffer.alloc(4);l.writeUInt32BE(d.length);const td=Buffer.concat([Buffer.from(t),d]);const c=Buffer.alloc(4);c.writeUInt32BE(zlib.crc32(td));return Buffer.concat([l,td,c]);};
+ const ih=Buffer.from([0,0,1,0,0,0,1,0,8,2,0,0,0]);const riga=Buffer.concat([Buffer.from([0]),Buffer.alloc(768).map((_,i)=>[r,g,b][i%3])]);
+ return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),ck('IHDR',ih),ck('IDAT',zlib.deflateSync(Buffer.concat(Array(256).fill(riga)))),ck('IEND',Buffer.alloc(0))]);}
+const TILE_STRADA=png(200,40,40), TILE_SAT=png(40,40,200);
+let richiesteSfondo=0;
+const sfondi=async(pg)=>{await pg.route(/basemaps\.cartocdn\.com/,r=>{richiesteSfondo++;r.fulfill({status:200,contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:TILE_STRADA});});
+ await pg.route(/server\.arcgisonline\.com/,r=>{richiesteSfondo++;r.fulfill({status:200,contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:TILE_SAT});});};
 (async()=>{await new Promise(o=>srv.listen(0,'127.0.0.1',o));
 const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined,args:['--no-sandbox']});
 const ctx=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,acceptDownloads:true});const p=await ctx.newPage();
 const errs=[];p.on('pageerror',e=>errs.push(e.message));p.on('dialog',d=>d.accept());
-await p.route(/tile\.openstreetmap\.org/,r=>r.abort());
+await p.route(/tile\.openstreetmap\.org/,r=>r.abort());await sfondi(p);
 await p.goto(`http://127.0.0.1:${srv.address().port}/`);await p.waitForFunction(()=>typeof apriMisuraAltezza==='function');
 await p.click('#btn-nuova');await p.waitForFunction(()=>S.aperta!==null);
 const ori=(beta)=>p.evaluate(b=>{for(let i=0;i<12;i++){const e=new Event('deviceorientation');e.beta=b;e.gamma=0;e.alpha=0;window.dispatchEvent(e);}},beta);
@@ -140,14 +149,40 @@ ok('stampa mappa: 4 numeri, legenda, A4 orizzontale, pulizia dopo la stampa');
 // pagina HTML
 await p.click('#btn-mappa-html');
 await p.locator('.dlg-mappa-opzioni input[value=tutte]').first().check();
+await p.locator('.dlg-mappa-opzioni input[value=entrambe]').check();
 const [dl]=await Promise.all([p.waitForEvent('download',{timeout:30000}),p.locator('.dlg-mappa-opzioni').getByRole('button',{name:'⭳ Crea pagina'}).click()]);
 const file=out+'/'+dl.suggestedFilename();await dl.saveAs(file);
 const html=fs.readFileSync(file,'utf8');assert(html.includes('L.map(')&&html.includes('Fraxinus excelsior'));
-const p2=await ctx.newPage();const e2=[];p2.on('pageerror',e=>e2.push(e.message));await p2.route(/tile\.openstreetmap\.org/,r=>r.abort());
+assert(!html.includes('tile.openstreetmap.org/{z}'),'niente tile OSM (403 senza Referer)');
+const Dp=JSON.parse(html.match(/<script type="application\/json" id="dati">([\s\S]*?)<\/script>/)[1]);
+const nStr=Object.keys(Dp.sfondi.stradale.tile).length,nSat=Object.keys(Dp.sfondi.satellite.tile).length;
+assert(nStr>20&&nStr<=260&&nSat===nStr,'tile salvate: '+nStr+'/'+nSat);assert(Dp.sfondi.stradale.zMax>=17,'zoom massimo salvato '+Dp.sfondi.stradale.zMax);
+// ---- pagina aperta SENZA Internet: lo sfondo arriva dal file
+const ctxOff=await b.newContext({viewport:{width:390,height:844},offline:true});const pOff=await ctxOff.newPage();const eOff=[];pOff.on('pageerror',e=>eOff.push(e.message));
+await pOff.goto('file://'+file);await pOff.waitForSelector('.leaflet-marker-icon');await pOff.waitForTimeout(800);
+assert.match(await pOff.locator('.stato-rete').textContent(),/Offline · sfondo salvato nel file/);
+const colore=(pg)=>pg.evaluate(()=>{const cs=[...document.querySelectorAll('.leaflet-tile-container canvas')].filter(c=>c.getBoundingClientRect().width>0);
+ return cs.map(c=>{try{const d=c.getContext('2d').getImageData(128,128,1,1).data;return d[0]+','+d[1]+','+d[2];}catch{return 'tainted'}});});
+let cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>c==='200,40,40'),'offline: tile stradali dal file '+cols.slice(0,4));
+await pOff.screenshot({path:out+'/d0-pagina-offline.png'});
+// zoom oltre il salvato: ingrandisce la tile salvata (niente grigio)
+for(let i=0;i<3;i++){await pOff.locator('.leaflet-control-zoom-in').click({force:true});await pOff.waitForTimeout(400);}assert.equal(await pOff.evaluate(()=>document.querySelector('.leaflet-tile-container canvas')&&1),1);await pOff.waitForTimeout(800);
+cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>c==='200,40,40'),'offline zoom 20: '+cols.slice(0,4));
+// satellite salvato anche lui
+await pOff.locator('.leaflet-control-layers').hover();await pOff.getByLabel(/Satellite · salvato nel file/).check();await pOff.waitForTimeout(800);
+cols=await colore(pOff);assert(cols.length>0&&cols.every(c=>c==='40,40,200'),'offline satellite '+cols.slice(0,4));
+assert.deepEqual(eOff,[]);await ctxOff.close();
+ok('pagina HTML offline: sfondo stradale e satellite salvati nel file ('+nStr+' tile, zoom '+Dp.sfondi.stradale.zMin+'–'+Dp.sfondi.stradale.zMax+'), ingrandimento oltre il salvato');
+const p2=await ctx.newPage();const e2=[];p2.on('pageerror',e=>e2.push(e.message));await p2.route(/tile\.openstreetmap\.org/,r=>r.abort());await sfondi(p2);
 await p2.goto('file://'+file);await p2.waitForSelector('.leaflet-marker-icon');
 assert.equal(await p2.locator('.leaflet-marker-icon').count(),4);
 assert.equal(await p2.locator('article.scheda').count(),4);
 assert.equal(await p2.locator('.leaflet-marker-icon').first().textContent()!=='',true);
+assert.match(await p2.locator('.stato-rete').textContent(),/Online/);
+// online, oltre lo zoom salvato: chiede le tile alla rete
+const prima=richiesteSfondo;await p2.evaluate(()=>{});for(let i=0;i<4;i++){await p2.locator('.leaflet-control-zoom-in').click({force:true});await p2.waitForTimeout(400);}await p2.waitForTimeout(800);
+assert(richiesteSfondo>prima,'online: tile scaricate dalla rete oltre lo zoom salvato');
+for(let i=0;i<4;i++){await p2.locator('.leaflet-control-zoom-out').click();await p2.waitForTimeout(400);}
 await p2.screenshot({path:out+'/d1-pagina-html.png'});
 await p2.fill('#cerca','tilia');assert.equal(await p2.locator('article.scheda:visible').count(),1);assert.equal(await p2.locator('.leaflet-marker-icon').count(),1);
 await p2.fill('#cerca','');

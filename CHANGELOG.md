@@ -2,6 +2,15 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.32.0 · pagina HTML della mappa: sfondo online e offline
+
+- **Risolto lo sfondo bloccato («403 Access blocked»)**: aperta dal telefono come file, la pagina non può usare i server di OpenStreetMap (rifiutano le richieste senza indirizzo di provenienza). Ora usa lo sfondo **stradale** (dati OpenStreetMap, servizio CARTO) e il **satellite** (Esri), che si scelgono con il pulsante 🗺️.
+- **Mappa anche senza Internet**: nella creazione della pagina la nuova opzione «Mappa senza Internet» salva dentro il file le tile della zona delle schede (stradale, satellite o entrambe), fino allo zoom più vicino possibile restando leggeri (circa 260 tile per sfondo). Senza rete la pagina usa quelle; oltre lo zoom salvato ingrandisce le tile già presenti invece di mostrare il grigio.
+- Indicatore sulla mappa: «Online» oppure «Offline · sfondo salvato nel file»; tornata la rete, le zone mancanti si caricano da sole.
+- Se la rete manca mentre crei la pagina, un avviso spiega che lo sfondo non è stato salvato.
+
+---
+
 ## 3.31.0 · controllo dei layout di stampa
 
 Verificate con PDF di prova (20 schede, nomi e note molto lunghi, foto di proporzioni diverse) tutte le stampe: schede, etichette QR, mappa, report singolo e pagina HTML mappa+schede.
