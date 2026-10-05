@@ -214,5 +214,37 @@ assert.equal(await p.inputValue('#f-note'),'Mia osservazione\nAltra riga mia');
 v=await p.evaluate(()=>{const r=S.aperta;IDENT.riga=r;IDENT.foto={};usaIdentificazione('Cercis siliquastrum','Albero di Giuda',64,'5353590','Cercis siliquastrum L.');return {note:r.note,ident:r.identPlantNet};});
 assert.equal(v.note,'Mia osservazione\nAltra riga mia');assert.equal(v.ident.conf,64);assert.equal(await p.inputValue('#f-note'),'Mia osservazione\nAltra riga mia');assert.match(await p.locator('#plantnet-link').textContent(),/64%/);
 ok('note: righe automatiche PlantNet tolte dalle schede esistenti e mai più aggiunte; identificazione conservata a parte');
+// ---- rinumera le schede: buchi → 1..N, ordine mantenuto, cestino intatto, annulla
+await p.evaluate(async()=>{for(const s of [...S.schede])await DB.cancella('schede',s.uid);S.schede=[];S.cestino=[];
+ const mk=(uid,prog,creato)=>({...schedaVuota(),uid,prog,creato,bozzaVuota:false,nome:'Pianta '+uid});
+ for(const r of [mk('r-a','7','2026-01-03'),mk('r-b','2','2026-01-02'),mk('r-c','2','2026-01-01'),mk('r-d','12','2026-01-04')]){await DB.scrivi('schede',r);S.schede.push(r);}
+ const t={...mk('r-t','5','2026-01-05'),cancellata:new Date().toISOString()};await DB.scrivi('schede',t);S.cestino.push(t);});
+await p.evaluate(()=>document.querySelector('#btn-rinumera').click());await p.waitForTimeout(400);
+let ord=await p.evaluate(()=>S.schede.map(s=>s.uid+':'+s.prog).sort().join(','));
+assert.equal(ord,'r-a:3,r-b:2,r-c:1,r-d:4');
+assert.equal(await p.evaluate(()=>S.cestino[0].prog),'5');
+assert.equal(await p.evaluate(async()=>(await DB.leggi('schede','r-d')).prog),'4','salvato nell\'archivio');
+await p.evaluate(()=>document.querySelector('.toast button').click());await p.waitForTimeout(400);
+assert.equal(await p.evaluate(()=>S.schede.map(s=>s.uid+':'+s.prog).sort().join(',')),'r-a:7,r-b:2,r-c:2,r-d:12');
+ok('rinumera: 7,2,2,12 → 3,2,1,4 con ordine mantenuto, cestino intatto, annulla ripristina');
+// ---- stampa: la stima ambientale si può escludere
+const stimaStampa=await p.evaluate(async()=>{const r={...schedaVuota(),uid:'st-1',prog:'1',nome:'Test',altezza:'12',grandezza:'3',circonferenza:'120'};
+ const base={qr:false,foto:false,colonne:2,fotoMax:0,campi:null};
+ const con=await paginaScheda(r,{...base,stima:true}),senza=await paginaScheda(r,{...base,stima:false});
+ return {con:/Stima ambientale/.test(con.textContent),senza:/Stima ambientale/.test(senza.textContent),casella:document.querySelector('#st-stima')?.checked};});
+assert.deepEqual(stimaStampa,{con:true,senza:false,casella:true});
+ok('stampa: la stima ambientale compare solo se la casella è spuntata');
+// ---- stima ambientale facoltativa anche in pagina HTML e report singolo
+const sz=await p.evaluate(()=>{const r={...schedaVuota(),uid:'st-2',nome:'T',altezza:'12',grandezza:'3',circonferenza:'120'};
+ const ha=(l)=>l.some(x=>x.titolo.startsWith('Stima ambientale'));
+ return {c:ha(sezioniScheda(r,'completa',true)),n:ha(sezioniScheda(r,'completa',false)),cc:ha(sezioniScheda(r,'compilati',true)),cn:ha(sezioniScheda(r,'compilati',false))};});
+assert.deepEqual(sz,{c:true,n:false,cc:true,cn:false});
+const rep=await p.evaluate(async()=>{const r={...schedaVuota(),uid:'st-3',nome:'Rep',altezza:'12',grandezza:'3',circonferenza:'120',foto:[]};S.schede.push(r);
+ window.__txt=[];const orig=URL.createObjectURL;URL.createObjectURL=(b)=>{window.__blob=b;return orig(b);};
+ const dai=async(spunta)=>{const pr=scaricaReportSingolo(r);await new Promise(o=>setTimeout(o,100));const d=document.querySelector('dialog.dlg-mappa-opzioni');
+  d.querySelector('input[type=checkbox]').checked=spunta;d.querySelector('button[value=ok]').click();await pr;return await window.__blob.text();};
+ const con=await dai(true),senza=await dai(false);return {con:/Stima ambientale/.test(con),senza:/Stima ambientale/.test(senza)};});
+assert.deepEqual(rep,{con:true,senza:false});
+ok('stima ambientale facoltativa: stampa, pagina HTML e report singolo');
 assert.deepEqual(errs,[]);
 await b.close();srv.close();})().catch(e=>{console.error(e);process.exit(1);});

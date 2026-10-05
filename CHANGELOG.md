@@ -2,6 +2,22 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.35.2 · stima ambientale facoltativa
+
+- Nuova casella **«Stima ambientale»** (volume chioma, ombra, CO₂) nella finestra **Stampa** delle schede A4, nella creazione della **pagina HTML mappa + schede** e nel **report singolo** di una scheda: spuntata la stima c'è, tolta la spunta no.
+- La scelta è unica e viene ricordata per tutte e tre le funzioni.
+- Nella pagina HTML la stima è ora indipendente da «scheda completa / solo campi compilati».
+
+---
+
+## 3.35.0 · rinumera le schede
+
+- In **Configurazione e backup → Configurazione** c'è il nuovo pulsante **«Rinumera le schede»**: dopo aver cancellato delle schede riporta i N° progressivi in fila (1, 2, 3…), mantenendo l'ordine attuale (a parità di numero, per data di creazione).
+- Chiede conferma spiegando che QR, etichette, stampe ed esportazioni già fatti restano con i vecchi numeri; subito dopo si può **annullare**.
+- Le schede nel cestino non vengono toccate.
+
+---
+
 ## 3.34.0 · pagina HTML con la scheda completa
 
 - Nella pagina HTML mappa + schede ogni pianta mostra, insieme alle foto, la **scheda completa** come nella stampa: sezioni Osservazioni, Vegetazione, Pedologia, Fitopatologia e Note con tutti i campi (quelli vuoti con «—»), stima ambientale e date di creazione e ultima modifica.

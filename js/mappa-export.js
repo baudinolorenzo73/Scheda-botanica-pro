@@ -170,9 +170,9 @@ async function tileCompatta(blob) {
 }
 
 // Contenuto di una scheda per la pagina: per sezioni, come nella stampa.
-// «completa» = tutti i campi pertinenti (vuoti con «—») + stima ambientale;
-// «compilati» = solo i campi con un valore.
-function sezioniScheda(r, contenuto) {
+// «completa» = tutti i campi pertinenti (vuoti con «—»);
+// «compilati» = solo i campi con un valore. La stima ambientale è a parte (conStima).
+function sezioniScheda(r, contenuto, conStima = true) {
   const completa = contenuto !== 'compilati';
   const sezioni = [];
   for (const sez of SEZIONI) {
@@ -186,17 +186,17 @@ function sezioniScheda(r, contenuto) {
     }
     if (campi.length) sezioni.push({ titolo: sez.titolo, campi });
   }
-  if (completa) {
+  if (conStima) {
     const stima = righeStima(stimaAlbero(r));
     if (stima.length) sezioni.push({ titolo: 'Stima ambientale (indicativa)', campi: stima });
   }
   return sezioni;
 }
 
-async function datiPaginaMappa(lista, modoFoto, misuraFoto, contenuto = 'completa') {
+async function datiPaginaMappa(lista, modoFoto, misuraFoto, contenuto = 'completa', conStima = true) {
   const schede = [];
   for (const r of lista) {
-    const sezioni = sezioniScheda(r, contenuto);
+    const sezioni = sezioniScheda(r, contenuto, conStima);
     const foto = [];
     const daIncludere = modoFoto === 'tutte' ? r.foto : modoFoto === 'una' ? r.foto.slice(0, 1) : [];
     for (const p of daIncludere) {
@@ -279,6 +279,7 @@ async function esportaMappaHTML() {
     [
       sceltaRadio('quali', 'Quali schede', [['visibili', `Quelle visibili con il filtro attuale (${visibili.length})`], ['tutte', `Tutte (${S.schede.length})`]], 'visibili'),
       sceltaRadio('contenuto', 'Schede', [['completa', 'Scheda completa: tutte le sezioni e i campi, come nella stampa (consigliato)'], ['compilati', 'Solo i campi compilati (più breve)']], 'completa'),
+      sceltaSpunta('stima', 'Includi la stima ambientale (volume chioma, ombra, CO₂)', leggiPref('sb-stampa-stima') !== '0'),
       sceltaRadio('foto', 'Foto', [['una', 'Una foto per scheda (consigliato)'], ['tutte', 'Tutte le foto (file più pesante)'], ['nessuna', 'Nessuna foto']], 'una'),
       sceltaRadio('misura', 'Dimensione delle foto', [['piccole', 'Piccole: bastano sul telefono (file leggero, consigliato)'], ['medie', 'Medie: buone anche sul computer'], ['grandi', 'Grandi: per ingrandire i dettagli (file pesante)']], 'piccole'),
       sceltaRadio('offline', 'Mappa senza Internet', [['stradale', 'Salva nel file lo sfondo stradale (consigliato)'], ['entrambe', 'Salva stradale e satellite (file più pesante)'], ['satellite', 'Salva solo il satellite'], ['topografica', 'Salva solo la topografica'], ['tutte', 'Salva stradale, satellite e topografica (il più pesante)'], ['nessuna', 'Non salvare: lo sfondo si vedrà solo con Internet']], 'stradale'),
@@ -295,7 +296,8 @@ async function esportaMappaHTML() {
       if (!risposta.ok) throw new Error('libreria della mappa non disponibile');
       return risposta.text();
     }));
-    const dati = { titolo: scelta.titolo || 'Censimento alberi', creato: dataIT(oraISO()), schede: await datiPaginaMappa(lista, scelta.foto, scelta.misura, scelta.contenuto) };
+    const dati = { titolo: scelta.titolo || 'Censimento alberi', creato: dataIT(oraISO()), schede: await datiPaginaMappa(lista, scelta.foto, scelta.misura, scelta.contenuto, scelta.stima) };
+    scriviPref('sb-stampa-stima', scelta.stima ? '1' : '0');
     const punti = lista.filter((r) => r.gps).map((r) => r.gps);
     const daSalvare = { stradale: ['stradale'], satellite: ['satellite'], topografica: ['topografica'], entrambe: ['stradale', 'satellite'], tutte: ['stradale', 'satellite', 'topografica'] }[scelta.offline] || [];
     const avvisi = [];

@@ -55,6 +55,13 @@ function scaricaQR(r) {
 
 /* ---------- report standalone per un singolo esemplare (foto incorporate: si apre e si invia da solo) ---------- */
 async function scaricaReportSingolo(r) {
+  const scelta = await chiediOpzioniMappa('Report della scheda',
+    'Crea un file .html con la scheda e le foto, da aprire o inviare da solo.',
+    [sceltaSpunta('stima', 'Includi la stima ambientale (volume chioma, ombra, CO₂)', leggiPref('sb-stampa-stima') !== '0')],
+    '⭳ Crea report');
+  if (!scelta) return;
+  scriviPref('sb-stampa-stima', scelta.stima ? '1' : '0');
+  const conStima = scelta.stima;
   await salvaOra(r);
   stato('Preparo il report…');
   try {
@@ -98,7 +105,7 @@ figure img{max-height:120mm;object-fit:contain}
 </style></head><body>
 <header><div class="num">${escHtml(r.prog)}</div><div><h1>${escHtml(r.nome || 'Esemplare senza nome')}</h1><p>${escHtml(dataBreveIT(r.data))}</p></div><div class="qr">${qrTxt}</div></header>
 <table>${righeDati}</table>
-<div class="stima"><b>Stima ambientale (indicativa)</b>${righeStimaTxt}<small>Stima divulgativa con metodo dichiarato: non sostituisce un rilievo agronomico né vale per crediti di carbonio certificati.</small></div>
+${conStima ? `<div class="stima"><b>Stima ambientale (indicativa)</b>${righeStimaTxt}<small>Stima divulgativa con metodo dichiarato: non sostituisce un rilievo agronomico né vale per crediti di carbonio certificati.</small></div>` : ""}
 ${r.gps ? `<p style="font-family:system-ui,sans-serif;font-size:13px">📍 <a href="${mappaLink}" target="_blank" rel="noopener">${r.gps.lat.toFixed(6)}, ${r.gps.lng.toFixed(6)} — apri su OpenStreetMap</a></p>` : ''}
 ${r.gbifId ? `<p style="font-family:system-ui,sans-serif;font-size:13px">🔗 <a href="https://www.gbif.org/species/${r.gbifId}" target="_blank" rel="noopener">Apri la specie su GBIF</a></p>` : ''}
 ${fotoInline.length ? `<div class="foto-griglia">${fotoHtml}</div>` : ''}
@@ -187,6 +194,7 @@ async function apriStampa(soloQuesta = null) {
   $('#st-cosa').classList.toggle('nascosto', !!soloQuesta);
   if (!soloQuesta && S.selezionate.size) dlg.querySelector('input[value=selezionate]').checked = true;
   popolaCampiStampa();
+  $('#st-stima').checked = leggiPref('sb-stampa-stima') !== '0';
 
   if ((await chiedi(dlg)) !== 'stampa') return;
 
@@ -203,6 +211,7 @@ async function apriStampa(soloQuesta = null) {
   const tipo = dlg.querySelector('input[name=st-tipo]:checked').value;
   const campiScelti = [...document.querySelectorAll('input[name=st-campo]:checked')].map((i) => i.value);
   scriviPref('sb-stampa-campi', JSON.stringify(campiScelti));
+  scriviPref('sb-stampa-stima', $('#st-stima').checked ? '1' : '0');
 
   if (tipo === 'excel') {
     stato('Preparo il registro Excel…');
@@ -217,7 +226,7 @@ async function apriStampa(soloQuesta = null) {
     area.replaceChildren(el('div', { class: 'p-etichette' }, lista.map((r) =>
       el('div', { class: 'p-etichetta' }, qrSVG(testoQR(r)), el('b', { testo: `N° ${r.prog}` }), el('i', { testo: r.nome || '' })))));
   } else {
-    const opz = { qr: $('#st-qr').checked, foto: $('#st-foto').checked, colonne: Number($('#st-colonne').value), fotoMax: Number($('#st-foto-max').value) || 0, campi: new Set(campiScelti) };
+    const opz = { qr: $('#st-qr').checked, stima: $('#st-stima').checked, foto: $('#st-foto').checked, colonne: Number($('#st-colonne').value), fotoMax: Number($('#st-foto-max').value) || 0, campi: new Set(campiScelti) };
     area.replaceChildren(...await Promise.all(lista.map((r) => paginaScheda(r, opz))));
   }
   // aspetta che le immagini siano pronte, altrimenti escono riquadri vuoti
@@ -358,7 +367,7 @@ async function paginaScheda(r, opz) {
   }
 
   const stima = stimaAlbero(r);
-  if (stima.volumeChioma != null || stima.co2Kg != null) {
+  if (opz.stima !== false && (stima.volumeChioma != null || stima.co2Kg != null)) {
     pagina.append(el('section', { class: 'p-sez' },
       el('h3', { testo: 'Stima ambientale (indicativa)' }),
       el('dl', { class: 'p-dati' }, righeStima(stima).map(([l, v]) =>

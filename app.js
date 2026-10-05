@@ -1209,6 +1209,48 @@ async function nuovoElenco() {
   }
 }
 
+// "Rinumera le schede": dopo le cancellazioni il N° progressivo ha dei buchi.
+// Le schede attive restano nello stesso ordine (per N°, a parità per data di
+// creazione) e prendono 1, 2, 3… Il cestino non si tocca. Si può annullare.
+function pianoRinumerazione(schede) {
+  const ordinate = [...schede].sort((a, b) =>
+    (Number(a.prog) || Infinity) - (Number(b.prog) || Infinity) ||
+    String(a.creato).localeCompare(String(b.creato)));
+  return ordinate.map((r, i) => ({ r, vecchio: r.prog, nuovo: String(i + 1) })).filter((x) => x.vecchio !== x.nuovo);
+}
+
+async function rinumeraSchede() {
+  const bottone = $('#btn-rinumera');
+  if (bottone.disabled) return;
+  if (!S.schede.length) { alert('Non ci sono schede da rinumerare.'); return; }
+  if (!(await salvaTuttiInSospeso())) { alert('Ci sono schede non salvate. Riprova dopo aver liberato spazio.'); return; }
+  const piano = pianoRinumerazione(S.schede);
+  if (!piano.length) { alert(`I numeri sono già in fila (1–${S.schede.length}): niente da cambiare.`); return; }
+  if (!confirm(`Rinumero ${S.schede.length} schede da 1 a ${S.schede.length}, mantenendo l'ordine attuale: cambia il numero di ${piano.length} schede.\n\nQR, etichette, stampe ed esportazioni già fatti restano con i vecchi numeri. Puoi annullare subito dopo.\n\nContinuare?`)) return;
+  bottone.disabled = true;
+  try {
+    await applicaNumeri(piano.map((x) => [x.r, x.nuovo]));
+    toast(`Rinumerate ${piano.length} schede`, 'Annulla', () => applicaNumeri(piano.map((x) => [x.r, x.vecchio])));
+  } catch (e) {
+    stato(`Rinumerazione non completata: ${e.message}`, true);
+    alert(`Rinumerazione non completata: ${e.message}`);
+  } finally {
+    bottone.disabled = false;
+  }
+}
+
+async function applicaNumeri(coppie) {
+  const quando = oraISO();
+  for (const [r, prog] of coppie) {
+    r.prog = prog;
+    r.modificato = quando;
+    if (!(await salvaOra(r))) throw new Error('salvataggio non riuscito');
+  }
+  disegnaElenco();
+  if (typeof aggiornaTitoloEditor === 'function' && $('#ed-titolo')) { try { aggiornaTitoloEditor(); } catch {} }
+  stato(`${coppie.length} schede rinumerate`);
+}
+
 // Alla partenza dell'app: elimina per sempre chi ha superato i giorni impostati.
 async function purgaCestinoScaduto() {
   const soglia = Date.now() - giorniConservazioneCestino() * 864e5;
@@ -2180,6 +2222,7 @@ function collegaEventi() {
   };
   $('#btn-cestino-svuota').onclick = svuotaCestino;
   $('#btn-nuovo-elenco').onclick = nuovoElenco;
+  $('#btn-rinumera').onclick = rinumeraSchede;
   $('#btn-cestino-chiudi').onclick = () => $('#dlg-cestino').close();
 
   // tab schede / mappa

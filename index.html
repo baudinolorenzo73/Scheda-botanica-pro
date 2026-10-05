@@ -296,6 +296,10 @@
       </select>
     </label>
     <div class="aggiornamento-app">
+      <p id="rinumera-stato">Dopo aver cancellato delle schede, i N° progressivi hanno dei buchi (1, 2, 5, 8…). Qui li riporti in fila: 1, 2, 3…</p>
+      <button type="button" class="btn" id="btn-rinumera"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Rinumera le schede</span></button>
+    </div>
+    <div class="aggiornamento-app">
       <p id="aggiornamento-stato" role="status" aria-live="polite">Versione installata: —</p>
       <button type="button" class="btn" id="btn-controlla-aggiornamenti">Controlla aggiornamenti</button>
       <button type="button" class="btn primario nascosto" id="btn-applica-aggiornamento">Aggiorna ora</button>
@@ -624,6 +628,7 @@
   <p>Quando «Tipo di foglia» è <b>composta</b> compare «Tipo di foglia composta»: <b>imparipennata</b> (fogliolina singola in punta), <b>paripennata</b> (solo coppie), <b>bipennata</b> (composta due volte) o <b>digitata</b> (foglioline da un unico punto, come l’ippocastano). Con gli altri tipi di foglia il campo sparisce e si svuota.</p>
 
   <h3>Stampa e pagina HTML della mappa</h3>
+  <p>Nella finestra «Stampa» delle schede A4 puoi spuntare o togliere <b>Codice QR</b>, <b>Stima ambientale</b> e foto. La casella «Stima ambientale» c’è anche quando crei la pagina HTML e il report di una singola scheda; l’app ricorda la scelta.</p>
   <p>Nella vista «Mappa»: <b>🖨 Stampa mappa</b> stampa l’area che vedi o tutte le schede con GPS, su A4 orizzontale o verticale, con scala, nord ed elenco delle schede; dalla finestra di stampa puoi anche «Salva come PDF». <b>⭳ Pagina HTML mappa + schede</b> crea un unico file da aprire su qualsiasi telefono o computer: mappa con i numeri, schede complete (tutte le sezioni e i campi come nella stampa, con stima ambientale; oppure solo i campi compilati), foto (una, tutte o nessuna; piccole, medie o grandi: le piccole bastano sul telefono e tengono il file leggero) e una casella di ricerca. Schede e foto si vedono sempre. Lo sfondo della mappa (stradale, satellite o topografica, si sceglie con il pulsante 🗺️) si vede con Internet; scegliendo «Salva nel file» le tile della zona delle schede vengono messe dentro la pagina e la mappa si vede <b>anche senza Internet</b>. Per salvarle serve la rete mentre crei la pagina.</p>
 
   <h3>Identificazione specie (PlantNet)</h3>
@@ -655,6 +660,7 @@
     <li><b>Cartella Download/Botanica</b>: premi «Scegli Download/Botanica». L’app spiega perché serve il permesso e chiede conferma prima di mostrare la richiesta del browser. Se accetti, seleziona Download: viene creata la sottocartella Botanica. L’autorizzazione riguarda solo quella cartella e può essere dimenticata dalla Configurazione. Se Android o il browser non offre questa funzione, ogni file viene scaricato normalmente.</li>
     <li><b>Backup completo (.zip)</b>: un unico archivio con tutti i dati, le foto e gli audio. Serve a due cose: si reimporta nell'app con "Ripristina backup" (anche su un altro telefono), e dentro ha CSV, GeoJSON, KML e GPX leggibili con Excel e QGIS. È il modo più sicuro per non perdere nulla: fallo a fine giornata.</li>
     <li><b>Backup automatico</b>: attivo di default, prepara un backup completo con la frequenza scelta. Se hai autorizzato Download/Botanica lo salva lì; altrimenti usa il normale download del browser.</li>
+    <li><b>Rinumera le schede</b> (Configurazione e backup → Configurazione): dopo aver cancellato delle schede, riporta i N° progressivi in fila 1, 2, 3… senza cambiare l’ordine. QR, etichette e stampe già fatti restano con i vecchi numeri; subito dopo puoi premere «Annulla».</li>
     <li><b>Nuovo elenco</b> (nella sezione «Sul campo»): salva le schede di adesso in un backup con data e ora nel nome, le sposta nel cestino e riparte da un elenco vuoto, con «N° progressivo» nuovamente da 1.</li>
     <li><b>Condividi backup</b>: come sopra, ma invece di scaricare il file apre il pannello "Condividi" del telefono, per mandarlo con un tocco in più a Drive, Dropbox o WhatsApp. Se il browser non lo supporta, scarica il file normalmente.</li>
     <li><b>Ripristina backup</b>: accetta lo .zip e i vecchi backup .json. Prima mostra un riepilogo di schede, foto, audio, catalogo e traccia. La modalità “Sostituisci” conserva l’archivio attuale se il file è incompleto o una scrittura fallisce.</li>
@@ -706,6 +712,7 @@
     <div id="st-opz-schede" class="scelte" style="margin-top:6px">
       <div id="st-opz-pdf">
         <label><input type="checkbox" id="st-qr" checked> Codice QR</label>
+        <label><input type="checkbox" id="st-stima" checked> Stima ambientale (volume chioma, ombra, CO₂)</label>
         <label><input type="checkbox" id="st-foto" checked> Includi le foto (solo quelle con “stampa” spuntato su ciascuna)</label>
         <label>Foto per riga
           <select id="st-colonne" class="campo-base" style="min-height:36px;padding:4px 8px">
