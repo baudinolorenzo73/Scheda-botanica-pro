@@ -250,5 +250,27 @@ const rep=await p.evaluate(async()=>{const r={...schedaVuota(),uid:'st-3',nome:'
  const con=await dai(true),senza=await dai(false);return {con:/Stima ambientale/.test(con),senza:/Stima ambientale/.test(senza)};});
 assert.deepEqual(rep,{con:true,senza:false});
 ok('stima ambientale facoltativa: stampa, pagina HTML e report singolo');
+// ---- catalogo: nome scientifico modificabile (e ripristinabile)
+const idPl=await p.evaluate(()=>GUIDA_SPECIE.find(v=>v.nomeSci==='Platanus x').id);
+await p.evaluate(()=>{apriCompletaGuida();});
+await p.evaluate(id=>apriPiantaCatalogo(id),idPl);
+assert.equal(await p.inputValue('#cg-form [name=nomeSci]'),'Platanus x');
+await p.fill('#cg-form [name=nomeSci]','Platanus x acerifolia');
+await p.evaluate(()=>salvaIntegrazioneGuida());await p.waitForFunction(()=>/completato/.test($('#cg-stato').textContent));
+assert.equal(await p.evaluate(id=>GUIDA_SPECIE.find(v=>v.id===id).nomeSci,idPl),'Platanus x acerifolia');
+assert.equal(await p.textContent('#cg-nome'),'Platanus x acerifolia');
+assert.equal(await p.evaluate(async id=>(await DB.leggi('guida',id)).campi.nomeSci,idPl),'Platanus x acerifolia');
+assert.equal(await p.evaluate(()=>trovaSpecieGuida('Platanus x acerifolia')?.pagina>0),true);
+// l'esportazione completa resta valida con il nome corretto
+assert.equal(await p.evaluate(()=>{const piante=GUIDA_SPECIE.map(v=>({...v}));validaCatalogoCompleto({tipo:'scheda-botanica-catalogo-completo',versione:1,piante,integrazioni:S.guida});return true;}),true);
+await p.reload();await p.waitForFunction(()=>typeof GUIDA_SPECIE!=='undefined'&&S.guida&&S.guida.length>0);
+assert.equal(await p.evaluate(id=>GUIDA_SPECIE.find(v=>v.id===id).nomeSci,idPl),'Platanus x acerifolia','il nome corretto resta dopo il riavvio');
+// svuotando il campo si torna al nome originale
+await p.evaluate(()=>apriCompletaGuida());await p.evaluate(id=>apriPiantaCatalogo(id),idPl);
+await p.fill('#cg-form [name=nomeSci]','');
+await p.evaluate(()=>salvaIntegrazioneGuida());await p.waitForFunction(()=>/rimosse|completato/.test($('#cg-stato').textContent));
+assert.equal(await p.evaluate(id=>GUIDA_SPECIE.find(v=>v.id===id).nomeSci,idPl),'Platanus x');
+assert.equal(await p.evaluate(async id=>await DB.leggi('guida',id),idPl)==null,true);
+ok('catalogo: nome scientifico modificabile, salvato, valido in esportazione, ripristinabile');
 assert.deepEqual(errs,[]);
 await b.close();srv.close();})().catch(e=>{console.error(e);process.exit(1);});

@@ -217,6 +217,12 @@ function validaIntegrazioniGuida(elenco) {
     const base = GUIDA_ORIGINALE.get(v.id);
     const campi = {};
     for (const [k, valore] of Object.entries(v.campi)) {
+      if (k === 'nomeSci') { // correzione del nome: unico dato originale sostituibile
+        if (typeof valore !== 'string' || !valore.trim() || valore.trim().length > 120 || valore.trim() === base.nomeSci)
+          throw new Error('Nome del catalogo non valido');
+        campi.nomeSci = valore.trim();
+        continue;
+      }
       if (!CG_CHIAVI.has(k) || typeof valore !== 'string' || !valore.trim() || valore.length > 1000 || base[k])
         throw new Error('Campo del catalogo non valido');
       const def = CG_SEZIONI.flatMap(s => s.campi).find(c => c[0] === k);
@@ -239,7 +245,7 @@ function applicaIntegrazioniGuida() {
     for (const k of CG_CHIAVI) if (!base[k]) delete v[k];
     Object.assign(v, base);
     for (const [k, valore] of Object.entries(integrazioni.get(v.id)?.campi || {})) {
-      if (!base[k] && CG_CHIAVI.has(k)) v[k] = valore;
+      if (k === 'nomeSci' || (!base[k] && CG_CHIAVI.has(k))) v[k] = valore;
     }
   }
 }
@@ -284,6 +290,8 @@ function campiInModificaCatalogo() {
     const valore = $('#cg-form').elements.namedItem(k)?.value.trim();
     if (valore) campi[k] = valore;
   }
+  const nome = $('#cg-form').elements.namedItem('nomeSci')?.value.trim();
+  if (nome && nome !== base.nomeSci) campi.nomeSci = nome;
   return { campi, fonte: $('#cg-fonte').value };
 }
 
@@ -315,7 +323,13 @@ function apriPiantaCatalogo(id, dopoSalvataggio = false) {
   $('#cg-fonte').value = salvata?.fonte || '';
   $('#cg-stato').textContent = salvata ? 'Integrazioni salvate su questo dispositivo.' : '';
   const base = GUIDA_ORIGINALE.get(id);
-  $('#cg-form').replaceChildren(...CG_SEZIONI.map(sezione =>
+  $('#cg-form').replaceChildren(
+    el('fieldset', { class: 'cg-gruppo' }, el('legend', { testo: 'Nome' }),
+      el('label', { class: 'cg-campo ' + (salvata?.campi.nomeSci ? 'cg-integrato' : '') },
+        el('span', { testo: 'Nome scientifico' }),
+        el('input', { type: 'text', class: 'campo-base', name: 'nomeSci', value: specie.nomeSci, maxlength: 120, autocomplete: 'off', spellcheck: 'false' }),
+        el('small', { testo: salvata?.campi.nomeSci ? `Nome corretto da te · originale della guida: ${base.nomeSci}. Svuota il campo per tornare all'originale.` : `Modificabile, per correggere un nome incompleto. Originale: ${base.nomeSci}. Svuota il campo per tornare all'originale.` }))),
+    ...CG_SEZIONI.map(sezione =>
     el('fieldset', { class: 'cg-gruppo' }, el('legend', { testo: sezione.titolo }),
       ...sezione.campi.map(([k, etichetta, scheda]) => {
         const originale = base[k];
@@ -341,7 +355,8 @@ function apriPiantaCatalogo(id, dopoSalvataggio = false) {
 async function salvaIntegrazioneGuida() {
   if (!cgSpecie || cgSalvando) return;
   const { campi, fonte } = campiInModificaCatalogo();
-  if (Object.keys(campi).length && !fonte) {
+  const altriCampi = Object.keys(campi).some(k => k !== 'nomeSci');
+  if (altriCampi && !fonte) {
     $('#cg-stato').textContent = 'Salvataggio non eseguito: seleziona la fonte dei dati.';
     $('#cg-stato').classList.add('cg-errore');
     $('#cg-fonte').focus(); return;
@@ -353,16 +368,18 @@ async function salvaIntegrazioneGuida() {
   $('#cg-stato').textContent = 'Salvataggio in corso…';
   try {
     const precedente = S.guida.find(v => v.id === cgSpecie);
+    const fonteEff = fonte || (altriCampi ? 'pagina' : 'altro');
     const fontiCampi = {};
     for (const [k, valore] of Object.entries(campi))
-      fontiCampi[k] = precedente?.campi[k] === valore ? (precedente.fontiCampi?.[k] || precedente.fonte) : fonte;
-    const voce = { id: cgSpecie, campi, fonte: fonte || 'pagina', fontiCampi, modificato: oraISO() };
+      fontiCampi[k] = precedente?.campi[k] === valore ? (precedente.fontiCampi?.[k] || precedente.fonte) : fonteEff;
+    const voce = { id: cgSpecie, campi, fonte: fonteEff, fontiCampi, modificato: oraISO() };
     validaIntegrazioniGuida([voce]);
     if (Object.keys(campi).length) await DB.scrivi('guida', voce);
     else await DB.cancella('guida', cgSpecie);
     S.guida = S.guida.filter(v => v.id !== cgSpecie);
     if (Object.keys(campi).length) S.guida.push(voce);
     applicaIntegrazioniGuida();
+    if (typeof aggiornaDatalistNome === 'function') aggiornaDatalistNome();
     cgSporco = false;
     listaCompletaGuida();
     if (S.aperta) confrontaConCatalogo();

@@ -2,6 +2,14 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.36.0 · nome modificabile nel catalogo
+
+- Nel **Catalogo delle piante** (Configurazione → Completa catalogo) ogni pianta ha ora il campo **«Nome scientifico»** modificabile, per correggere nomi incompleti come «Platanus x» → «Platanus x acerifolia».
+- Il nome corretto viene salvato come integrazione: compare ovunque (elenco, ricerche, suggerimenti), è incluso nei backup e nell'esportazione del catalogo. Svuotando il campo si torna al nome originale della guida.
+- Per correggere il solo nome non serve indicare la fonte.
+
+---
+
 ## 3.35.3 · margini di stampa
 
 - **Tema scuro:** in stampa e in «Salva come PDF» i margini della pagina venivano neri, e il foglio sembrava senza margini. Ora la pagina è sempre bianca, margini compresi.
