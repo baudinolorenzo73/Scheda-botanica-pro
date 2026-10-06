@@ -199,8 +199,22 @@ await p2.getByLabel(/Stradale · salvato nel file/).check();await p2.mouse.move(
 await p2.screenshot({path:out+'/d1-pagina-html.png'});
 await p2.fill('#cerca','tilia');assert.equal(await p2.locator('article.scheda:visible').count(),1);assert.equal(await p2.locator('.leaflet-marker-icon').count(),1);
 await p2.fill('#cerca','');
-await p2.locator('.leaflet-marker-icon').first().click();await p2.getByRole('link',{name:'Vai alla scheda ↓'}).click();
+await p2.locator('.leaflet-marker-icon').first().click();
+const numMarc=(await p2.locator('.leaflet-popup-content b').textContent()).split(' · ')[0];
+await p2.getByRole('link',{name:'Apri la scheda →'}).click();
 await p2.waitForTimeout(500);await p2.screenshot({path:out+'/d2-pagina-scheda.png'});
+// la scheda si apre in una pagina propria: è proprio quella del numero toccato, le altre e la mappa sono nascoste
+assert.equal(await p2.locator('article.scheda:visible').count(),1);
+assert.equal((await p2.locator('article.scheda:visible .num').textContent()).trim(),numMarc);
+assert.equal(await p2.locator('#mappa').isVisible(),false);
+assert.equal(await p2.evaluate(()=>window.pageYOffset),0);
+assert.match(await p2.locator('#b-titolo').textContent(),/di 4/);
+await p2.click('#b-succ');await p2.waitForTimeout(200);
+assert.equal(await p2.locator('article.scheda:visible').count(),1);
+await p2.click('#b-mappa');await p2.waitForTimeout(400);
+assert.equal(await p2.locator('#mappa').isVisible(),true);assert.equal(await p2.locator('article.scheda:visible').count(),4);
+assert.equal(await p2.locator('.leaflet-marker-icon').count(),4);
+await p2.locator('.leaflet-marker-icon').first().click();await p2.getByRole('link',{name:'Apri la scheda →'}).click();await p2.waitForTimeout(300);
 assert.equal(await p2.locator('.galleria img').count(),1);assert.match(await p2.locator('.galleria img').getAttribute('src'),/^data:image\/(webp|jpeg)/);assert.deepEqual(e2,[]);
 ok('pagina HTML: mappa con 4 numeri, 4 schede, ricerca, popup → scheda, nessun errore ('+(html.length/1024|0)+' KB)');
 // ---- note: solo dell'utente (le righe automatiche PlantNet vengono tolte, anche dalle schede vecchie)

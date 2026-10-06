@@ -377,18 +377,26 @@ dt{color:var(--tenue);overflow-wrap:anywhere} dd{margin:0;min-width:0;text-align
 .azioni{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .azioni button,.azioni a{border:1px solid var(--linea);background:var(--carta);color:var(--ink);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
 .vuoto{color:var(--tenue);text-align:center;padding:20px}
+#barra{display:none;position:sticky;top:0;z-index:900;gap:8px;align-items:center;background:var(--carta);padding:8px 0 10px}
+#barra button{border:1px solid var(--linea);background:var(--foglio);color:var(--ink);border-radius:10px;padding:10px 14px;font:inherit;font-size:15px;cursor:pointer}
+#barra .titolo{flex:1;text-align:center;font-weight:600;color:var(--tenue);font-size:14px}
+body.dettaglio #barra{display:flex}
+body.dettaglio #mappa,body.dettaglio #nota-mappa,body.dettaglio #cerca,body.dettaglio .scheda{display:none!important}
+body.dettaglio .scheda.aperta{display:block!important}
+.testa.apribile{cursor:pointer}
 #zoom{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:2000}
 #zoom img{max-width:96vw;max-height:92vh}
 #zoom.aperto{display:flex}
 footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
 @page{size:A4;margin:15mm}
-@media print{#cerca,.azioni,#zoom{display:none!important}#mappa{height:150mm}.scheda{break-inside:auto;box-shadow:none}dl>*{break-inside:avoid}h3.sez{break-after:avoid}.galleria{grid-template-columns:repeat(3,1fr)}.galleria figure{break-inside:avoid}.galleria img{max-height:60mm;object-fit:contain}body{background:#fff}main{max-width:none;padding:6px 0}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{#cerca,.azioni,#zoom,#barra{display:none!important}#mappa{height:150mm}.scheda{break-inside:auto;box-shadow:none}dl>*{break-inside:avoid}h3.sez{break-after:avoid}.galleria{grid-template-columns:repeat(3,1fr)}.galleria figure{break-inside:avoid}.galleria img{max-height:60mm;object-fit:contain}body{background:#fff}main{max-width:none;padding:6px 0}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
 <header><h1></h1><p id="sotto"></p></header>
 <main>
   <div id="mappa" role="region" aria-label="Mappa delle schede"></div>
   <p class="nota" id="nota-mappa">Tocca un numero sulla mappa per aprire la scheda. Verde: scheda · rosso: problemi segnalati.</p>
   <input id="cerca" type="search" placeholder="Cerca per nome, numero o caratteristica…" aria-label="Cerca nelle schede">
+  <div id="barra"><button type="button" id="b-mappa">← Mappa</button><button type="button" id="b-prec" aria-label="Scheda precedente">‹</button><span class="titolo" id="b-titolo"></span><button type="button" id="b-succ" aria-label="Scheda successiva">›</button></div>
   <div id="elenco"></div>
 </main>
 <div id="zoom" role="dialog" aria-label="Foto ingrandita"><img alt=""></div>
@@ -473,6 +481,36 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
   var marcatori = {}, punti = [];
   var schede = {};
 
+  /* Una scheda alla volta in una pagina propria (il tasto Indietro del telefono torna alla mappa). */
+  var aperta = null, yMappa = 0, viaMappa = false;
+  function mostra(id) {
+    var x = schede[id]; if (!x) return;
+    if (!aperta) { yMappa = window.pageYOffset; viaMappa = true; }
+    if (aperta && schede[aperta]) schede[aperta].art.classList.remove('aperta');
+    aperta = id; x.art.classList.add('aperta'); document.body.classList.add('dettaglio');
+    var i = D.schede.indexOf(x.s);
+    document.getElementById('b-titolo').textContent = (x.s.prog ? 'N° ' + x.s.prog : '') + ' · ' + (i + 1) + ' di ' + D.schede.length;
+    window.scrollTo(0, 0);
+  }
+  function chiudi() {
+    if (!aperta) return;
+    schede[aperta].art.classList.remove('aperta'); aperta = null; document.body.classList.remove('dettaglio');
+    mappa.invalidateSize(); window.scrollTo(0, yMappa);
+  }
+  function apri(id) {
+    if (location.hash === '#scheda-' + id) { mostra(id); return; }
+    if (aperta) location.replace('#scheda-' + id); // precedente/successiva: una sola voce nella cronologia
+    else location.hash = '#scheda-' + id;
+  }
+  function daHash() {
+    var m = /^#scheda-(.+)$/.exec(decodeURIComponent(location.hash));
+    if (m && schede[m[1]]) mostra(m[1]); else chiudi();
+  }
+  function vicina(passo) {
+    var i = D.schede.indexOf(schede[aperta].s) + passo;
+    if (i >= 0 && i < D.schede.length) apri(D.schede[i].id);
+  }
+
   D.schede.forEach(function (s) {
     var art = el('article', 'scheda'); art.id = 's-' + s.id;
     var testa = el('div', 'testa');
@@ -481,6 +519,8 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
     nomi.appendChild(el('h2', null, s.nome || 'Esemplare senza nome'));
     nomi.appendChild(el('p', null, [s.data, s.gps ? '' : 'senza coordinate GPS'].filter(Boolean).join(' · ')));
     testa.appendChild(nomi); art.appendChild(testa);
+    testa.classList.add('apribile'); testa.title = 'Apri la scheda in una pagina';
+    testa.onclick = function () { apri(s.id); };
     if (s.foto.length) {
       var gal = el('div', 'galleria');
       s.foto.forEach(function (f, i) {
@@ -505,6 +545,7 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
       var vai = el('button', null, '📍 Mostra sulla mappa');
       vai.type = 'button';
       vai.onclick = function () {
+        chiudi();
         mappa.setView([s.gps.lat, s.gps.lng], 18);
         marcatori[s.id].openPopup();
         document.getElementById('mappa').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -535,12 +576,8 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
       pop.appendChild(el('b', null, (s.prog ? s.prog + ' · ' : '') + (s.nome || 'Esemplare senza nome')));
       if (s.data) { pop.appendChild(el('br')); pop.appendChild(document.createTextNode(s.data)); }
       pop.appendChild(el('br'));
-      var link = el('a', null, 'Vai alla scheda ↓'); link.href = '#s-' + s.id;
-      link.onclick = function (e) {
-        e.preventDefault();
-        art.scrollIntoView({ behavior: 'smooth' });
-        art.classList.add('evidenza'); setTimeout(function () { art.classList.remove('evidenza'); }, 2000);
-      };
+      var link = el('a', null, 'Apri la scheda →'); link.href = '#scheda-' + s.id;
+      link.onclick = function (e) { e.preventDefault(); apri(s.id); };
       pop.appendChild(link);
       m.bindPopup(pop);
       marcatori[s.id] = m; punti.push([s.gps.lat, s.gps.lng]);
@@ -559,6 +596,11 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
     });
   });
   document.getElementById('zoom').onclick = function () { this.classList.remove('aperto'); };
+  document.getElementById('b-mappa').onclick = function () { if (viaMappa) { viaMappa = false; history.back(); } else location.hash = ''; };
+  document.getElementById('b-prec').onclick = function () { vicina(-1); };
+  document.getElementById('b-succ').onclick = function () { vicina(1); };
+  window.addEventListener('hashchange', daHash);
+  daHash();
 })();
 </script>
 </body></html>`;

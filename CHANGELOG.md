@@ -2,6 +2,15 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.36.1 · pagina HTML: ogni scheda in una pagina propria
+
+- **Corretto:** nella pagina HTML mappa + schede, toccando il numero 13 e «Vai alla scheda» si finiva sulla scheda 11: lo scorrimento lungo la pagina veniva falsato dalle foto che si caricavano nel frattempo.
+- Ora «Apri la scheda →» (e un tocco sull'intestazione di una scheda nell'elenco) apre **solo quella scheda in una pagina propria**, in cima. In alto: **← Mappa**, **‹** precedente e **›** successiva, con la posizione (es. «N° 13 · 13 di 13»).
+- Il tasto **Indietro** del telefono torna alla mappa, nello stesso punto di prima.
+- «📍 Mostra sulla mappa» dentro la scheda chiude la pagina e centra la mappa sul punto.
+
+---
+
 ## 3.36.0 · nome modificabile nel catalogo
 
 - Nel **Catalogo delle piante** (Configurazione → Completa catalogo) ogni pianta ha ora il campo **«Nome scientifico»** modificabile, per correggere nomi incompleti come «Platanus x» → «Platanus x acerifolia».
