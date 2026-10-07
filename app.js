@@ -49,6 +49,19 @@ function identPlantNetValido(v) {
     conf: Number.isFinite(conf) ? Math.max(0, Math.min(100, Math.round(conf))) : null, quando: typeof v.quando === 'string' ? v.quando.slice(0, 40) : '' };
 }
 
+// Dalla 3.41 le foglie seguono la tabella «Caratteristiche distintive»: gli aghi sono una
+// forma della lamina e le squame un tipo di foglia. Le schede salvate prima si adeguano;
+// altri valori non più in elenco (es. «digitata», «lobato») restano come sono.
+function migraClassificazioneFoglie(v) {
+  const t = String(v.tipoFoglia ?? '').trim().toLowerCase(), l = String(v.lamina ?? '').trim().toLowerCase();
+  if (t !== 'aghiforme' && t !== 'squamiforme' && l !== 'squamiforme') return v;
+  const m = { ...v };
+  if (t === 'aghiforme') { m.tipoFoglia = 'semplice'; if (!l) m.lamina = 'aghiforme'; }
+  if (t === 'squamiforme') m.tipoFoglia = 'a squame';
+  if (l === 'squamiforme') { m.lamina = ''; if (!t) m.tipoFoglia = 'a squame'; }
+  return m;
+}
+
 // Rende compatibile un record di qualsiasi versione (vecchia app inclusa).
 // Restituisce { record, fotoDaSalvare: [{id, dataUrl}], audioDaSalvare: [{id, dataUrl}] }
 function normalizza(v) {
@@ -62,6 +75,7 @@ function normalizza(v) {
   r.gbifId = /^\d+$/.test(String(v.gbifId ?? '')) ? String(v.gbifId) : '';             // ID GBIF della specie, se identificata con PlantNet
   r.plantnetNome = typeof v.plantnetNome === 'string' ? v.plantnetNome.slice(0, 180) : '';
   r.bozzaVuota = v.bozzaVuota === true;
+  v = migraClassificazioneFoglie(v);
   for (const c of CAMPI) {
     let val = v[c.k] === undefined || v[c.k] === null ? '' : String(v[c.k]).trim();
     if (c.tipo === 'numero') {
@@ -700,7 +714,8 @@ function stimaAlbero(r) {
   const circ = parseFloat(r.circonferenza);
   if (circ > 0) {
     const dbh = circ / Math.PI; // diametro del tronco a 1,30 m, in cm
-    const conifera = ['aghiforme', 'squamiforme'].includes((r.tipoFoglia || '').toLowerCase());
+    const conifera = (r.tipoFoglia || '').toLowerCase() === 'a squame' || (r.lamina || '').toLowerCase() === 'aghiforme' ||
+      ['aghiforme', 'squamiforme'].includes((r.tipoFoglia || '').toLowerCase());   // gli ultimi due: schede salvate prima della 3.41
     // Jenkins et al. 2003 (USDA), gruppi "pine" e "mixed hardwood": biomassa secca fuori terra in kg, Ø in cm
     const biomassaFuoriTerra = conifera ? Math.exp(-2.5356 + 2.4349 * Math.log(dbh)) : Math.exp(-2.4800 + 2.4835 * Math.log(dbh));
     const biomassaTotale = biomassaFuoriTerra * 1.26; // + apparato radicale (rapporto tipico radici/fusto)

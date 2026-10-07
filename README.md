@@ -2,7 +2,7 @@
 
 App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
 
-**by Lollo ®2026 — versione 3.40.0**
+**by Lollo ®2026 — versione 3.41.0**
 
 [Novità e storico delle versioni](CHANGELOG.md) · [Guida all’AI e alle chiavi](ASSISTENTE-AI.md)
 
@@ -25,7 +25,7 @@ Una volta installata si apre a schermo intero come un'app normale, con la sua ic
 
 ## ✨ Funzionalità principali
 
-- **Schede albero complete**: dati dendrometrici, botanici, pedologici e fitopatologici, con campi a scelta illustrata (icona + spiegazione per ogni valore) e campi che si adattano da soli — per esempio se scegli una foglia **aghiforme**, i campi lamina e margine non richiesti spariscono automaticamente.
+- **Schede albero complete**: dati dendrometrici, botanici, pedologici e fitopatologici, con campi a scelta illustrata (icona + spiegazione per ogni valore) e campi che si adattano da soli — per esempio se scegli una lamina **aghiforme** o una foglia **a squame**, i campi non pertinenti spariscono automaticamente. Le foglie seguono la tabella «Caratteristiche distintive» (tipo, lamina, margine).
 - **Foto** (compresse in automatico) e **note vocali** direttamente sulla scheda.
 - **GPS** con affinamento della precisione sotto la chioma.
 - **Stima ambientale**: volume della chioma, ombra proiettata, CO₂ stoccata.

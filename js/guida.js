@@ -22,6 +22,11 @@ const GS_CHIP_ETICHETTA = {
 
 // Corrispondenza tra i campi illustrati della scheda e i campi strutturati
 // del catalogo (che usano nomi diversi in alcuni casi).
+// Il catalogo del corso usa «spinoso» dove la scheda ha «dentato-spinoso».
+const GS_ALIAS_VALORE = { margine: { spinoso: 'dentato-spinoso' } };
+function valoreGuidaPerScheda(campoScheda, valore) {
+  return GS_ALIAS_VALORE[campoScheda]?.[String(valore || '').toLowerCase()] || valore;
+}
 const GS_CAMPO_GUIDA = { formaChioma: 'chiomaForma', rami: 'ramiInserzione', tipoFoglia: 'fogliaTipo', fogliaComposta: 'fogliaComposta', lamina: 'fogliaLamina', margine: 'fogliaMargine', crescita: 'crescita', estensione: 'estensione' };
 
 // La guida inclusa resta la fonte originale. Le integrazioni per dispositivo
@@ -563,11 +568,13 @@ const GS_PAROLE_CHIAVE = {
     colonnare: ['colonnar', 'fastigiat'], 'a ombrello': ['ombrell'], piangente: ['piangent'],
   },
   rami: { opposti: ['oppost'], alterni: ['altern'], verticillati: ['verticill'] },
-  tipoFoglia: { aghiforme: ['aghiform', 'aghi'], semplice: ['semplice'], composta: ['compost'], squamiforme: ['squam'] },
+  tipoFoglia: { semplice: ['semplice'], composta: ['compost'], 'a squame': ['squam'] },
   // " paripennat" con lo spazio: senza, la parola si troverebbe anche dentro «imparipennata».
-  fogliaComposta: { imparipennata: ['imparipennat'], paripennata: [' paripennat', '(paripennat'], bipennata: ['bipennat'], digitata: ['digitat', 'palmato-compost'] },
-  lamina: { ovata: ['ovat'], lanceolata: ['lanceolat'], ellittica: ['ellittic'], aghiforme: ['aghiform'], squamiforme: ['squam'], palmata: ['palmat'] },
-  margine: { intero: ['margine inter'], seghettato: ['seghettat'], dentato: ['dentat'], lobato: ['lobat'], ondulato: ['ondulat'] },
+  fogliaComposta: { imparipennata: ['imparipennat'], paripennata: [' paripennat', '(paripennat'], bipennata: ['bipennat'] },
+  // «ovata» con lo spazio/parentesi davanti: senza, si troverebbe anche dentro «obovata».
+  lamina: { rotonda: ['rotond'], lobata: ['lobat'], ovata: [' ovata', '(ovata', '/ovata', ' ovato'], obovata: ['obovat'], ellittica: ['ellittic'], lanceolata: ['lanceolat'],
+    romboidale: ['romboidal'], palmata: ['palmata'], 'palmato-lobata': ['palmato-lobat', 'palmato lobat'], flabello: ['flabell'], aghiforme: ['aghiform'] },
+  margine: { intero: ['margine inter'], dentato: ['dentat'], ondulato: ['ondulat'], seghettato: ['seghettat'], roncinato: ['roncinat'], crenato: ['crenat'], 'dentato-spinoso': ['dentato-spinos', 'spinos'] },
 };
 
 // Restituisce 'dato' (corrisponde un campo strutturato del catalogo),
@@ -579,7 +586,7 @@ function corrispondeCaratteristica(v, campo, valore) {
     if ((valore === 'caduca' || valore === 'semicaduca') && t === 'caducifoglia') return 'dato';
   } else {
     const campoGuida = GS_CAMPO_GUIDA[campo];
-    if (campoGuida && v[campoGuida] && v[campoGuida].toLowerCase() === valore.toLowerCase()) return 'dato';
+    if (campoGuida && v[campoGuida] && valoreGuidaPerScheda(campo, v[campoGuida]).toLowerCase() === valore.toLowerCase()) return 'dato';
   }
   const parole = (GS_PAROLE_CHIAVE[campo] && GS_PAROLE_CHIAVE[campo][valore]) || [];
   const nota = `${v.note || ''} ${v.noteExtra || ''}`.toLowerCase();
@@ -1197,7 +1204,7 @@ function trovaSpecieGuida(nomeSci) {
 
 function conflittiConGuida(r, specie) {
   const attesi = { persistenza: GS_MAPPA_TIPOLOGIA[specie.tipologia], grandezza: specie.grandezza };
-  for (const [scheda, guida] of Object.entries(GS_CAMPO_GUIDA)) attesi[scheda] = specie[guida];
+  for (const [scheda, guida] of Object.entries(GS_CAMPO_GUIDA)) attesi[scheda] = valoreGuidaPerScheda(scheda, specie[guida]);
   const conflitti = Object.entries(attesi).filter(([k, valore]) => valore && r[k] && r[k] !== valore)
     .map(([k, valore]) => `${CAMPI.find(c => c.k === k)?.label || k}: ${r[k]} / guida ${valore}`);
   for (const dip of DIPENDENZE_CAMPI) {
@@ -1284,12 +1291,13 @@ function compilaCampiDaGuidaSpecie(r, specie) {
   }
   for (const [campoScheda, campoGuida] of Object.entries(GS_CAMPO_GUIDA)) {
     if (r[campoScheda] || !specie[campoGuida]) continue;
+    const valoreGuida = valoreGuidaPerScheda(campoScheda, specie[campoGuida]);
     // La ricerca non deve cancellare o nascondere osservazioni già inserite.
-    if (DIPENDENZE_CAMPI.some(dip => (dip.se === campoScheda && dipendenzaAttiva(dip, specie[campoGuida]) && dip.nascondi.some(k => r[k])) ||
+    if (DIPENDENZE_CAMPI.some(dip => (dip.se === campoScheda && dipendenzaAttiva(dip, valoreGuida) && dip.nascondi.some(k => r[k])) ||
         (dip.nascondi.includes(campoScheda) && dipendenzaAttiva(dip, r[dip.se])))) continue;
     const valori = CAMPI.find((c) => c.k === campoScheda)?.valori || [];
-    if (valori.includes(specie[campoGuida])) {
-      r[campoScheda] = specie[campoGuida];
+    if (valori.includes(valoreGuida)) {
+      r[campoScheda] = valoreGuida;
       compilati.push(campoScheda);
     }
   }

@@ -398,6 +398,7 @@ function flussoApplicazione() {
       aggiornaBottoneIllustrato() {}, $: () => null });
     const config = fs.readFileSync(path.join(root, 'js/config.js'), 'utf8');
     vm.runInContext(config.slice(config.indexOf('function dipendenzaAttiva('), config.indexOf('function campoPertinente(')), c);
+    vm.runInContext(estrai('const GS_ALIAS_VALORE', 'const GS_CAMPO_GUIDA'), c);
     vm.runInContext(estrai('function conflittiConGuida(', 'function mostraConflittiNome(') +
       estrai('function compilaCampiDaGuidaSpecie(', '/* =====================================================================\n   7f.'), c);
     c.specie = { fogliaTipo: 'aghiforme' };

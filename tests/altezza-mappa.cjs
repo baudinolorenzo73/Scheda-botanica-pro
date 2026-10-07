@@ -99,6 +99,27 @@ assert.equal(await p.evaluate(()=>campoPertinente(S.aperta,'fogliaComposta')),tr
 ok('foglia composta: visibile solo con «composta», svuotata cambiando tipo');
 
 // guida: Fraxinus excelsior compila anche la foglia composta su scheda vuota
+// ---- 3.41: classificazione delle foglie come nella tabella «Caratteristiche distintive»
+const fo=await p.evaluate(()=>{const val=k=>CAMPI.find(c=>c.k===k).valori;
+ const n=v=>normalizza(v).record;
+ const a=n({tipoFoglia:'aghiforme'}),s=n({tipoFoglia:'squamiforme'}),l=n({lamina:'squamiforme'}),d=n({fogliaComposta:'digitata'});
+ const conif=r=>{r.circonferenza='60';r.altezza='10';return stimaAlbero(r).metodoCo2.includes('conifere');};
+ return {tipo:val('tipoFoglia'),lam:val('lamina'),mar:val('margine'),comp:val('fogliaComposta'),
+  a:[a.tipoFoglia,a.lamina],s:s.tipoFoglia,l:[l.tipoFoglia,l.lamina],d:d.fogliaComposta,
+  conifAghi:conif(n({lamina:'aghiforme'})),conifSquame:conif(n({tipoFoglia:'a squame'})),lat:conif(n({tipoFoglia:'semplice',lamina:'ovata'})),
+  spinoso:valoreGuidaPerScheda('margine','spinoso'),
+  hideSq:!campoPertinente({tipoFoglia:'a squame'},'lamina'),hideAghi:!campoPertinente({lamina:'aghiforme'},'margine'),okLam:campoPertinente({lamina:'ovata'},'margine'),
+  ico:['tipoFoglia','lamina','margine','fogliaComposta'].every(k=>CAMPI.find(c=>c.k===k).valori.every(v=>ICONE[k][v]&&DEFINIZIONI[k][v]))};});
+assert.deepEqual(fo.tipo,['semplice','composta','a squame']);
+assert.deepEqual(fo.lam,['rotonda','lobata','ovata','obovata','ellittica','lanceolata','romboidale','palmata','palmato-lobata','flabello','aghiforme']);
+assert.deepEqual(fo.mar,['intero','dentato','ondulato','seghettato','roncinato','crenato','dentato-spinoso']);
+assert.deepEqual(fo.comp,['imparipennata','paripennata','bipennata']);
+assert.deepEqual(fo.a,['semplice','aghiforme']);assert.equal(fo.s,'a squame');assert.deepEqual(fo.l,['a squame','']);
+assert.equal(fo.d,'digitata','valore non più in elenco: conservato');
+assert(fo.conifAghi&&fo.conifSquame&&!fo.lat,JSON.stringify(fo));
+assert.equal(fo.spinoso,'dentato-spinoso');assert(fo.hideSq&&fo.hideAghi&&fo.okLam,JSON.stringify(fo));
+assert(fo.ico,'ogni valore ha icona e spiegazione');
+ok('foglie: tipo, lamina e margine come nella tabella; schede vecchie adeguate; icone per ogni valore');
 const comp=await p.evaluate(()=>{const r={};const sp=GUIDA_SPECIE.find(v=>v.nomeSci==='Fraxinus excelsior');const c=compilaCampiDaGuidaSpecie(r,sp);return [c,r.tipoFoglia,r.fogliaComposta];});
 assert(comp[0].includes('fogliaComposta')&&comp[1]==='composta'&&comp[2]==='imparipennata',JSON.stringify(comp));
 const pun=await p.evaluate(()=>{const sp=GUIDA_SPECIE.find(v=>v.nomeSci==='Fraxinus excelsior');return [corrispondeCaratteristica(sp,'fogliaComposta','imparipennata'),corrispondeCaratteristica(sp,'fogliaComposta','paripennata')];});

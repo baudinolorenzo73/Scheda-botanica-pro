@@ -36,11 +36,11 @@ const CAMPI = [
   { k: 'rami',          sez: 'oss', label: 'Rami secondari',              tipo: 'illustrata', valori: ['opposti', 'alterni', 'verticillati'] },
   { k: 'crescita',      sez: 'oss', label: 'Tipo di crescita',            tipo: 'illustrata', valori: ['monopodiale', 'simpodiale'] },
   { k: 'estensione',    sez: 'oss', label: 'Tipologia di estensione (gemme)', tipo: 'illustrata', etichettaStampa: 'Estensione (gemme)', valori: ['1 – monociclica', '2 – policiclica (olmo)', '3 – continua'] },
-  { k: 'tipoFoglia',    sez: 'veg', label: 'Tipo di foglia',              tipo: 'illustrata', valori: ['aghiforme', 'semplice', 'composta', 'squamiforme'] },
-  { k: 'fogliaComposta', sez: 'veg', label: 'Tipo di foglia composta',     tipo: 'illustrata', etichettaStampa: 'Foglia composta', valori: ['imparipennata', 'paripennata', 'bipennata', 'digitata'],
+  { k: 'tipoFoglia',    sez: 'veg', label: 'Tipo di foglia',              tipo: 'illustrata', valori: ['semplice', 'composta', 'a squame'] },
+  { k: 'fogliaComposta', sez: 'veg', label: 'Tipo di foglia composta',     tipo: 'illustrata', etichettaStampa: 'Foglia composta', valori: ['imparipennata', 'paripennata', 'bipennata'],
     aiuto: 'Compare solo se il tipo di foglia è «composta». Conta le foglioline: c’è una fogliolina singola in punta (imparipennata) oppure solo coppie (paripennata)?' },
-  { k: 'lamina',        sez: 'veg', label: 'Forma della lamina',          tipo: 'illustrata', etichettaStampa: 'Forma lamina', valori: ['ovata', 'lanceolata', 'ellittica', 'aghiforme', 'squamiforme', 'palmata'] },
-  { k: 'margine',       sez: 'veg', label: 'Margine fogliare',            tipo: 'illustrata', valori: ['intero', 'seghettato', 'dentato', 'lobato', 'ondulato'] },
+  { k: 'lamina',        sez: 'veg', label: 'Forma della lamina',          tipo: 'illustrata', etichettaStampa: 'Forma lamina', valori: ['rotonda', 'lobata', 'ovata', 'obovata', 'ellittica', 'lanceolata', 'romboidale', 'palmata', 'palmato-lobata', 'flabello', 'aghiforme'] },
+  { k: 'margine',       sez: 'veg', label: 'Margine fogliare',            tipo: 'illustrata', valori: ['intero', 'dentato', 'ondulato', 'seghettato', 'roncinato', 'crenato', 'dentato-spinoso'] },
   { k: 'terreno',       sez: 'ped', label: 'Condizioni del terreno',      tipo: 'lista', largo: true, etichettaStampa: 'Terreno', valori: ['prato coltivato', 'prato non concimato', 'aiuola', 'terreno compatto', 'terreno drenato', 'pacciamato'] },
   { k: 'problemi',      sez: 'fit', label: 'Problemi tronco / foglie',    tipo: 'area', largo: true, etichettaStampa: 'Problemi' },
   { k: 'note',          sez: 'not', label: 'Altro notato',                tipo: 'area', largo: true, etichettaStampa: 'Note' },
@@ -52,7 +52,8 @@ const CAMPI = [
 // Con "tranne" la regola vale per tutti i valori diversi da quello indicato
 // (anche il campo vuoto): il campo compare SOLO per quel valore.
 const DIPENDENZE_CAMPI = [
-  { se: 'tipoFoglia', valore: 'aghiforme', nascondi: ['lamina', 'margine'] },
+  { se: 'tipoFoglia', valore: 'a squame', nascondi: ['lamina', 'margine'] },
+  { se: 'lamina', valore: 'aghiforme', nascondi: ['margine'] },
   { se: 'tipoFoglia', tranne: 'composta', nascondi: ['fogliaComposta'] },
 ];
 
@@ -69,7 +70,7 @@ function campoPertinente(r, k) {
 }
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.40.0';
+const APP_VERSIONE = '3.41.0';
 const DB_VERSIONE = 5;        // v5: integrazioni personali della guida specie
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG

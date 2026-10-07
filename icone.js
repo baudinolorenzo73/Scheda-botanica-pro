@@ -66,28 +66,39 @@ ICONE.crescita = {
 };
 
 // ================= TIPO DI FOGLIA =================
+const ICONA_AGHI = '<line x1="16" y1="46" x2="44" y2="14" stroke-width="2.2"/><line x1="22" y1="46" x2="50" y2="14" stroke-width="2.2"/><line x1="10" y1="46" x2="38" y2="14" stroke-width="2.2"/>';
 ICONE.tipoFoglia = {
-  aghiforme: '<line x1="16" y1="46" x2="44" y2="14" stroke-width="2.2"/><line x1="22" y1="46" x2="50" y2="14" stroke-width="2.2"/><line x1="10" y1="46" x2="38" y2="14" stroke-width="2.2"/>',
   semplice: foglia(30, 28, 34, 15, true, true) + '<line x1="30" y1="45" x2="30" y2="54" stroke-width="2"/>',
   composta: '<line x1="12" y1="50" x2="48" y2="12" stroke-width="2.2"/>' +
     [ [16,44],[24,36],[32,28],[40,20] ].map(([x,y],i)=>`<g transform="rotate(${i%2?18:-18} ${x} ${y})">${foglia(x,y,13,6,true,true)}</g>`).join(''),
-  squamiforme: '<line x1="30" y1="10" x2="30" y2="54" stroke-width="2.5"/>' +
+  'a squame': '<line x1="30" y1="10" x2="30" y2="54" stroke-width="2.5"/>' +
     [14,22,30,38].map((y,i)=>`<path d="M${16-(i%2?3:0)} ${y} L30 ${y-7} L${44-(i%2?0:3)} ${y} L30 ${y+7} Z" stroke-width="1.6" fill="currentColor" fill-opacity=".15"/>`).join(''),
 };
 
 // ================= FORMA DELLA LAMINA =================
+// metà destra di una foglia con lobi arrotondati (la sinistra è lo specchio)
+function lobiSpecchiati(d) {
+  return `<path d="${d}" stroke-width="2.2" fill="currentColor" fill-opacity=".18"/>` +
+    `<path d="${d}" stroke-width="2.2" fill="currentColor" fill-opacity=".18" transform="translate(60 0) scale(-1 1)"/>`;
+}
 ICONE.lamina = {
+  rotonda: '<circle cx="30" cy="27" r="19" stroke-width="2.5" fill="currentColor" fill-opacity=".18"/><line x1="30" y1="10" x2="30" y2="46" stroke-width="1.3"/><line x1="30" y1="46" x2="30" y2="56" stroke-width="2"/>',
+  lobata: lobiSpecchiati('M30 5 Q39 5 39 13 Q47 13 44 21 Q53 24 46 32 Q50 40 40 40 Q40 48 30 53 L30 5 Z') + '<line x1="30" y1="7" x2="30" y2="54" stroke-width="1.3"/>',
   ovata: foglia(30, 30, 38, 16, true, true),
-  lanceolata: foglia(30, 30, 44, 8, true, true),
+  obovata: `<g transform="rotate(180 30 30)">${foglia(30, 30, 38, 16, true, true)}</g>`,
   ellittica: '<path d="M30 6 C46 6 46 54 30 54 C14 54 14 6 30 6 Z" stroke-width="2.5" fill="currentColor" fill-opacity=".18"/><line x1="30" y1="8" x2="30" y2="52" stroke-width="1.3"/>',
-  aghiforme: ICONE.tipoFoglia.aghiforme,
-  squamiforme: ICONE.tipoFoglia.squamiforme,
+  lanceolata: foglia(30, 30, 44, 8, true, true),
+  romboidale: '<path d="M30 6 L51 30 L30 54 L9 30 Z" stroke-width="2.5" fill="currentColor" fill-opacity=".18"/><line x1="30" y1="8" x2="30" y2="52" stroke-width="1.3"/>',
   palmata: '<line x1="30" y1="30" x2="30" y2="54" stroke-width="2"/>' +
-    [ [30,-90],[15,-45],[45,45],[0,-20],[60,20] ].map(([ang])=>'').join('') +
     [-70,-35,0,35,70].map((ang)=>{
       const rad = ang*Math.PI/180, x2=30+Math.sin(rad)*24, y2=30-Math.cos(rad)*24-6;
       return `<g><path d="M30 30 Q${30+Math.sin(rad)*10} ${30-Math.cos(rad)*10-3} ${x2} ${y2} Q${30+Math.sin(rad)*10} ${30-Math.cos(rad)*10+3} 30 30 Z" stroke-width="1.6" fill="currentColor" fill-opacity=".18"/></g>`;
     }).join(''),
+  'palmato-lobata': '<path d="M30 52 L9 36 Q3 28 12 25 Q7 15 18 15 Q19 6 30 8 Q41 6 42 15 Q53 15 48 25 Q57 28 51 36 Z" stroke-width="2.2" fill="currentColor" fill-opacity=".18"/>' +
+    '<path d="M30 52 L12 27 M30 52 L19 16 M30 52 L30 9 M30 52 L41 16 M30 52 L48 27" stroke-width="1.2" fill="none"/><line x1="30" y1="52" x2="30" y2="58" stroke-width="2"/>',
+  flabello: '<path d="M30 54 L22 31 Q9 28 7 14 Q30 3 53 14 Q51 28 38 31 Z" stroke-width="2.3" fill="currentColor" fill-opacity=".18"/>' +
+    '<path d="M30 54 L12 18 M30 54 L21 11 M30 54 L39 11 M30 54 L48 18" stroke-width="1.1" fill="none"/><path d="M30 6 L30 17" stroke-width="1.6"/>',
+  aghiforme: ICONA_AGHI,
 };
 
 // ================= MARGINE FOGLIARE =================
@@ -97,14 +108,19 @@ function bordo(genera) {
 }
 ICONE.margine = {
   intero: bordo(() => 'M6 24 Q30 12 54 24'),
-  seghettato: bordo(() => {
-    let d = 'M6 26'; for (let x = 6; x < 54; x += 8) d += ` L${x+4} 14 L${x+8} 26`; return d;
-  }),
   dentato: bordo(() => {
     let d = 'M6 26'; for (let x = 6; x < 54; x += 10) d += ` L${x+5} 15 L${x+10} 26`; return d;
   }),
-  lobato: bordo(() => 'M6 26 Q11 10 18 26 Q23 10 30 26 Q37 10 42 26 Q49 10 54 24'),
   ondulato: bordo(() => 'M6 22 Q14 14 22 22 Q30 30 38 22 Q46 14 54 22'),
+  seghettato: bordo(() => {
+    let d = 'M6 26'; for (let x = 6; x < 54; x += 8) d += ` L${x+4} 14 L${x+8} 26`; return d;
+  }),
+  roncinato: bordo(() => 'M6 26 L9 10 L22 24 L25 10 L38 24 L41 10 L54 24'),
+  crenato: bordo(() => {
+    let d = 'M6 26'; for (let x = 6; x < 54; x += 8) d += ` Q${x+4} 14 ${x+8} 26`; return d;
+  }),
+  'dentato-spinoso': bordo(() => 'M6 26 Q12 18 18 26 Q24 18 30 26 Q36 18 42 26 Q48 18 54 26') +
+    '<path d="M12 21 L10 9 M24 21 L26 9 M36 21 L34 9 M48 21 L50 9" stroke-width="1.8" fill="none"/>',
 };
 
 /* =====================================================================
@@ -142,25 +158,31 @@ const DEFINIZIONI = {
     simpodiale: 'L’apice si ferma o si danneggia e un ramo laterale ne prende il posto, ripetutamente: il fusto risulta come una serie di segmenti (es. tiglio, molte latifoglie).',
   },
   tipoFoglia: {
-    aghiforme: 'Sottile e allungata come un ago, tipica delle conifere (es. pino, abete).',
-    semplice: 'Un’unica lamina intera attaccata al rametto da un solo picciolo (es. faggio, magnolia).',
-    composta: 'La foglia è divisa in più foglioline (foglioline) disposte lungo un asse centrale comune (es. frassino, robinia, noce).',
-    squamiforme: 'Ridotta a piccole squame embricate che avvolgono il rametto, quasi senza lamina visibile (es. cipresso, tuia).',
+    semplice: 'Un’unica lamina intera attaccata al rametto da un solo picciolo (es. faggio, magnolia). Gli aghi delle conifere sono foglie semplici: si indicano come lamina «aghiforme».',
+    composta: 'La foglia è divisa in più foglioline disposte lungo un asse centrale comune (es. frassino, robinia, noce).',
+    'a squame': 'Ridotta a piccole squame embricate che avvolgono il rametto, quasi senza lamina visibile (es. cipresso, tuia).',
   },
   lamina: {
+    rotonda: 'Contorno tondeggiante, largo quanto lungo (es. cercis, pioppo tremulo).',
+    lobata: 'Il bordo forma grandi rientranze arrotondate o appuntite, i lobi, che non arrivano alla nervatura centrale (es. quercia).',
     ovata: 'A forma di uovo, più larga verso la base e ristretta verso la punta (es. pero, tiglio).',
-    lanceolata: 'Lunga e stretta, appuntita a entrambe le estremità come la punta di una lancia (es. salice, oleandro).',
+    obovata: 'A uovo rovesciato: più larga verso la punta e ristretta verso la base.',
     ellittica: 'Simmetrica, più larga esattamente al centro e ristretta in modo uguale ai due estremi (es. carpino).',
+    lanceolata: 'Lunga e stretta, appuntita a entrambe le estremità come la punta di una lancia (es. salice, oleandro).',
+    romboidale: 'A losanga: larga al centro e appuntita sia alla base sia alla punta, con angoli marcati (es. pioppo nero).',
+    palmata: 'Diversi lobi appuntiti si irradiano da un unico punto, come le dita di una mano (es. acero campestre).',
+    'palmato-lobata': 'Lamina ampia con più lobi che partono a ventaglio dalla base e hanno le nervature principali che si irradiano da un punto (es. platano, acero montano).',
+    flabello: 'A ventaglio: larga e arrotondata in alto, ristretta verso il picciolo, con nervature parallele che si aprono a raggiera (es. ginkgo).',
     aghiforme: 'Sottile e allungata come un ago, tipica delle conifere (es. pino, abete).',
-    squamiforme: 'Ridotta a piccole squame che avvolgono il rametto (es. cipresso, tuia).',
-    palmata: 'Diversi lobi appuntiti si irradiano da un unico punto, come le dita di una mano (es. acero, platano).',
   },
   margine: {
     intero: 'Bordo liscio e continuo, senza denti né incisioni (es. alloro, magnolia).',
-    seghettato: 'Denti piccoli e appuntiti, tutti inclinati nella stessa direzione come i denti di una sega (es. ciliegio).',
-    dentato: 'Denti appuntiti ma simmetrici, senza inclinazione verso un lato (es. castagno).',
-    lobato: 'Il bordo forma grandi rientranze arrotondate o appuntite, i lobi (es. quercia, acero).',
+    dentato: 'Denti triangolari e simmetrici, perpendicolari al bordo, senza inclinazione verso un lato (es. castagno).',
     ondulato: 'Il bordo ondeggia dolcemente in su e in giù, senza denti veri e propri (es. faggio giovane, leccio).',
+    seghettato: 'Denti piccoli e appuntiti, tutti inclinati nella stessa direzione come i denti di una sega (es. ciliegio, olmo).',
+    roncinato: 'Incisioni profonde con lobi appuntiti rivolti verso la base della foglia,, come nel dente di leone.',
+    crenato: 'Piccoli denti arrotondati, come una festonatura (es. edera terrestre).',
+    'dentato-spinoso': 'Denti che terminano in una spina rigida e pungente (es. agrifoglio, alcuni lecci).',
   },
 };
 ICONE.estensione = {
@@ -200,16 +222,9 @@ ICONE.fogliaComposta = {
         punti.map(([px, py]) => `<ellipse cx="${px}" cy="${py - 3}" rx="1.6" ry="2.6" stroke-width="1.2" fill="currentColor" fill-opacity=".25"/>` +
           `<ellipse cx="${px}" cy="${py + 3}" rx="1.6" ry="2.6" stroke-width="1.2" fill="currentColor" fill-opacity=".25"/>`).join('');
     }).join(''),
-  digitata: '<line x1="30" y1="57" x2="30" y2="34" stroke-width="2.2"/>' +
-    [-72, -36, 0, 36, 72].map((ang) => {
-      const rad = ang * Math.PI / 180, l = ang === 0 ? 26 : 22;
-      const cx = 30 + Math.sin(rad) * (l / 2 + 1), cy = 34 - Math.cos(rad) * (l / 2 + 1);
-      return `<g transform="rotate(${ang} ${cx} ${cy})">${foglia(cx, cy, l, 5, true, true)}</g>`;
-    }).join(''),
 };
 DEFINIZIONI.fogliaComposta = {
   imparipennata: 'Foglioline a coppie lungo l’asse e una fogliolina singola in punta: in tutto sono in numero dispari (es. frassino, noce, sorbo degli uccellatori, robinia).',
   paripennata: 'Foglioline solo a coppie, senza la fogliolina singola in punta: in tutto sono in numero pari (es. carrubo).',
   bipennata: 'Composta due volte: dall’asse principale partono assi secondari, ognuno con le sue piccole foglioline (es. albizia, gleditsia).',
-  digitata: 'Tutte le foglioline partono dallo stesso punto in cima al picciolo, aperte come le dita di una mano (es. ippocastano).',
 };

@@ -2,6 +2,19 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.41.0 · foglie come nella tabella «Caratteristiche distintive»
+
+- **Tipo di foglia**: semplice · composta · a squame. Gli aghi non sono più un tipo: sono una forma della lamina.
+- **Foglia composta**: imparipennata · paripennata · bipennata.
+- **Forma della lamina**: rotonda · lobata · ovata · obovata · ellittica · lanceolata · romboidale · palmata · palmato-lobata · flabello · aghiforme.
+- **Margine**: intero · dentato · ondulato · seghettato · roncinato · crenato · dentato-spinoso.
+- Non inseriti, come richiesto: inserzione, base, apice.
+- Nuove icone e spiegazioni per tutti i valori. Con foglie «a squame» spariscono lamina e margine; con lamina «aghiforme» sparisce il margine.
+- Le schede salvate prima si adeguano da sole (aghiforme → semplice + lamina aghiforme; squamiforme → a squame). I valori non più in elenco, come «digitata» o «lobato», restano come li avevi scritti.
+- Catalogo delle 144 specie: i dati non sono stati toccati; ora trovano corrispondenza anche lobata, rotonda, romboidale, flabello e «spinoso» (= dentato-spinoso). Ricerca per caratteristiche e compilazione automatica usano i nuovi valori.
+
+---
+
 ## 3.40.0 · testo «Altro» nella prima pagina della stampa
 
 - Nella finestra di stampa delle schede c'è un nuovo campo di testo libero **«Altro»**: quello che scrivi viene stampato **solo nella prima pagina** (sotto il titolo della mappa), non nelle singole schede. La mappa si accorcia quanto serve per restare nella stessa pagina.
