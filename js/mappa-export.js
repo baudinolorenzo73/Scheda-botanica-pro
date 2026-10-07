@@ -51,6 +51,14 @@ function sceltaTesto(nome, etichetta, valore) {
 }
 
 /* ---------------------------- STAMPA ---------------------------- */
+// Data (o intervallo di date) del rilevamento delle schede, non quella di oggi:
+// «del 03/10/2026» (o «il 03/10/2026») oppure «dal 03/10/2026 al 05/10/2026».
+function dateRilievo(lista, articolo = 'del') {
+  const date = [...new Set(lista.map((r) => r.data).filter(Boolean))].sort();
+  if (!date.length) return '';
+  return date.length === 1 ? `${articolo} ${dataBreveIT(date[0])}` : `dal ${dataBreveIT(date[0])} al ${dataBreveIT(date[date.length - 1])}`;
+}
+
 async function stampaMappa() {
   assicuraMappa();
   const conGps = schedeVisibili().filter((r) => r.gps).sort(perProg);
@@ -61,7 +69,7 @@ async function stampaMappa() {
     sceltaSpunta('legenda', 'Aggiungi l’elenco delle schede (numero, nome, data, altezza)', true),
   ];
   if (haTraccia) opzioni.push(sceltaSpunta('traccia', 'Disegna anche la traccia del percorso', true));
-  opzioni.push(sceltaTesto('titolo', 'Titolo', `Mappa dei rilievi – ${dataBreveIT(oggi())}`));
+  opzioni.push(sceltaTesto('titolo', 'Titolo', `Mappa dei rilievi ${dateRilievo(conGps)}`.trim()));
   const scelta = await chiediOpzioniMappa('Stampa mappa',
     'Si apre la finestra di stampa del telefono: puoi stampare o scegliere «Salva come PDF». Lo sfondo usa le zone della mappa già scaricate o la rete.',
     opzioni, '🖨 Stampa');
@@ -286,7 +294,7 @@ async function esportaMappaHTML() {
       sceltaRadio('foto', 'Foto', [['una', 'Una foto per scheda (consigliato)'], ['tutte', 'Tutte le foto (file più pesante)'], ['nessuna', 'Nessuna foto']], 'una'),
       sceltaRadio('misura', 'Dimensione delle foto', [['piccole', 'Piccole: bastano sul telefono (file leggero, consigliato)'], ['medie', 'Medie: buone anche sul computer'], ['grandi', 'Grandi: per ingrandire i dettagli (file pesante)']], 'piccole'),
       sceltaRadio('offline', 'Mappa senza Internet', [['stradale', 'Salva nel file lo sfondo stradale (consigliato)'], ['entrambe', 'Salva stradale e satellite (file più pesante)'], ['satellite', 'Salva solo il satellite'], ['topografica', 'Salva solo la topografica'], ['tutte', 'Salva stradale, satellite e topografica (il più pesante)'], ['nessuna', 'Non salvare: lo sfondo si vedrà solo con Internet']], 'stradale'),
-      sceltaTesto('titolo', 'Titolo della pagina', `Censimento alberi – ${dataBreveIT(oggi())}`),
+      sceltaTesto('titolo', 'Titolo della pagina', `Censimento alberi ${dateRilievo(visibili)}`.trim()),
     ], '⭳ Crea pagina');
   if (!scelta) return;
   const lista = (scelta.quali === 'tutte' ? [...S.schede] : visibili).sort(perProg);

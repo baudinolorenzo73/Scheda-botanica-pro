@@ -2,6 +2,21 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.40.0 · campo «Altro» sempre in prima pagina
+
+- Nuovo campo libero **«Altro»** nella sezione Note della scheda: ci si scrive qualsiasi cosa.
+- Viene stampato **sempre nella prima pagina** della scheda, subito sotto l'intestazione (numero, nome, data, GPS, QR), anche se nella finestra di stampa si deselezionano i campi; stesso comportamento nel report singolo HTML. Se è vuoto non compare nulla.
+- Presente anche in ricerca, backup, CSV/Excel (e reimportazione) e pagina HTML esportata.
+
+---
+
+## 3.39.1 · data del rilevamento nei titoli
+
+- Nella mappa stampata come prima pagina delle schede il titolo riporta la **data del rilevamento** delle schede, e non più la data di oggi: «Mappa delle schede rilevate il 03/10/2026», oppure «… dal 03/10/2026 al 05/10/2026» se le date sono più di una. La data di stampa resta nel sottotitolo.
+- Stesso criterio per il titolo proposto in «Stampa mappa» e nella pagina HTML mappa + schede.
+
+---
+
 ## 3.39.0 · stampa delle schede con la mappa in prima pagina
 
 - Nella finestra **Stampa → Schede A4** c'è la nuova casella **«Prima pagina con la mappa e i numeri delle schede»**. La prima pagina mostra la mappa con i numeri delle schede stampate che hanno il GPS (verde: scheda; rosso: problemi segnalati), con scala e nord; seguono le schede, una per pagina.

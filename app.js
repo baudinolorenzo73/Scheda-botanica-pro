@@ -425,7 +425,7 @@ function schedeVisibili() {
       (!soloProblemi || (r.problemi || '').trim()) &&
       (!senzaFoto || !r.foto.length) &&
       (!senzaGps || !r.gps) &&
-      (!q || [r.prog, r.nome, dataBreveIT(r.data), r.problemi, r.note, r.terreno].join(' ').toLowerCase().includes(q)))
+      (!q || [r.prog, r.nome, dataBreveIT(r.data), r.problemi, r.note, r.altro, r.terreno].join(' ').toLowerCase().includes(q)))
     .sort(perProg);
 }
 

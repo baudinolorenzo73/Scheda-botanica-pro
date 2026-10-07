@@ -327,6 +327,7 @@ assert.match(await p.textContent('#import-info'),/Coordinate GPS lette per \d+ r
 await p.click('#dlg-import button[value=annulla]');await p.evaluate(()=>window.__imp);
 ok('CSV: coordinate GPS lette in importazione');
 // ---- 3.39: stampa schede con la mappa come prima pagina
+await p.evaluate(async()=>{S.schede[0].altro='Accesso dal cancello nord';await salvaOra(S.schede[0]);});
 await p.evaluate(()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());S.selezionate.clear();window.__stampe=0;window.print=()=>{window.__stampe++;};window.__st=apriStampa();});
 await p.waitForSelector('#dlg-stampa[open]');
 await p.check('#dlg-stampa input[value=tutte]');await p.check('#st-mappa');await p.uncheck('#st-foto');
@@ -336,6 +337,11 @@ const nGpsM=await p.evaluate(()=>S.schede.filter(r=>r.gps).length), nSchedeM=awa
 assert.equal(await p.evaluate(()=>document.querySelector('#stampa').firstElementChild.classList.contains('p-mappa-prima')),true,'la mappa è la prima pagina');
 assert.equal(await p.locator('#stampa .p-mappa-box .leaflet-marker-icon').count(),nGpsM);
 assert.equal(await p.locator('#stampa .p-scheda').count(),nSchedeM);
+assert.equal(await p.locator('#stampa .p-altro').count(),1,'«Altro» stampato solo dove compilato');
+assert.match(await p.textContent('#stampa .p-altro'),/Accesso dal cancello nord/);
+assert.equal(await p.evaluate(()=>!!document.querySelector('#st-campi input[value=altro]')),false,'«Altro» non è tra i campi selezionabili: è sempre stampato');
+const attese=await p.evaluate(()=>{const d=[...new Set(S.schede.map(r=>r.data))].sort();return d.length===1?'il '+dataBreveIT(d[0]):'dal '+dataBreveIT(d[0])+' al '+dataBreveIT(d[d.length-1]);});
+assert.equal(await p.textContent('#stampa .p-mappa-prima h2'),'Mappa delle schede rilevate '+attese,'titolo con la data del rilevamento, non di oggi');
 await p.emulateMedia({media:'print'});
 const pdfM=await p.pdf({preferCSSPageSize:true,printBackground:true});
 await p.emulateMedia({media:'screen'});

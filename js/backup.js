@@ -587,6 +587,7 @@ const ALIAS_EXCEL = {
   tipoFoglia: ['tipo di foglia', 'tipofoglia'], fogliaComposta: ['foglia composta', 'fogliacomposta'], lamina: ['lamina'],
   margine: ['margine'], terreno: ['terreno'], problemi: ['problemi'],
   note: ['altro notato', 'note'],
+  altro: ['altro (testo libero'],
 };
 
 // Associa ogni campo alla colonna dell'intestazione il cui testo lo nomina,

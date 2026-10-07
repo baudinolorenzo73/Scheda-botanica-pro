@@ -350,6 +350,7 @@ dialog .azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;marg
 .p-testa{display:flex;gap:6mm;align-items:flex-start;border-bottom:1.2pt solid #2f5d3a;padding-bottom:4mm;margin-bottom:4mm}
 .p-testa .p-num{background:#6b4f3a;color:#fff;font:700 20pt Georgia,serif;padding:2mm 4mm;border-radius:1.5mm 4mm 4mm 1.5mm}
 .p-testa .p-nomi{flex:1}
+.p-altro{margin:0 0 4mm;padding:2.5mm 3.5mm;border:.4pt solid #2f5d3a;border-radius:1.5mm;font-size:10.5pt;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;break-inside:avoid}
 .p-testa h2{margin:0;font:italic 600 17pt Georgia,serif}
 .p-testa p{margin:1mm 0 0;color:#444}
 .p-qr{width:28mm;height:28mm;flex:none}
