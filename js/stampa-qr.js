@@ -368,7 +368,7 @@ function popolaCampiStampa() {
 
 // Riquadro di testo libero stampato solo in prima pagina.
 function blocco_altro(testo) {
-  return el('div', { class: 'p-altro' }, el('b', { testo: 'Altro: ' }), el('span', { testo }));
+  return el('div', { class: 'p-altro', testo });
 }
 
 async function paginaScheda(r, opz) {

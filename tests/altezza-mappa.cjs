@@ -361,6 +361,7 @@ assert.equal(await p.evaluate(()=>document.querySelector('#stampa').firstElement
 assert.equal(await p.locator('#stampa .p-mappa-box .leaflet-marker-icon').count(),nGpsM);
 assert.equal(await p.locator('#stampa .p-scheda').count(),nSchedeM);
 assert.equal(await p.locator('#stampa .p-altro').count(),1,'«Altro» stampato una sola volta');
+assert.equal((await p.textContent('#stampa .p-altro')).trim(),'Rilievo di prova: cancello nord','solo il testo, senza la parola «Altro»');
 assert.equal(await p.evaluate(()=>!!document.querySelector('#stampa .p-mappa-prima .p-altro')),true,'«Altro» sta nella pagina della mappa, non nelle schede');
 assert.equal(await p.locator('#stampa .p-scheda .p-altro').count(),0);
 const attese=await p.evaluate(()=>{const d=[...new Set(S.schede.map(r=>r.data))].sort();return d.length===1?'il '+dataBreveIT(d[0]):'dal '+dataBreveIT(d[0])+' al '+dataBreveIT(d[d.length-1]);});

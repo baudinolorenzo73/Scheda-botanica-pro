@@ -2,6 +2,12 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.41.2 · testo libero stampato senza etichetta
+
+- Il testo scritto nella casella «Altro» della finestra di stampa esce in prima pagina **senza la parola «Altro:»**: viene stampato solo quello che hai scritto.
+
+---
+
 ## 3.41.1 · correzione: archivio non caricato dopo l'aggiornamento
 
 - **Errore corretto**: con la 3.41.0, chi aveva integrazioni salvate nel catalogo delle 144 specie con le vecchie diciture (es. tipo di foglia «aghiforme» o «squamiforme», margine «lobato») vedeva «Avvio non riuscito: Scelta del catalogo non valida» e «Impossibile caricare l'archivio». Ora quei valori vengono accettati («squamiforme» del tipo di foglia diventa «a squame»), e nell'editor del catalogo restano visibili e selezionabili.
