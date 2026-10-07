@@ -270,6 +270,10 @@ let cgSporco = false;
 let cgIstantanea = '';
 let cgSalvando = false;
 
+// Valori che l'elenco della scheda non offre più (3.41) ma che un'integrazione già salvata può contenere:
+// vanno accettati, altrimenti l'archivio non si carica. «squamiforme» del tipo di foglia diventa «a squame».
+const VALORI_CATALOGO_VECCHI = { tipoFoglia: ['aghiforme', 'squamiforme'], lamina: ['squamiforme'], margine: ['lobato'] };
+
 function validaIntegrazioniGuida(elenco) {
   if (!Array.isArray(elenco)) throw new Error('Integrazioni catalogo non valide');
   const ids = new Set();
@@ -291,8 +295,9 @@ function validaIntegrazioniGuida(elenco) {
         throw new Error('Campo del catalogo non valido');
       const def = CG_SEZIONI.flatMap(s => s.campi).find(c => c[0] === k);
       const scelta = def?.[2] && CAMPI.find(c => c.k === def[2]);
-      if (scelta && !scelta.valori.includes(valore)) throw new Error('Scelta del catalogo non valida');
-      campi[k] = valore.trim();
+      const vecchio = def?.[2] && VALORI_CATALOGO_VECCHI[def[2]]?.includes(valore);
+      if (scelta && !scelta.valori.includes(valore) && !vecchio) throw new Error('Scelta del catalogo non valida');
+      campi[k] = k === 'fogliaTipo' && valore.trim() === 'squamiforme' ? 'a squame' : valore.trim();
     }
     if (v.fontiCampi !== undefined && (!v.fontiCampi || typeof v.fontiCampi !== 'object' || Array.isArray(v.fontiCampi) ||
         Object.keys(v.fontiCampi).some(k => !campi[k] || !['pagina', 'osservazione', 'altro'].includes(v.fontiCampi[k]))))
@@ -399,7 +404,7 @@ function apriPiantaCatalogo(id, dopoSalvataggio = false) {
         const originale = base[k];
         const valori = scheda && CAMPI.find(c => c.k === scheda)?.valori;
         const controllo = valori ? el('select', { class: 'campo-base', name: k, disabled: !!originale },
-          el('option', { value: '' }, '— Da verificare —'), ...valori.map(v => el('option', { value: v, selected: v === (specie[k] || '') }, v))) :
+          el('option', { value: '' }, '— Da verificare —'), ...[...valori, ...(specie[k] && !valori.includes(specie[k]) ? [specie[k]] : [])].map(v => el('option', { value: v, selected: v === (specie[k] || '') }, v))) :
           el('input', { type: 'text', class: 'campo-base', name: k, value: specie[k] || '', readOnly: !!originale,
             maxlength: 180, placeholder: 'Non indicato nella guida' });
         return el('label', { class: 'cg-campo ' + (originale ? 'cg-originale' : salvata?.campi[k] ? 'cg-integrato' : '') },
