@@ -44,8 +44,6 @@ const CAMPI = [
   { k: 'terreno',       sez: 'ped', label: 'Condizioni del terreno',      tipo: 'lista', largo: true, etichettaStampa: 'Terreno', valori: ['prato coltivato', 'prato non concimato', 'aiuola', 'terreno compatto', 'terreno drenato', 'pacciamato'] },
   { k: 'problemi',      sez: 'fit', label: 'Problemi tronco / foglie',    tipo: 'area', largo: true, etichettaStampa: 'Problemi' },
   { k: 'note',          sez: 'not', label: 'Altro notato',                tipo: 'area', largo: true, etichettaStampa: 'Note' },
-  { k: 'altro',         sez: 'not', label: 'Altro (testo libero, stampato sempre in prima pagina)', tipo: 'area', largo: true, etichettaStampa: 'Altro', inTestata: true,
-    aiuto: 'Scrivi qui qualsiasi cosa: viene stampato sempre nella prima pagina della scheda, sotto l’intestazione, anche se non selezioni i campi da stampare.' },
 ];
 
 // Dipendenze tra campi: se il campo "se" ha valore "valore", i campi

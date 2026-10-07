@@ -2,11 +2,11 @@
 
 Le versioni più recenti sono in alto.
 
-## 3.40.0 · campo «Altro» sempre in prima pagina
+## 3.40.0 · testo «Altro» nella prima pagina della stampa
 
-- Nuovo campo libero **«Altro»** nella sezione Note della scheda: ci si scrive qualsiasi cosa.
-- Viene stampato **sempre nella prima pagina** della scheda, subito sotto l'intestazione (numero, nome, data, GPS, QR), anche se nella finestra di stampa si deselezionano i campi; stesso comportamento nel report singolo HTML. Se è vuoto non compare nulla.
-- Presente anche in ricerca, backup, CSV/Excel (e reimportazione) e pagina HTML esportata.
+- Nella finestra di stampa delle schede c'è un nuovo campo di testo libero **«Altro»**: quello che scrivi viene stampato **solo nella prima pagina** (sotto il titolo della mappa), non nelle singole schede. La mappa si accorcia quanto serve per restare nella stessa pagina.
+- Se la pagina con la mappa non è attiva, il testo compare in cima alla prima scheda.
+- Il testo viene ricordato per la stampa successiva; svuotando la casella non si stampa nulla.
 
 ---
 

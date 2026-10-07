@@ -72,11 +72,10 @@ async function scaricaReportSingolo(r) {
       if (b) fotoInline.push({ ...p, dataUrl: await blobInDataURL(b) });
     }
     const qrTxt = new XMLSerializer().serializeToString(qrSVG(testoQR(r)));
-    const righeDati = CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k) && !c.inTestata && campoPertinente(r, c.k)).map((c) => {
+    const righeDati = CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k) && campoPertinente(r, c.k)).map((c) => {
       const v = valoreLeggibile(c, r[c.k]);
       return `<tr><th>${escHtml(c.label)}</th><td>${escHtml(v || '—')}</td></tr>`;
     }).join('');
-    const altroHtml = String(r.altro || '').trim() ? `<p class="altro"><b>Altro:</b> ${escHtml(String(r.altro).trim()).replace(/\n/g, '<br>')}</p>` : '';
     const righeStimaTxt = righeStima(s).map(([l, v]) => `<p><b>${escHtml(l)}:</b> ${escHtml(v)}</p>`).join('');
     const fotoHtml = fotoInline.map((f, i) => `<figure><img src="${f.dataUrl}" alt="Foto ${i + 1} di ${fotoInline.length} — ${escHtml(r.nome || 'esemplare')}, ${escHtml(r.prog)}"><figcaption>${escHtml([f.didascalia, dataIT(f.quando)].filter(Boolean).join(' – '))}</figcaption></figure>`).join('');
     const mappaLink = r.gps ? `https://www.openstreetmap.org/?mlat=${r.gps.lat}&mlon=${r.gps.lng}#map=18/${r.gps.lat}/${r.gps.lng}` : '';
@@ -97,7 +96,6 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #ddd} th{width:44%
 figure{margin:0} figure img{width:100%;border-radius:8px;display:block} figcaption{font-size:12px;color:#5d6b61;margin-top:4px;font-family:system-ui,sans-serif}
 footer{font-size:11px;color:#889;margin-top:26px;font-family:system-ui,sans-serif}
 a{color:#2f5d3a}
-.altro{margin:16px 0 0;padding:10px 14px;border:1px solid #cfe3c4;background:#f6fbf2;border-radius:10px;font-family:system-ui,sans-serif;font-size:14px;overflow-wrap:anywhere}
 @page{size:A4;margin:15mm}
 td{text-align:justify;hyphens:auto;overflow-wrap:anywhere}
 figure,tr{break-inside:avoid}
@@ -105,7 +103,7 @@ figure img{max-height:120mm;object-fit:contain}
 @media print{body{margin:0;max-width:none;padding:0}header,.stima{break-inside:avoid}}
 </style></head><body>
 <header><div class="num">${escHtml(r.prog)}</div><div><h1>${escHtml(r.nome || 'Esemplare senza nome')}</h1><p>${escHtml(dataBreveIT(r.data))}</p></div><div class="qr">${qrTxt}</div></header>
-${altroHtml}<table>${righeDati}</table>
+<table>${righeDati}</table>
 ${conStima ? `<div class="stima"><b>Stima ambientale (indicativa)</b>${righeStimaTxt}<small>Stima divulgativa con metodo dichiarato: non sostituisce un rilievo agronomico né vale per crediti di carbonio certificati.</small></div>` : ""}
 ${r.gps ? `<p style="font-family:system-ui,sans-serif;font-size:13px">📍 <a href="${mappaLink}" target="_blank" rel="noopener">${r.gps.lat.toFixed(6)}, ${r.gps.lng.toFixed(6)} — apri su OpenStreetMap</a></p>` : ''}
 ${r.gbifId ? `<p style="font-family:system-ui,sans-serif;font-size:13px">🔗 <a href="https://www.gbif.org/species/${r.gbifId}" target="_blank" rel="noopener">Apri la specie su GBIF</a></p>` : ''}
@@ -207,6 +205,7 @@ async function apriStampa(soloQuesta = null) {
   popolaCampiStampa();
   $('#st-stima').checked = leggiPref('sb-stampa-stima') !== '0';
   $('#st-mappa').checked = leggiPref('sb-stampa-mappa') === '1';
+  $('#st-altro').value = leggiPref('sb-stampa-altro') || '';
 
   if ((await chiedi(dlg)) !== 'stampa') return;
 
@@ -226,6 +225,8 @@ async function apriStampa(soloQuesta = null) {
   scriviPref('sb-stampa-campi', JSON.stringify(campiScelti));
   scriviPref('sb-stampa-stima', $('#st-stima').checked ? '1' : '0');
   scriviPref('sb-stampa-mappa', $('#st-mappa').checked ? '1' : '0');
+  const testoAltro = $('#st-altro').value.trim();
+  scriviPref('sb-stampa-altro', testoAltro);
 
   if (tipo === 'excel') {
     stato('Preparo il registro Excel…');
@@ -248,9 +249,11 @@ async function apriStampa(soloQuesta = null) {
     // Prima pagina: mappa con i numeri delle schede stampate che hanno il GPS.
     const conGps = lista.filter((r) => r.gps);
     if ($('#st-mappa').checked && conGps.length) {
-      mappaTemp = await preparaMappaStampa(area, conGps, { primaDelleSchede: true,
+      mappaTemp = await preparaMappaStampa(area, conGps, { primaDelleSchede: true, altro: testoAltro,
         titolo: (lista.length === 1 ? `Posizione della scheda N° ${lista[0].prog} rilevata ${dateRilievo(lista, 'il')}` : `Mappa delle schede rilevate ${dateRilievo(lista, 'il')}`).trim() });
     } else if ($('#st-mappa').checked) toast('Nessuna delle schede da stampare ha il GPS: stampo senza mappa.');
+    // Senza la pagina della mappa, «Altro» sta in cima alla prima scheda.
+    if (testoAltro && !mappaTemp && pagine.length) pagine[0].prepend(blocco_altro(testoAltro));
     area.append(...pagine);
   }
   // aspetta che le immagini siano pronte, altrimenti escono riquadri vuoti
@@ -337,7 +340,7 @@ async function esportaRegistroExcel(lista, campiScelti) {
 const CAMPI_TESTATA = ['prog', 'nome', 'data'];
 
 function campiStampabili() {
-  return CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k) && !c.inTestata);
+  return CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k));
 }
 
 // Ricorda l'ultima scelta di campi da stampare; se non ne è mai stata salvata
@@ -363,6 +366,11 @@ function popolaCampiStampa() {
   }).filter(Boolean));
 }
 
+// Riquadro di testo libero stampato solo in prima pagina.
+function blocco_altro(testo) {
+  return el('div', { class: 'p-altro' }, el('b', { testo: 'Altro: ' }), el('span', { testo }));
+}
+
 async function paginaScheda(r, opz) {
   const g = r.gps;
   const riga = g
@@ -377,12 +385,9 @@ async function paginaScheda(r, opz) {
         el('p', { testo: dataBreveIT(r.data) || '' }),
         el('p', { testo: riga })),
       opz.qr ? el('div', { class: 'p-qr' }, qrSVG(testoQR(r))) : null));
-  if (String(r.altro || '').trim()) {
-    pagina.append(el('div', { class: 'p-altro' }, el('b', { testo: 'Altro: ' }), el('span', { testo: String(r.altro).trim() })));
-  }
 
   for (const sez of SEZIONI) {
-    const campi = CAMPI.filter((c) => c.sez === sez.id && !c.inTestata && !CAMPI_TESTATA.includes(c.k) && (!opz.campi || opz.campi.has(c.k)) && campoPertinente(r, c.k));
+    const campi = CAMPI.filter((c) => c.sez === sez.id && !CAMPI_TESTATA.includes(c.k) && (!opz.campi || opz.campi.has(c.k)) && campoPertinente(r, c.k));
     if (!campi.length) continue;
     pagina.append(el('section', { class: 'p-sez' },
       el('h3', { testo: sez.titolo }),

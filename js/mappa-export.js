@@ -91,11 +91,15 @@ async function stampaMappa() {
 // Pagina A4 con la mappa e i numeri delle schede, aggiunta in fondo a «area».
 // Usata da «Stampa mappa» e come prima pagina della stampa delle schede.
 // Restituisce la mappa Leaflet temporanea (da rimuovere dopo la stampa).
-async function preparaMappaStampa(area, conGps, { orizzontale = false, legenda = false, traccia = false, titolo = '', limiti = null, primaDelleSchede = false } = {}) {
-  const box = el('div', { class: 'p-mappa-box', style: `width:${orizzontale ? 267 : 180}mm;height:${orizzontale ? 142 : 226}mm` });
+async function preparaMappaStampa(area, conGps, { orizzontale = false, legenda = false, traccia = false, titolo = '', limiti = null, primaDelleSchede = false, altro = '' } = {}) {
+  // il testo libero «Altro» toglie spazio alla mappa, che resta nella stessa pagina
+  const righeAltro = altro ? altro.split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 90)), 0) : 0;
+  const tolto = altro ? Math.min(righeAltro, 10) * 5 + 8 : 0;
+  const box = el('div', { class: 'p-mappa-box', style: `width:${orizzontale ? 267 : 180}mm;height:${(orizzontale ? 142 : 226) - tolto}mm` });
   const pagina = el('article', { class: 'p-mappa' + (primaDelleSchede ? ' p-mappa-prima' : '') },
     el('h2', {}, titolo || 'Mappa dei rilievi'),
     el('p', { class: 'p-mappa-sotto' }, `${conGps.length} schede con GPS · stampata il ${dataIT(oraISO())} · by Lollo ®2026`),
+    altro ? blocco_altro(altro) : null,
     box,
     el('p', { class: 'p-mappa-nota' }, 'Cerchio verde: scheda · cerchio rosso: problemi segnalati · il numero è il N° progressivo. Sfondo © OpenStreetMap.'));
   const parti = [pagina];
