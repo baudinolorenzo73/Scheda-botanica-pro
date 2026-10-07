@@ -286,5 +286,67 @@ await p.evaluate(()=>salvaIntegrazioneGuida());await p.waitForFunction(()=>/rimo
 assert.equal(await p.evaluate(id=>GUIDA_SPECIE.find(v=>v.id===id).nomeSci,idPl),'Platanus x');
 assert.equal(await p.evaluate(async id=>await DB.leggi('guida',id),idPl)==null,true);
 ok('catalogo: nome scientifico modificabile, salvato, valido in esportazione, ripristinabile');
+// ---- AI: lettura tollerante delle risposte e prova dei servizi
+const aiv=await p.evaluate(()=>{
+ const c=candidatiAIValidi({candidates:[{name:'Platanus × hispanica',percentuale:'70%'},{nomeScientifico:"Prunus cerasifera 'Pissardii'",confidence:0.6,motivazione:'Foglie rosse'},{nome:'Fagus',percentuale:50},{nome:'Canis lupus'}]});
+ const sp=GUIDA_SPECIE.find(v=>!GUIDA_ORIGINALE.get(v.id).fogliaMargine&&!GUIDA_ORIGINALE.get(v.id).frutto);
+ const pr=normalizzaProposteAI({proposte:[{campo:'Margine fogliare',valore:'Seghettato'},{campo:'frutto',valore:'Samara'}]},sp);
+ return {c:c.map(x=>[x.nome,x.percentuale,x.motivazione]),pr:pr.map(x=>[x.campo,x.valore,x.evidenza])};});
+assert.deepEqual(aiv.c,[['Platanus × hispanica',70,'Nessuna motivazione fornita.'],["Prunus cerasifera 'Pissardii'",60,'Foglie rosse'],['Canis lupus',null,'Nessuna motivazione fornita.']]);
+assert.deepEqual(aiv.pr,[['fogliaMargine','seghettato',''],['frutto','Samara','']]);
+await p.route('https://generativelanguage.googleapis.com/**',r=>{const u=r.request().url();
+ if(u.includes('gemini-3.5-flash:'))return r.fulfill({status:404,contentType:'application/json',body:JSON.stringify({error:{message:'models/gemini-3.5-flash is not found'}})});
+ if(u.includes('/models?'))return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({models:[{name:'models/gemini-3.8-flash',supportedGenerationMethods:['generateContent']}]})});
+ return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({candidates:[{content:{parts:[{text:'{"ok":true}'}]}}]})});});
+await p.route('https://api.groq.com/**',r=>r.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:{message:'reasoning_format must be parsed or hidden'}})}));
+await p.evaluate(()=>{chiaviAI={GOOGLE_API_KEY:'k-finta',GROQ_API_KEY:'g-finta'};ServiziRicerca.svuotaCache();});
+await p.evaluate(()=>provaServiziAI());
+const esitoAI=await p.textContent('#ai-prova-esito');
+assert.match(esitoAI,/✓ Gemini: risponde con gemini-3\.8-flash/);
+assert.match(esitoAI,/✗ Groq: Groq · llama-3\.3-70b-versatile: richiesta rifiutata dal servizio \(400\) – reasoning_format/);
+assert.match(esitoAI,/✗ Groq · slide:/);
+await p.evaluate(()=>{chiaviAI={};ServiziRicerca.svuotaCache();});
+ok('AI: risposte in formato libero accettate, modello alternativo, prova servizi con errore esatto');
+// ---- correzioni dalla revisione: ripristino doppio, pulizia media recenti
+const rip=await p.evaluate(async()=>{
+ const r=S.schede[0];await spostaNelCestino(r);
+ await Promise.all([ripristinaDalCestino(r),ripristinaDalCestino(r)]);await ripristinaDalCestino(r);
+ return S.schede.filter(s=>s.uid===r.uid).length+'/'+S.cestino.filter(s=>s.uid===r.uid).length;});
+assert.equal(rip,'1/0','una sola copia dopo ripristini ripetuti');
+const orf=await p.evaluate(async()=>{
+ const nuovo=nuovoId('f'), vecchio='f_'+(Date.now()-3600e3).toString(36)+'_zzzzz';
+ await DB.scrivi('foto',new Blob(['x'],{type:'image/jpeg'}),nuovo);await DB.scrivi('foto',new Blob(['y'],{type:'image/jpeg'}),vecchio);
+ await pulisciMediaOrfani();const k=await DB.chiavi('foto');return [k.includes(nuovo),k.includes(vecchio)];});
+assert.deepEqual(orf,[true,false],'file appena scritto conservato, orfano vecchio eliminato');
+ok('revisione: ripristino doppio senza duplicati, pulizia media non tocca i file appena creati');
+// ---- CSV dell'app reimportato: le coordinate GPS non si perdono più
+await p.evaluate(async()=>{const r=S.schede[0];r.gps={lat:45.123456,lng:7.654321,acc:4,alt:300,quando:new Date().toISOString(),manuale:false};await salvaOra(r);
+ const f=new File([testoCSV()],'schede.csv',{type:'text/csv'});window.__imp=importaExcelDaFile(f);});
+await p.waitForSelector('#dlg-import[open]');
+assert.match(await p.textContent('#import-info'),/Coordinate GPS lette per \d+ righe/);
+await p.click('#dlg-import button[value=annulla]');await p.evaluate(()=>window.__imp);
+ok('CSV: coordinate GPS lette in importazione');
+// ---- 3.38: indicatore dello spazio e controllo prima di scaricare la mappa
+const barra=await p.evaluate(()=>{const e=barraSpazio({usato:60*1048576,quota:100*1048576,dettagli:{indexedDB:50*1048576,caches:10*1048576}},20*1048576);
+ return {cls:e.className,testo:e.textContent,larg:e.querySelector('.spazio-usato').style.width,agg:e.querySelector('.spazio-aggiunta').style.width};});
+assert.match(barra.cls,/livello-attenzione/);assert.match(barra.testo,/60 MB su 100 MB \(60%\).*dopo lo scaricamento \(\+20 MB\): 80%/);assert.match(barra.testo,/Schede, foto e audio: 50 MB/);
+assert.equal(barra.larg,'60%');assert.equal(barra.agg,'20%');
+await p.evaluate(()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());cambiaVista('mappa');});await p.waitForFunction(()=>typeof mappa!=='undefined'&&mappa);
+const blocco=await p.evaluate(async()=>{const vero=statoSpazio;let msg='';const a=window.alert;window.alert=m=>{msg=m;};
+ statoSpazio=async()=>({usato:99*1048576,quota:100*1048576});await avviaScaricamentoAreaMappa();statoSpazio=vero;window.alert=a;return msg;});
+assert.match(blocco,/Spazio insufficiente/);
+await p.evaluate(()=>cambiaVista('schede'));
+ok('spazio: barra con previsione, scaricamento mappa bloccato se lo spazio non basta');
+// ---- 3.38: editor a due colonne in orizzontale, una colonna se scelto
+await p.setViewportSize({width:1340,height:860});
+await p.evaluate(()=>apriEditor(S.schede[0].uid));await p.waitForTimeout(300);
+let col=await p.evaluate(()=>{const m=document.querySelector('.ed-media').getBoundingClientRect(),z=document.querySelector('#sezioni').getBoundingClientRect();return [m.left>z.right,m.top<z.bottom];});
+assert.deepEqual(col,[true,true],'foto e GPS a destra dei campi');
+await p.evaluate(()=>{document.body.dataset.editor='una';});await p.waitForTimeout(100);
+col=await p.evaluate(()=>{const m=document.querySelector('.ed-media').getBoundingClientRect(),z=document.querySelector('#sezioni').getBoundingClientRect();return m.top>=z.bottom;});
+assert.equal(col,true,'una colonna: foto sotto i campi');
+await p.evaluate(()=>{document.body.dataset.editor='auto';chiudiEditor&&chiudiEditor();});
+await p.setViewportSize({width:390,height:844});
+ok('editor: due colonne in orizzontale, una colonna su richiesta');
 assert.deepEqual(errs,[]);
 await b.close();srv.close();})().catch(e=>{console.error(e);process.exit(1);});

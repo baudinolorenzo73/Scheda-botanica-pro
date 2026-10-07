@@ -72,9 +72,8 @@ async function scaricaReportSingolo(r) {
       if (b) fotoInline.push({ ...p, dataUrl: await blobInDataURL(b) });
     }
     const qrTxt = new XMLSerializer().serializeToString(qrSVG(testoQR(r)));
-    const righeDati = CAMPI.filter((c) => !['prog', 'nome', 'data'].includes(c.k) && campoPertinente(r, c.k)).map((c) => {
-      let v = r[c.k];
-      if (c.tipo === 'scelta') v = v ? (c.valori.find(([x]) => x === v) || [, v])[1] : '';
+    const righeDati = CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k) && campoPertinente(r, c.k)).map((c) => {
+      const v = valoreLeggibile(c, r[c.k]);
       return `<tr><th>${escHtml(c.label)}</th><td>${escHtml(v || '—')}</td></tr>`;
     }).join('');
     const righeStimaTxt = righeStima(s).map(([l, v]) => `<p><b>${escHtml(l)}:</b> ${escHtml(v)}</p>`).join('');
@@ -168,6 +167,13 @@ function chiudiScanner() {
 function cercaDaTestoQR(testo) {
   const nuovo = testo.match(/SCHEDA_UID:([^|]+)/i);
   let r = nuovo ? S.schede.find((s) => s.uid === nuovo[1].trim()) : null;
+  if (nuovo && !r) {
+    // Etichetta di una scheda cancellata o archiviata con «Nuovo elenco».
+    const nelCestino = S.cestino.find((s) => s.uid === nuovo[1].trim());
+    if (!nelCestino) return alert('Questa etichetta appartiene a una scheda che non è più nell’archivio (eliminata o di un altro dispositivo).');
+    if (!confirm(`La scheda N° ${nelCestino.prog} – ${nelCestino.nome || 'senza nome'} è nel cestino. Ripristinarla e aprirla?`)) return;
+    return ripristinaDalCestino(nelCestino).then(() => { cambiaVista('schede'); apriEditor(nelCestino.uid); });
+  }
   // Compatibilità con le etichette create dalle versioni precedenti.
   if (!r) {
     const vecchio = testo.match(/SCHEDA:([^|]+)/i);
@@ -192,7 +198,10 @@ async function apriStampa(soloQuesta = null) {
   $('#st-n-vis').textContent = `Schede visibili con il filtro attuale (${vis.length})`;
   $('#st-n-tut').textContent = `Tutte le schede (${S.schede.length})`;
   $('#st-cosa').classList.toggle('nascosto', !!soloQuesta);
-  if (!soloQuesta && S.selezionate.size) dlg.querySelector('input[value=selezionate]').checked = true;
+  const radioSel = dlg.querySelector('input[value=selezionate]');
+  radioSel.disabled = !S.selezionate.size;
+  if (!soloQuesta && S.selezionate.size) radioSel.checked = true;
+  else if (radioSel.checked) dlg.querySelector('input[value=visibili]').checked = true; // nessuna selezione: non restare su «selezionate»
   popolaCampiStampa();
   $('#st-stima').checked = leggiPref('sb-stampa-stima') !== '0';
 
@@ -210,6 +219,7 @@ async function apriStampa(soloQuesta = null) {
 
   const tipo = dlg.querySelector('input[name=st-tipo]:checked').value;
   const campiScelti = [...document.querySelectorAll('input[name=st-campo]:checked')].map((i) => i.value);
+  if (tipo !== 'etichette' && !campiScelti.length) return alert('Nessun campo selezionato: spunta almeno un campo (o «tutti») in «Campi da includere».');
   scriviPref('sb-stampa-campi', JSON.stringify(campiScelti));
   scriviPref('sb-stampa-stima', $('#st-stima').checked ? '1' : '0');
 
@@ -288,9 +298,8 @@ async function esportaRegistroExcel(lista, campiScelti) {
     const riga = rigaTestata + 1 + indice;
     const valori = [r.prog ?? '', r.nome || '', dataBreveIT(r.data) || ''];
     for (const c of campi) {
-      let v = r[c.k];
-      if (c.tipo === 'scelta') v = v ? (c.valori.find(([x]) => x === v) || [, v])[1] : '';
-      valori.push(v ?? '');
+      // nel registro Excel i numeri restano numeri; solo le «scelte» diventano etichette
+      valori.push(c.tipo === 'scelta' ? valoreLeggibile(c, r[c.k]) : r[c.k] ?? '');
     }
     const fondoAlternato = indice % 2 ? 'F5F7F3' : 'FFFFFF';
     valori.forEach((v, i) => {
@@ -360,8 +369,7 @@ async function paginaScheda(r, opz) {
     pagina.append(el('section', { class: 'p-sez' },
       el('h3', { testo: sez.titolo }),
       el('dl', { class: 'p-dati' }, campi.map((c) => {
-        let v = r[c.k];
-        if (c.tipo === 'scelta') v = v ? (c.valori.find(([x]) => x === v) || [, v])[1] : '';
+        const v = valoreLeggibile(c, r[c.k]);
         return el('div', { class: c.largo ? 'largo' : '' }, el('dt', { testo: c.etichettaStampa || c.label }), el('dd', { testo: v || '—' }));
       }))));
   }

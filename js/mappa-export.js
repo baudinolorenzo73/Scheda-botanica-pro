@@ -10,11 +10,6 @@
      richiede Internet quando si apre la pagina.
    ===================================================================== */
 
-// Valore di un campo come lo legge una persona (le «scelte» hanno un'etichetta).
-function valoreLeggibile(c, v) {
-  if (c.tipo === 'scelta') return v ? (c.valori.find(([x]) => x === v) || [, v])[1] : '';
-  return String(v ?? '').trim();
-}
 
 function iconaNumero(r) {
   const colore = r.problemi ? '#b4452f' : '#2f5d3a';

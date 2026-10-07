@@ -172,7 +172,7 @@
   </header>
   <nav class="azioni-rapide" aria-label="Nuova scheda, foto, posizione e note vocali">
     <button type="button" id="ar-nuova" class="azione-nuova"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><b>Nuova scheda</b></button>
-    <button type="button" id="ar-foto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-camera"></use></svg><span>Foto</span></button>
+    <button type="button" id="ar-foto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-camera"></use></svg><b>Foto</b></button>
     <button type="button" id="ar-gps"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-pin"></use></svg><b id="ar-gps-testo">GPS</b></button>
     <button type="button" id="ar-audio"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-mic"></use></svg><b id="ar-audio-testo">Nota vocale</b></button>
   </nav>
@@ -183,6 +183,8 @@
     </nav>
     <div id="sezioni"></div>
 
+    <!-- In orizzontale su schermi larghi questa colonna (GPS, foto, note vocali) sta a destra dei campi. -->
+    <div class="ed-media">
     <fieldset>
       <legend>Posizione GPS</legend>
       <div class="gps-box" id="gps-box"></div>
@@ -210,6 +212,7 @@
       </div>
       <div id="audio-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
     </fieldset>
+    </div>
 
     <fieldset>
       <legend>Stima ambientale (indicativa)</legend>
@@ -269,6 +272,8 @@
       <input type="file" id="ai-file-env" accept=".env,.txt,text/plain" class="nascosto">
       <label><input type="checkbox" id="ai-ricorda-env" checked> Ricorda le chiavi su questo browser</label>
       <p id="ai-env-stato" role="status" aria-live="polite">Nessuna chiave caricata.</p>
+      <button type="button" class="btn" id="ai-prova">🩺 Prova i servizi AI</button>
+      <div id="ai-prova-esito" class="ai-prova-esito" role="status" aria-live="polite"></div>
       <label for="ai-ricerca-servizio">Servizio per la ricerca AI</label>
       <select id="ai-ricerca-servizio" class="campo-base">
         <option value="auto">Automatico · servizio selezionato nel catalogo o prima chiave disponibile</option>
@@ -276,18 +281,24 @@
       </select>
       <details>
         <summary>Modelli AI · impostazioni avanzate</summary>
-        <p>Lascia vuoto per i modelli predefiniti. In caso di errore 404 Gemini/Groq controllano i modelli disponibili e riprovano una volta nello stesso servizio. Un modello impostato da te non viene sostituito. Disponibilità e gratuità dipendono dal tuo account: verifica prezzi e limiti prima dell’uso.</p>
+        <p>Lascia vuoto per i modelli predefiniti. Se il modello predefinito non è disponibile per la tua chiave (ritirato, non concesso o senza quota gratuita), Gemini/Groq controllano i modelli disponibili e riprovano una volta nello stesso servizio. «🩺 Prova i servizi AI» mostra quale modello risponde e l’eventuale errore esatto. Un modello impostato da te non viene sostituito. Disponibilità e gratuità dipendono dal tuo account: verifica prezzi e limiti prima dell’uso.</p>
         <label for="ai-modello-gemini">ID modello Gemini · testo e slide</label>
-        <input id="ai-modello-gemini" class="campo-base" placeholder="Automatico · modello Flash" autocomplete="off" spellcheck="false">
+        <input id="ai-modello-gemini" class="campo-base" placeholder="Automatico · gemini-3.5-flash o il Flash disponibile" autocomplete="off" spellcheck="false">
         <label for="ai-modello-groq">ID modello Groq · ricerca testuale</label>
-        <input id="ai-modello-groq" class="campo-base" placeholder="llama-3.1-8b-instant" autocomplete="off" spellcheck="false">
+        <input id="ai-modello-groq" class="campo-base" placeholder="Automatico · llama-3.3-70b-versatile" autocomplete="off" spellcheck="false">
         <label for="ai-modello-groq-vision">ID modello Groq · slide con immagini</label>
-        <input id="ai-modello-groq-vision" class="campo-base" placeholder="qwen/qwen3.8-27b" autocomplete="off" spellcheck="false">
+        <input id="ai-modello-groq-vision" class="campo-base" placeholder="Automatico · qwen/qwen3.8-27b" autocomplete="off" spellcheck="false">
         <label for="ai-modello-openrouter">ID modello OpenRouter · verifica prezzi e supporto immagini</label>
         <input id="ai-modello-openrouter" class="campo-base" placeholder="fornitore/modello" autocomplete="off" spellcheck="false">
       </details>
       <small>Il browser salva una copia locale delle chiavi, non il percorso di open.env. “Dimentica chiavi” la elimina; cancellare i dati del sito la elimina ugualmente. Evita dispositivi condivisi. Tieni open.env fuori da ZIP, Drive e GitHub. Una ricerca AI invia al servizio scelto soltanto il nome e le caratteristiche botaniche compilate; l’analisi del catalogo invia invece la slide selezionata.</small>
     </div>
+    <label class="dimensione-interfaccia" for="sel-editor-colonne">Scheda in modifica
+      <select id="sel-editor-colonne" class="campo-base">
+        <option value="auto">Due colonne con tablet in orizzontale (foto e GPS a destra)</option>
+        <option value="una">Sempre una colonna</option>
+      </select>
+    </label>
     <label class="dimensione-interfaccia" for="sel-dimensione-interfaccia">Dimensione interfaccia
       <select id="sel-dimensione-interfaccia" class="campo-base">
         <option value="auto">Adatta allo schermo</option>
@@ -345,6 +356,7 @@
     <p id="notifica-backup-stato" style="font-size:12px;color:var(--tenue);margin:4px 0 0"></p>
   </div>
   <p id="dispositivo-info" style="font-size:13px;color:var(--tenue);margin-bottom:0"></p>
+  <div id="spazio-barra"></div>
   <p id="spazio" style="font-size:13px;color:var(--tenue)"></p>
   <div class="azioni"><button class="btn" data-az="chiudi">Chiudi</button></div>
   <input type="file" id="in-backup" accept=".zip,.json,application/zip,application/json" class="nascosto">
@@ -390,7 +402,8 @@
       <option value="3">+3 livelli aggiuntivi (area più ampia da zoomare)</option>
     </select>
   </label>
-  <p id="mo-stima" style="font-size:13px;margin:0 0 10px"></p>
+  <p id="mo-stima" style="font-size:13px;margin:0 0 6px"></p>
+  <div id="mo-spazio" style="margin:0 0 10px"></div>
   <div id="mo-progresso" class="nascosto" style="margin-bottom:10px">
     <progress id="mo-progresso-barra" style="width:100%" value="0" max="100"></progress>
     <p id="mo-progresso-testo" style="font-size:12.5px;color:var(--tenue);margin:4px 0 0"></p>
@@ -638,7 +651,7 @@
   <h3>Guida alle specie (144 alberi del corso)</h3>
   <p>Sotto «Nome esemplare» trovi «Cerca» con Wikipedia/Wikidata, PlantNet, GBIF, ricerca da foto, da caratteristiche, per zona d’origine e con AI. Wikipedia e le proposte AI vengono mostrate solo dopo una verifica botanica su GBIF. «Cerca intelligente» dà precedenza al nome e ai possibili refusi nella guida locale; senza nome confronta i caratteri. Controlla il nome sui servizi disponibili, consulta l’AI se è configurata e usa PlantNet quando trova una foto salvata e la relativa chiave. La percentuale AI è una stima del modello, non una misurazione scientifica. Scegli tu se applicare un risultato; i dati osservati non vengono sovrascritti.</p>
   <p>Il <b>catalogo delle 144 piante</b> è separato dalle schede rilevate sul campo. In «Configurazione e backup → Completa catalogo» puoi aprire ogni pagina, aggiungere caratteristiche mancanti, indicare la fonte e salvarle. I dati originali restano distinti e non modificabili, tranne il <b>nome scientifico</b>: in cima alla pagina di ogni pianta puoi correggerlo (es. «Platanus x» → «Platanus x acerifolia»); se svuoti il campo torna il nome originale. Esporta le sole integrazioni per unirle a un altro dispositivo, oppure il catalogo completo con le integrazioni; queste ultime sono comprese anche nel backup generale.</p>
-  <p><b>Assistente AI facoltativo:</b> in Configurazione carica <code>open.env</code> dal tablet. Se scegli «Ricorda le chiavi», il browser ne conserva una copia locale; «Dimentica chiavi» la elimina. Nel catalogo seleziona Gemini, Groq o OpenRouter e premi «Proponi caratteristiche dalla slide». Controlla ogni proposta e le eventuali discordanze prima di salvarla. La slide e la nota della pianta vengono inviate solo al servizio scelto quando premi il pulsante; verifica disponibilità e costo del modello. La scheda funziona anche senza chiavi.</p>
+  <p><b>Assistente AI facoltativo:</b> in Configurazione carica <code>open.env</code> dal tablet. Se scegli «Ricorda le chiavi», il browser ne conserva una copia locale; «Dimentica chiavi» la elimina. Nel catalogo seleziona Gemini, Groq o OpenRouter e premi «Proponi caratteristiche dalla slide». Controlla ogni proposta e le eventuali discordanze prima di salvarla. La slide e la nota della pianta vengono inviate solo al servizio scelto quando premi il pulsante; verifica disponibilità e costo del modello. La scheda funziona anche senza chiavi. Se l’AI non risponde, premi «🩺 Prova i servizi AI» in Configurazione: per ogni servizio vedi quale modello risponde oppure il motivo esatto dell’errore (chiave, quota, modello non disponibile).</p>
   <p><b>Aggiornamenti:</b> il numero di versione è visibile in alto. Toccandolo apri il controllo; lo stesso comando è in «+ Opzioni → Backup e configurazione». Se una versione nuova è pronta compare «Aggiorna ora». Salva eventuali modifiche e ferma prima una traccia GPS o una nota vocale in corso. Il controllo richiede rete e funziona dal sito HTTPS.</p>
   <p>Non sai ancora il nome? Nella guida tocca "🧩 Per caratteristiche": imposta quello che vedi (persistenza, forma chioma, rami, foglia…) e la guida propone le specie più probabili, ordinate per quante corrispondono. Se apri la guida dal campo "Nome esemplare" quando è ancora vuoto ma hai già compilato altri campi della scheda, parte già precompilata con quelli.</p>
   <p><button type="button" class="btn" onclick="this.closest('dialog').close(); apriGuidaSpecie()">📖 Apri la guida alle specie</button></p>
@@ -670,6 +683,7 @@
 
   <h3>Dispositivo</h3>
   <p>L'app riconosce da sola se stai usando uno smartphone, un tablet o un PC (lo vedi in «Backup e configurazione») e adatta l'impaginazione: una colonna su telefono, due su tablet, tre su PC. Si aggiorna anche ruotando il dispositivo.</p>
+  <p>Con il tablet in orizzontale la scheda in modifica si divide in due colonne: campi a sinistra; GPS, foto e note vocali a destra, sempre visibili. Da Configurazione → «Scheda in modifica» puoi tenerla sempre a una colonna. La barra dello spazio in Configurazione mostra quanto occupa l’app; prima di scaricare una zona di mappa vedi quanto spazio servirà e, se non basta, lo scaricamento viene bloccato.</p>
   <p>In Configurazione puoi scegliere «Adatta allo schermo», 110% o 125% per ingrandire l’interfaccia. Sotto «+ Opzioni» puoi cambiare tema chiaro/scuro. Dopo la prima apertura completa, l’app conserva le risorse essenziali per lavorare offline e scarica da sola le 144 slide del corso (circa 9 MB); in Configurazione puoi controllarne il numero o riscaricarle con «Scarica slide per uso offline». Le ricerche web, PlantNet, l’AI e il meteo richiedono invece connessione.</p>
 
   <h3>Nuove schede e aggiornamenti</h3>

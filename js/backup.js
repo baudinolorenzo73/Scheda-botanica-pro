@@ -83,10 +83,17 @@ function proprietariMediaLocali() {
 // Elimina foto e audio che nessuna scheda (nemmeno nel cestino) usa più.
 // Da chiamare solo senza schede aperte: all'avvio o dopo un'importazione.
 async function pulisciMediaOrfani() {
-  const usati = proprietariMediaLocali();
   let eliminati = 0;
+  // Un file appena creato (es. foto scattata mentre l'app si avvia) può essere scritto
+  // un attimo prima di essere collegato alla scheda: sotto i 10 minuti non si tocca.
+  const recente = (id) => {
+    const t = parseInt(String(id).split('_')[1] || '', 36);
+    return Number.isFinite(t) && Date.now() - t < 10 * 60 * 1000;
+  };
   for (const store of ['foto', 'audio']) {
-    const orfani = (await DB.chiavi(store)).filter((k) => !usati.has(k));
+    const chiavi = await DB.chiavi(store);
+    const usati = proprietariMediaLocali(); // letto dopo le chiavi: include i collegamenti più recenti
+    const orfani = chiavi.filter((k) => !usati.has(k) && !recente(k));
     if (!orfani.length) continue;
     await DB.cancellaMolte(store, orfani);
     orfani.forEach((id) => (store === 'foto' ? liberaUrlFoto(id) : liberaUrlAudio(id)));
@@ -215,8 +222,6 @@ async function importaDati(voci, modo) {
     // in un'unica transazione atomica.
     const media = await preparaMediaImportazione(voci);
     const schede = voci.map((v) => v.record);
-    if (new Set(schede.map((r) => r.uid)).size !== schede.length)
-      throw new Error('backup non valido: contiene identificativi scheda duplicati');
     const specie = Array.isArray(voci.specie) ? voci.specie.filter((s) => s?.nomeSci) : [];
     const traccia = Array.isArray(voci.traccia) ? voci.traccia.filter((p) =>
       numeroFinito(p?.lat) && numeroFinito(p?.lng) && Math.abs(Number(p.lat)) <= 90 && Math.abs(Number(p.lng)) <= 180 && Number.isFinite(Date.parse(p.quando))).map((p) => ({
@@ -665,6 +670,11 @@ async function importaExcelDaFile(file) {
     const mappa = mappaColonneExcel(righe[indiceIntest]);
     const dati = righe.slice(indiceIntest + 1).filter((r) => r.some((v) => String(v).trim() !== ''));
     if (!dati.length) return alert('Nessuna riga di dati trovata sotto l’intestazione.');
+    // Coordinate: le colonne che l'app stessa scrive nel CSV (Latitudine, Longitudine, Precisione, Quota).
+    const intest = (righe[indiceIntest] || []).map((v) => String(v ?? '').trim().toLowerCase());
+    const col = (...nomi) => intest.findIndex((t) => nomi.some((n) => t === n || t.startsWith(n + ' ')));
+    const iGps = { lat: col('latitudine', 'lat'), lng: col('longitudine', 'lng', 'lon'), acc: col('precisione'), alt: col('quota', 'altitudine') };
+    const numero = (v) => { const n = Number(String(v ?? '').replace(',', '.').trim()); return String(v ?? '').trim() !== '' && Number.isFinite(n) ? n : null; };
     const voci = dati.map((cols) => {
       const obj = {};
       CAMPI.forEach((c) => {
@@ -672,15 +682,22 @@ async function importaExcelDaFile(file) {
         const valore = i >= 0 && cols[i] !== undefined ? cols[i] : '';
         obj[c.k] = c.tipo === 'data' ? normalizzaData(valore, date1904) : String(valore ?? '');
       });
+      const lat = iGps.lat >= 0 ? numero(cols[iGps.lat]) : null, lng = iGps.lng >= 0 ? numero(cols[iGps.lng]) : null;
+      if (lat !== null && lng !== null) obj.gps = { lat, lng, acc: iGps.acc >= 0 ? numero(cols[iGps.acc]) : null, alt: iGps.alt >= 0 ? numero(cols[iGps.alt]) : null };
       return normalizza(obj);
     });
+    const conGps = voci.filter((v) => v.record.gps).length;
     // Il foglio contiene solo rilievi: non deve eliminare le integrazioni
     // botaniche locali, neppure se si sostituiscono tutte le schede.
     voci.guida = S.guida;
+    // Lo stesso vale per traccia GPS e catalogo delle specie identificate.
+    voci.specie = S.specie;
+    voci.traccia = S.traccia;
     const nonTrovate = CAMPI.filter((c) => mappa[c.k] < 0).map((c) => c.label);
     $('#import-info').textContent = `Il file Excel contiene ${voci.length} righe.` +
       (nonTrovate.length ? ` Colonne non trovate (restano vuote): ${nonTrovate.join(', ')}.` : '') +
-      ` Le foto e l'audio non sono nel foglio Excel e non verranno importati. Le integrazioni della guida restano conservate.`;
+      (conGps ? ` Coordinate GPS lette per ${conGps} righe.` : '') +
+      ` Le foto e l'audio non sono nel foglio Excel e non verranno importati. Le integrazioni della guida, la traccia e il catalogo specie restano conservati.`;
     const modo = await chiedi($('#dlg-import'));
     if (modo === 'annulla') return;
     if (modo === 'sostituisci' && !confirm('Tutte le schede attuali verranno cancellate. Continuare?')) return;
@@ -696,11 +713,10 @@ async function importaExcelDaFile(file) {
 async function mostraSpazio() {
   const ultimo = leggiPref('sb-ultimo-backup');
   let t = ultimo ? `Ultimo backup: ${dataIT(ultimo)}.` : 'Nessun backup esportato finora.';
+  const st = await statoSpazio();
+  $('#spazio-barra').replaceChildren(barraSpazio(st));
+  if (st && st.usato / st.quota >= 0.9) t += ' ⚠ Spazio quasi esaurito: esporta un backup, svuota il cestino o la cache della mappa, altrimenti i salvataggi possono fallire.';
   try {
-    if (navigator.storage?.estimate) {
-      const { usage, quota } = await navigator.storage.estimate();
-      t += ` Spazio usato ${(usage / 1048576).toFixed(1)} MB su ${(quota / 1048576).toFixed(0)} MB disponibili.`;
-    }
     if (navigator.storage?.persisted) {
       t += (await navigator.storage.persisted())
         ? ' Archivio protetto dalla pulizia automatica del browser.'

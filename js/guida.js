@@ -112,9 +112,28 @@ function codificaBase64(bytes) {
   return btoa(testo);
 }
 
-async function richiediProposteSlideAI(fornitore, istruzioni, base64) {
-  return ServiziRicerca.ai(configurazioneFornitoreAI(fornitore, true), istruzioni, base64);
+async function richiediProposteSlideAI(fornitore, istruzioni, base64, mime = 'image/webp') {
+  return ServiziRicerca.ai(configurazioneFornitoreAI(fornitore, true), istruzioni, base64, { mime });
 }
+
+// Groq e molti modelli OpenRouter accettano con certezza solo JPEG/PNG: la slide WebP
+// viene convertita in JPEG (lato massimo 1600 px). Gemini riceve il WebP originale.
+async function slidePerAI(blob, fornitore) {
+  if (fornitore === 'gemini' || typeof createImageBitmap !== 'function') return { blob, mime: blob.type || 'image/webp' };
+  try {
+    const bmp = await createImageBitmap(blob);
+    const scala = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(bmp.width * scala); cv.height = Math.round(bmp.height * scala);
+    cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+    bmp.close?.();
+    const jpeg = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.85));
+    return jpeg ? { blob: jpeg, mime: 'image/jpeg' } : { blob, mime: blob.type || 'image/webp' };
+  } catch { return { blob, mime: blob.type || 'image/webp' }; }
+}
+
+// Confronto tollerante con i valori ammessi: maiuscole, accenti e spazi non contano.
+const normaValoreAI = v => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 function configurazioneFornitoreAI(nome, immagine = false) {
   const chiave = nome === 'gemini' ? (chiaviAI.GEMINI_API_KEY || chiaviAI.GOOGLE_API_KEY) :
@@ -124,20 +143,58 @@ function configurazioneFornitoreAI(nome, immagine = false) {
   return ServiziRicerca.impostazione(nome, chiave, modello, immagine);
 }
 
+// Diagnosi: una richiesta minima a ogni servizio con chiave, per vedere subito quale
+// modello risponde e, se fallisce, il motivo esatto dato dal servizio.
+async function provaServiziAI() {
+  const esito = $('#ai-prova-esito'), bottone = $('#ai-prova');
+  const servizi = [['gemini', 'Gemini', chiaviAI.GEMINI_API_KEY || chiaviAI.GOOGLE_API_KEY], ['groq', 'Groq', chiaviAI.GROQ_API_KEY],
+    ['openrouter', 'OpenRouter', chiaviAI.OPENROUTER_API_KEY]].filter(x => x[2]);
+  if (!servizi.length) { esito.textContent = 'Nessuna chiave Gemini, Groq o OpenRouter caricata: usa «Carica open.env».'; return; }
+  if (!navigator.onLine) { esito.textContent = 'Sei offline: la prova richiede Internet.'; return; }
+  bottone.disabled = true;
+  esito.replaceChildren(el('p', { testo: 'Prova in corso…' }));
+  const righe = [];
+  try {
+    for (const [nome, etichetta] of servizi) {
+      for (const immagine of nome === 'groq' ? [false, true] : [false]) {
+        const tipo = immagine ? ' · slide' : '';
+        try {
+          const cfg = configurazioneFornitoreAI(nome, immagine);
+          const prova = immagine ? await ServiziRicerca.ai(cfg, 'Descrivi il colore dominante. Rispondi solo con JSON {"ok":true,"colore":"..."}', PIXEL_PROVA_JPEG, { mime: 'image/jpeg' })
+            : await ServiziRicerca.ai(cfg, 'Test di collegamento. Rispondi solo con JSON {"ok":true}');
+          righe.push(el('p', { class: 'ai-ok', testo: `✓ ${etichetta}${tipo}: risponde con ${prova?._modello || cfg.modello}` }));
+        } catch (e) {
+          righe.push(el('p', { class: 'ai-errore', testo: `✗ ${etichetta}${tipo}: ${e.message}` }));
+        }
+        esito.replaceChildren(...righe);
+      }
+    }
+  } finally { bottone.disabled = false; }
+}
+// JPEG 64×64 verde: immagine minima per provare i modelli che leggono le slide.
+const PIXEL_PROVA_JPEG = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCABAAEADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDOoooryj5kKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA/9k=';
+
 function normalizzaProposteAI(dato, specie) {
-  if (!Array.isArray(dato?.proposte)) return [];
+  const elenco = Array.isArray(dato) ? dato : Array.isArray(dato?.proposte) ? dato.proposte : Array.isArray(dato?.proposals) ? dato.proposals : [];
   const base = GUIDA_ORIGINALE.get(specie.id);
+  const definizioni = CG_SEZIONI.flatMap(s => s.campi);
   const viste = new Set();
-  return dato.proposte.slice(0, 25).filter(p => {
-    if (!p || !CG_CHIAVI.has(p.campo) || p.campo === 'noteExtra' || base[p.campo] || viste.has(p.campo) ||
-        typeof p.valore !== 'string' || !p.valore.trim() || p.valore.length > 180 ||
-        typeof p.evidenza !== 'string' || !p.evidenza.trim() || p.evidenza.length > 220) return false;
-    const def = CG_SEZIONI.flatMap(s => s.campi).find(c => c[0] === p.campo);
-    const scelta = def?.[2] && CAMPI.find(c => c.k === def[2]);
-    if (scelta && !scelta.valori.includes(p.valore.trim())) return false;
-    viste.add(p.campo);
-    return true;
-  }).map(p => ({ campo: p.campo, valore: p.valore.trim(), evidenza: p.evidenza.trim() }));
+  const risultato = [];
+  for (const p of elenco.slice(0, 25)) {
+    if (!p || typeof p !== 'object') continue;
+    // Il campo può arrivare come chiave interna («fogliaMargine») o come etichetta («Margine fogliare»).
+    const def = definizioni.find(c => c[0] === p.campo) || definizioni.find(c => normaValoreAI(c[1]) === normaValoreAI(p.campo));
+    const campo = def?.[0];
+    const valore = typeof p.valore === 'string' ? p.valore.trim() : typeof p.valore === 'number' ? String(p.valore) : '';
+    if (!campo || base[campo] || viste.has(campo) || !valore || valore.length > 180) continue;
+    const scelta = def[2] && CAMPI.find(c => c.k === def[2]);
+    const ammesso = scelta ? scelta.valori.find(v => normaValoreAI(v) === normaValoreAI(valore)) : valore;
+    if (!ammesso) continue;
+    viste.add(campo);
+    const evidenza = typeof p.evidenza === 'string' ? p.evidenza.trim().slice(0, 220) : '';
+    risultato.push({ campo, valore: ammesso, evidenza });
+  }
+  return risultato;
 }
 
 function mostraProposteAI(proposte, id) {
@@ -148,7 +205,7 @@ function mostraProposteAI(proposte, id) {
     return el('div', { class: 'cg-ai-proposta' },
       el('strong', { testo: nome }),
       el('p', { testo: `Proposta: ${p.valore}` }),
-      el('small', { testo: `Indicazione riportata dall’AI: «${p.evidenza}». Controlla la slide.` }),
+      el('small', { testo: p.evidenza ? `Indicazione riportata dall’AI: «${p.evidenza}». Controlla la slide.` : 'L’AI non ha citato la frase della slide: controlla con attenzione.' }),
       attuale ? el('p', { class: 'cg-ai-conflitto', testo: `Già compilato: ${attuale}. Correggi il campo manualmente se necessario.` }) :
         el('button', { type: 'button', class: 'btn', onclick: () => {
           if (cgSpecie !== id) return;
@@ -176,13 +233,15 @@ async function proponiCaratteriSlideAI() {
   try {
     const immagine = await fetch(`./slides/${specie.pagina}.webp`);
     if (!immagine.ok) throw new Error('Slide non disponibile.');
-    const base64 = codificaBase64(new Uint8Array(await immagine.arrayBuffer()));
+    const fornitore = $('#cg-ai-fornitore').value;
+    const slide = await slidePerAI(await immagine.blob(), fornitore);
+    const base64 = codificaBase64(new Uint8Array(await slide.blob.arrayBuffer()));
     const campi = CG_SEZIONI.flatMap(s => s.campi).filter(([k]) => !specie[k]).map(([k, label, scheda]) => {
       const scelta = scheda && CAMPI.find(c => c.k === scheda);
       return `${k} (${label}${scelta ? `; valori ammessi: ${scelta.valori.join(', ')}` : ''})`;
     }).join('; ');
     const istruzioni = `Analizza la slide del corso relativa a ${nomeCatalogo(specie)}. Usa solo caratteristiche ESPLICITAMENTE scritte nella slide o nella nota trascritta qui sotto; non dedurre tratti botanici dalle foto né inventare fonti. Restituisci soltanto JSON {"proposte":[{"campo":"...","valore":"...","evidenza":"breve frase presente nella slide"}]}. Campi ammessi: ${campi}. Non inventare valori se mancano. Nota trascritta: ${specie.note || ''}`;
-    const proposte = normalizzaProposteAI(await richiediProposteSlideAI($('#cg-ai-fornitore').value, istruzioni, base64), specie);
+    const proposte = normalizzaProposteAI(await richiediProposteSlideAI(fornitore, istruzioni, base64, slide.mime), specie);
     if (richiesta !== cgAiRichiesta || cgSpecie !== id) return;
     mostraProposteAI(proposte, id);
     $('#cg-ai-stato').textContent = proposte.length ?
@@ -379,7 +438,7 @@ async function salvaIntegrazioneGuida() {
     S.guida = S.guida.filter(v => v.id !== cgSpecie);
     if (Object.keys(campi).length) S.guida.push(voce);
     applicaIntegrazioniGuida();
-    if (typeof aggiornaDatalistNome === 'function') aggiornaDatalistNome();
+    aggiornaDatalistNome();
     cgSporco = false;
     listaCompletaGuida();
     if (S.aperta) confrontaConCatalogo();
@@ -938,27 +997,44 @@ async function richiediRicercaSpecieAI(r) {
   const osservazioni = datiRicercaAI(r);
   if (!osservazioni.nomeInserito && !Object.keys(osservazioni.caratteristiche).length)
     throw new Error('Inserisci un nome o almeno una caratteristica botanica prima della ricerca AI.');
-  const istruzioni = `Sei un assistente di identificazione botanica prudente. Proponi al massimo 4 taxa vegetali compatibili con questi dati: ${JSON.stringify(osservazioni)}. Usa soltanto nomi scientifici binomiali (genere e specie); non inventare taxa e non proporre animali, funghi o nomi soltanto di genere. La percentuale è una stima orientativa basata esclusivamente sui dati forniti, non una certezza. Rispondi esclusivamente con JSON nel formato {"candidati":[{"nomeScientifico":"Genere specie","percentuale":0,"motivazione":"massimo 180 caratteri"}]}.`;
+  const istruzioni = `Sei un assistente di identificazione botanica prudente. Proponi al massimo 4 taxa vegetali compatibili con questi dati: ${JSON.stringify(osservazioni)}. Usa soltanto nomi scientifici binomiali (genere e specie); non inventare taxa e non proporre animali, funghi o nomi soltanto di genere. Ibridi nella forma «Genere × specie»; una cultivar solo se il nome inserito la indica. La percentuale è un numero intero da 0 a 100, stima orientativa basata esclusivamente sui dati forniti, non una certezza. Motivazione in italiano. Rispondi esclusivamente con JSON nel formato {"candidati":[{"nomeScientifico":"Genere specie","percentuale":70,"motivazione":"massimo 180 caratteri"}]}.`;
   const json = await ServiziRicerca.ai(configurazioneFornitoreAI(fornitore.nome), istruzioni, '', {
     attiva, onRetry: testo => { if (attiva()) $('#auto-stato').textContent = testo; }
   });
   if (!attiva()) throw new Error('Ricerca annullata.');
-  const grezzi = Array.isArray(json?.candidati) ? json.candidati.slice(0, 4) : [];
-  const validi = grezzi.filter(c => c && typeof c.nomeScientifico === 'string' &&
-    /^[A-ZÀ-ÖØ-Þ][\p{L}-]+\s+[a-zà-öø-ÿ][\p{L}.-]+(?:\s+(?:subsp\.|var\.|f\.)\s+[a-zà-öø-ÿ][\p{L}.-]+)?$/u.test(c.nomeScientifico.trim()) &&
-    Number.isFinite(Number(c.percentuale)) && typeof c.motivazione === 'string' && c.motivazione.trim())
-    .map(c => ({ nome: c.nomeScientifico.trim().slice(0, 160), percentuale: Math.round(Math.max(0, Math.min(100, Number(c.percentuale)))),
-      motivazione: c.motivazione.trim().slice(0, 180) }));
+  const validi = candidatiAIValidi(json);
   const verificati = await Promise.allSettled(validi.map(async c => {
-    const gbif = await jsonAuto(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(c.nome)}&kingdom=Plantae`);
+    const gbif = await jsonAuto(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(c.nome.replace(/\s+['\u2018\u2019"].*$/, ''))}&kingdom=Plantae`);
     if (!ServiziRicerca.gbifBotanico(gbif)) return null;
-    return { nome: gbif.canonicalName || gbif.scientificName || c.nome, ai: { percentuale: c.percentuale, motivazione: c.motivazione, fornitore: fornitore.etichetta },
+    const cultivar = c.nome.match(/\s+(['\u2018\u2019"].*)$/)?.[1];
+    return { nome: (gbif.canonicalName || gbif.scientificName || c.nome) + (cultivar ? ' ' + cultivar : ''), ai: { percentuale: c.percentuale, motivazione: c.motivazione, fornitore: fornitore.etichetta },
       gbif: gbif.confidence, gbifId: gbif.usageKey };
   }));
   const risultati = verificati.filter(e => e.status === 'fulfilled' && e.value).map(e => e.value);
   if (!risultati.length && verificati.some(e => e.status === 'rejected'))
     throw new Error('L’AI ha risposto, ma GBIF non è raggiungibile per verificare i nomi. Nessun dato applicato; riprova più tardi.');
   return risultati;
+}
+
+// Legge i candidati anche quando il modello cambia leggermente il formato: chiavi inglesi,
+// percentuale scritta «70%» o 0,7, motivazione assente, ibridi «Platanus × hispanica»,
+// cultivar tra apici. Restano esclusi i nomi che non sono binomi botanici.
+function candidatiAIValidi(json) {
+  const elenco = Array.isArray(json) ? json : json?.candidati || json?.candidates || json?.risultati || [];
+  if (!Array.isArray(elenco)) return [];
+  const binomio = /^[A-ZÀ-ÖØ-Þ][\p{L}-]+\s+(?:[×x]\s*)?[a-zà-öø-ÿ][\p{L}.-]+(?:\s+(?:subsp\.|ssp\.|var\.|f\.)\s+[a-zà-öø-ÿ][\p{L}.-]+)?(?:\s+['\u2018\u2019"][^'\u2018\u2019"]{1,40}['\u2018\u2019"])?$/u;
+  const visti = new Set();
+  return elenco.slice(0, 6).map(c => {
+    if (!c || typeof c !== 'object') return null;
+    const nome = String(c.nomeScientifico || c.nome || c.scientificName || c.name || '').trim().replace(/\s+/g, ' ');
+    if (!binomio.test(nome) || visti.has(nome.toLowerCase())) return null;
+    visti.add(nome.toLowerCase());
+    let p = typeof c.percentuale === 'string' ? parseFloat(c.percentuale.replace(',', '.')) : Number(c.percentuale ?? c.confidenza ?? c.confidence);
+    if (Number.isFinite(p) && p > 0 && p < 1 && !/%/.test(String(c.percentuale))) p *= 100;
+    const motivazione = String(c.motivazione || c.motivo || c.reason || '').trim();
+    return { nome: nome.slice(0, 160), percentuale: Number.isFinite(p) ? Math.round(Math.max(0, Math.min(100, p))) : null,
+      motivazione: (motivazione || 'Nessuna motivazione fornita.').slice(0, 180) };
+  }).filter(Boolean).slice(0, 4);
 }
 
 function disegnaRisultatiAuto(candidati, messaggioVuoto = 'Nessuna proposta verificabile. Inserisci qualche caratteristica, un nome o una foto e riprova.') {
@@ -979,7 +1055,7 @@ function disegnaRisultatiAuto(candidati, messaggioVuoto = 'Nessuna proposta veri
     else if (c.guida) indizi.push('Presente nella guida delle 144 piante');
     if (c.wikipedia) indizi.push('Nome del taxon su Wikidata, trovato tramite Wikipedia');
     if (c.plantnet) indizi.push(`Catalogo PlantNet${c.nomiComuni?.length ? ': ' + c.nomiComuni.join(', ') : ''}. La presenza nel catalogo non identifica l’esemplare.`);
-    if (c.ai) indizi.push(`AI ${c.ai.fornitore}: ${c.ai.percentuale}% (stima orientativa) · ${c.ai.motivazione}`);
+    if (c.ai) indizi.push(`AI ${c.ai.fornitore}: ${c.ai.percentuale != null ? c.ai.percentuale + '% (stima orientativa)' : 'senza percentuale'} · ${c.ai.motivazione}`);
     if (c.gbif != null) indizi.push(`GBIF: corrispondenza del nome ${c.gbif}% (non identificazione della pianta)`);
     if (c.scritto && !c.guida && !c.wikipedia && c.gbif == null && c.foto == null) indizi.push('Nome inserito nella scheda: ancora da verificare.');
     return el('div', { class: 'auto-carta' },
@@ -1028,6 +1104,7 @@ function usaRisultatoAuto(c) {
   else usaRisultatoWeb(c.nome);
   if (c.gbifId) r.gbifId = String(c.gbifId);
   if (c.nomeCompleto) r.plantnetNome = c.nomeCompleto;
+  if (c.gbifId) disegnaLinkGbif(); // mostra subito l'ID confermato
   salvaPresto(r);
   $('#dlg-cerca-auto').close();
 }

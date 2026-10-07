@@ -482,7 +482,7 @@ const server = http.createServer((req, res) => {
         chiamate++;
         const body=route.request().postDataJSON();
         assert.equal(body.model,'qwen/qwen3.8-27b');
-        assert.match(body.messages[0].content[1].image_url.url,/^data:image\/webp;base64,/);
+        assert.match(body.messages[0].content[1].image_url.url,/^data:image\/jpeg;base64,/);assert.equal(body.reasoning_format,"hidden");
         await route.fulfill({status:200,contentType:'application/json',body:fake});
       });
       await page.click('#cg-ai-proponi');

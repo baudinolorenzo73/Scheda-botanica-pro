@@ -1,12 +1,12 @@
 'use strict';
 // Cache versionata per percorso: altri progetti sullo stesso dominio restano indipendenti.
-const CACHE_NOME = 'scheda-botanica-app-v69-' + new URL(self.registration.scope).pathname;
-const CACHE_TILE = 'scheda-botanica-tile-v1';
+const CACHE_NOME = 'scheda-botanica-app-v71-' + new URL(self.registration.scope).pathname;
+const CACHE_TILE = 'scheda-botanica-tile-v2';
 // Slide del corso: cache non versionata, sopravvive agli aggiornamenti dell'app.
 const CACHE_SLIDE = 'scheda-botanica-slide-v1-' + new URL(self.registration.scope).pathname;
 const FILE_APP_SHELL = [
   './', './index.html', './css/app.css', './manifest.json', './versione.json',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
+  './icons/icon-32.png', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
   './app.js', './js/config.js', './js/utils.js', './js/database.js', './js/ricerca-servizi.js', './js/guida.js', './js/mappa.js', './js/stampa-qr.js', './js/backup.js', './js/altezza.js', './js/mappa-export.js', './icone.js',
   './data/guida-specie.js', './lib/leaflet.js', './lib/leaflet.css',
   './lib/jszip.js', './lib/xlsx-populate.js', './lib/qrcode-generator.js',
@@ -25,6 +25,8 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const scope = new URL(self.registration.scope).pathname;
     const nomi = await caches.keys();
+    // Le tile v1 erano salvate come risposte opache (enormi per la quota): si eliminano.
+    await caches.delete('scheda-botanica-tile-v1');
     await Promise.all(nomi.filter((n) => n !== CACHE_NOME &&
       (/^scheda-botanica-app-v\d+$/.test(n) ||
        (n.startsWith('scheda-botanica-app-') && n.endsWith('-' + scope))))
@@ -49,8 +51,14 @@ self.addEventListener('fetch', (event) => {
     const cached = await cache.match(req);
     if (cached) return cached;
     try {
-      const response = await fetch(req);
-      if (response.ok || (tile && response.type === 'opaque')) {
+      // Tile: si chiede la versione CORS (verificabile e di peso reale) da mettere in cache;
+      // se il server non la concede si mostra comunque la tile, senza salvarla.
+      let response;
+      if (tile) {
+        try { response = await fetch(new Request(req.url, { mode: 'cors', credentials: 'omit' })); }
+        catch { return await fetch(req); }
+      } else response = await fetch(req);
+      if (response.ok) { // mai risposte opache: occupano molto spazio e possono essere errori
         event.waitUntil(cache.put(req, response.clone()).catch(() => {}));
       }
       return response;

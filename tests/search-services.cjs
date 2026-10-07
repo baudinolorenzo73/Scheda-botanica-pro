@@ -36,7 +36,7 @@ function flussoApplicazione() {
     trovaSpecieGuida: nome => nome === guida.nomeSci ? guida : null, nomeCatalogo: v => v.nomeSci,
     punteggioCaratteristiche: () => ({ punti: 1, totale: 1 }),
     el: (tipo, attrs, ...figli) => elemento(tipo, attrs, figli),
-    confirm: () => true, salvaPresto() {}, usaNomeDaGuidaSpecie: v => { r.nome = v.nomeSci; }, usaRisultatoWeb: nome => { r.nome = nome; },
+    confirm: () => true, salvaPresto() {}, disegnaLinkGbif() {}, usaNomeDaGuidaSpecie: v => { r.nome = v.nomeSci; }, usaRisultatoWeb: nome => { r.nome = nome; },
     fetch: async (url, opzioni) => { richieste.push(String(url)); return invii(String(url), opzioni); } });
   $('#f-nome').value = r.nome;
   $('#cg-ai-fornitore').value = 'gemini';
@@ -129,7 +129,8 @@ function flussoApplicazione() {
     risposta = async () => chat({ candidati: [] });
     await s.ai(s.impostazione('groq', 'chiave-finta'), 'testo');
     const corpo = JSON.parse(chiamate[0].opzioni.body);
-    assert.equal(corpo.model, 'llama-3.1-8b-instant');
+    assert.equal(corpo.model, 'llama-3.3-70b-versatile');
+    assert.equal(corpo.reasoning_format, undefined, 'Llama non ragiona: niente parametri di ragionamento');
     assert.equal(typeof corpo.messages[0].content, 'string');
     assert.equal(corpo.max_completion_tokens, 1800);
     assert.equal(chiamate[0].opzioni.headers.Authorization, 'Bearer chiave-finta');
@@ -140,9 +141,14 @@ function flussoApplicazione() {
     const corpo = JSON.parse(chiamate[0].opzioni.body);
     assert.equal(corpo.model, 'qwen/qwen3.8-27b');
     assert.equal(corpo.messages[0].content[1].image_url.url, 'data:image/webp;base64,AQID');
+    // Con la modalità JSON Groq rifiuta (400) il ragionamento lasciato nel testo
+    assert.equal(corpo.reasoning_format, 'hidden');
+    assert.equal(corpo.reasoning_effort, 'none');
+    await s.ai(s.impostazione('groq', 'chiave-finta', '', true), 'slide', 'AQID', { mime: 'image/jpeg' });
+    assert.match(JSON.parse(chiamate[1].opzioni.body).messages[0].content[1].image_url.url, /^data:image\/jpeg;base64,/);
   });
   await prova('Gemini 404: consulta modelli e riprova una sola volta; mai Pro', async () => {
-    risposta = async url => url.includes('gemini-2.5-flash:') ? errore(404) : url.includes('pageSize=') ?
+    risposta = async url => url.includes('gemini-3.5-flash:') ? errore(404) : url.includes('pageSize=') ?
       ok({ models: [
         { name: 'models/gemini-3.0-pro', supportedGenerationMethods: ['generateContent'] },
         { name: 'models/gemini-3.0-flash', supportedGenerationMethods: ['generateContent'] },
@@ -155,6 +161,38 @@ function flussoApplicazione() {
     assert.ok(chiamate.every(c => c.url.startsWith('https://generativelanguage.googleapis.com/')));
     await s.ai(cfg, 'nome pianta');
     assert.equal(chiamate.length, 4, 'La seconda richiesta usa il modello già verificato');
+  });
+  await prova('Gemini: modello non concesso (400/403 o quota gratuita 0) → modello alternativo', async () => {
+    const elenco = ok({ models: [
+      { name: 'models/gemini-3.5-flash', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] } ] });
+    for (const [status, msg] of [[400, 'models/gemini-3.5-flash is not found for API version v1beta'], [403, 'This model is no longer available to new users'],
+      [429, 'Quota exceeded for metric: generate_content_free_tier_requests, limit: 0']]) {
+      chiamate = []; s.svuotaCache();
+      risposta = async url => url.includes('gemini-3.5-flash:') ? { ok: false, status, text: async () => JSON.stringify({ error: { message: msg } }) }
+        : url.includes('pageSize=') ? elenco : gemini({ ok: true });
+      const d = await s.ai(s.impostazione('gemini', 'chiave-finta'), 'test');
+      assert.equal(d.ok, true);
+      assert.match(chiamate[2].url, /gemini-3\.8-flash:generateContent/, 'preferisce il Flash più recente al Lite');
+    }
+  });
+  await prova('Errori: motivo del servizio mostrato, chiavi oscurate, quota normale non cambia modello', async () => {
+    risposta = async () => ({ ok: false, status: 400, text: async () => JSON.stringify({ error: { message: 'Invalid value for key=AIzaSyFINTA1234567890 field' } }) });
+    await assert.rejects(s.ai(s.impostazione('gemini', 'chiave-finta'), 'test'), e => {
+      assert.match(e.message, /rifiutata.*400.*Invalid value/); assert.doesNotMatch(e.message, /AIzaSyFINTA/); return true; });
+    assert.equal(chiamate.length, 1);
+    chiamate = [];
+    risposta = async () => ({ ok: false, status: 429, text: async () => '{"error":{"message":"Rate limit reached, retry in 20s"}}' });
+    await assert.rejects(s.ai(s.impostazione('groq', 'chiave-finta'), 'test'), /quota o limite.*Rate limit/);
+    assert.equal(chiamate.length, 1);
+  });
+  await prova('Risposte AI con ragionamento o testo attorno al JSON vengono lette', async () => {
+    risposta = async () => ok({ choices: [{ message: { content: '<think>ragiono</think>Ecco il risultato:\n{"candidati":[{"nomeScientifico":"Fagus sylvatica"}]}\nSpero sia utile.' } }] });
+    const d = await s.ai(s.impostazione('groq', 'chiave-finta'), 'test');
+    assert.equal(d.candidati[0].nomeScientifico, 'Fagus sylvatica');
+    risposta = async () => ok({ candidates: [{ content: { parts: [{ text: 'pensiero', thought: true }, { text: '{"proposte":[]}' }] } }] });
+    assert.equal((await s.ai(s.impostazione('gemini', 'chiave-finta'), 'test')).proposte.length, 0);
   });
   await prova('Modello personalizzato 404: non viene sostituito', async () => {
     risposta = async () => errore(404);

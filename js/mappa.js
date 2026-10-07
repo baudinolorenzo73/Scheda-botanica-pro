@@ -22,7 +22,7 @@
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_SUBDOMINI = ['a', 'b', 'c'];
 // Deve restare identico al nome usato in service-worker.js: sono la stessa cache.
-const CACHE_TILE = 'scheda-botanica-tile-v1';
+const CACHE_TILE = 'scheda-botanica-tile-v2';
 const urlTile = (z, x, y) => TILE_URL
   .replace('{s}', TILE_SUBDOMINI[Math.abs(x + y) % TILE_SUBDOMINI.length])
   .replace('{z}', z).replace('{x}', x).replace('{y}', y);
@@ -50,6 +50,7 @@ async function svuotaCacheMappa() {
   if (!confirm(`Cancellare le ${n} tile salvate offline? Le zone già viste andranno riscaricate dalla rete.`)) return;
   await caches.delete(CACHE_TILE);
   aggiornaInfoCacheMappa();
+  if ($('#dlg-mappa-offline').open) aggiornaStimaAreaMappa();
   toast('Cache della mappa svuotata');
 }
 
@@ -75,10 +76,8 @@ const SCARICAMENTO_MAPPA = { annulla: false };
 // Scarica in sequenza (poca concorrenza, per non intasare i server OSM) le
 // tile della lista, saltando quelle già in cache, aggiornando lo stato ad
 // ogni tile e potendo essere interrotto a metà dal pulsante "Annulla".
-// mode:'no-cors' è quello che permette di ottenere comunque una risposta
-// (anche se "opaca") da un server senza CORS come quello di OpenStreetMap;
-// cache.put() la salva lo stesso, a differenza di un fetch() normale che
-// fallirebbe e basta.
+// Le tile si chiedono in CORS: in cache finiscono solo tile vere (200), con il loro
+// peso reale (le risposte «opache» contano ~7 MB l'una sulla quota del browser).
 async function scaricaTileArea(tiles, progresso) {
   SCARICAMENTO_MAPPA.annulla = false;
   const cache = await caches.open(CACHE_TILE);
@@ -93,7 +92,10 @@ async function scaricaTileArea(tiles, progresso) {
       try {
         const gia = await cache.match(url);
         if (!gia) {
-          const risp = await fetch(url, { mode: 'no-cors' });
+          // Richiesta CORS: si salva solo una tile vera (200). Le risposte «opache» di prima
+          // pesavano ~7 MB l'una sulla quota del browser e potevano essere tile di errore.
+          const risp = await fetch(url, { mode: 'cors', credentials: 'omit' });
+          if (!risp.ok) throw new Error('tile non disponibile');
           await cache.put(url, risp);
           nuove++;
         }
@@ -126,9 +128,13 @@ function aggiornaStimaAreaMappa() {
   const zMin = Math.max(0, zBase - 1);
   const zMax = Math.min(19, zBase + margine);
   const tiles = elencoTileArea(mappa, mappa.getBounds(), zMin, zMax);
-  const mb = (tiles.length * 17 / 1024).toFixed(1);
+  const mb = (tiles.length * BYTE_PER_TILE / 1048576).toFixed(1);
   $('#mo-stima').textContent = `${tiles.length} tile stimate (~${mb} MB), livelli di zoom ${zMin}–${zMax}.`;
+  const richiesta = ++STIMA_SPAZIO_MAPPA;
+  statoSpazio().then((st) => { if (richiesta === STIMA_SPAZIO_MAPPA) $('#mo-spazio').replaceChildren(barraSpazio(st, tiles.length * BYTE_PER_TILE)); });
 }
+const BYTE_PER_TILE = 17 * 1024; // media di una tile OSM salvata
+let STIMA_SPAZIO_MAPPA = 0;
 
 async function avviaScaricamentoAreaMappa() {
   const margine = Number($('#mo-margine').value);
@@ -136,6 +142,13 @@ async function avviaScaricamentoAreaMappa() {
   const zMin = Math.max(0, zBase - 1);
   const zMax = Math.min(19, zBase + margine);
   const tiles = elencoTileArea(mappa, mappa.getBounds(), zMin, zMax);
+  // Controllo dello spazio: la mappa non deve togliere posto alle schede e alle foto.
+  const st = await statoSpazio();
+  if (st) {
+    const dopo = (st.usato + tiles.length * BYTE_PER_TILE) / st.quota;
+    if (dopo >= 0.97) return alert(`Spazio insufficiente: con questa zona l'app userebbe il ${Math.round(dopo * 100)}% dello spazio disponibile e i salvataggi delle schede potrebbero fallire. Scegli meno livelli di zoom, un'area più piccola, oppure svuota la cache della mappa.`);
+    if (dopo >= 0.85 && !confirm(`Dopo lo scaricamento l'app userebbe il ${Math.round(dopo * 100)}% dello spazio disponibile. Restando poco spazio, i salvataggi di foto e schede potrebbero fallire. Continuare?`)) return;
+  }
   if (tiles.length > 3000 && !confirm(`Sono ${tiles.length} tile, potrebbe volerci un po' e consumare parecchi dati. Continuare?`)) return;
 
   $('#mo-progresso').classList.remove('nascosto');
@@ -152,6 +165,7 @@ async function avviaScaricamentoAreaMappa() {
   $('#btn-mo-scarica').disabled = false;
   $('#btn-mo-annulla-scaricamento').classList.add('nascosto');
   aggiornaInfoCacheMappa();
+  aggiornaStimaAreaMappa(); // barra dello spazio aggiornata
   if (esito.interrotto) {
     toast(`Scaricamento interrotto: ${esito.nuove} tile nuove salvate`);
   } else {

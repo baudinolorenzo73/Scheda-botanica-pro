@@ -2,6 +2,38 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.38.0 · indicatore dello spazio ed editor a due colonne
+
+- **Indicatore dello spazio:** in *Backup e configurazione* una barra mostra lo spazio usato dall'app su quello concesso dal browser, con il dettaglio «Schede, foto e audio» e «Mappe offline, slide e app». La barra è verde fino al 70%, gialla fino al 90%, poi rossa, con un avviso.
+- **Prima di scaricare una zona di mappa** la stessa barra mostra quanto spazio occuperà (parte tratteggiata). Oltre l'85% chiede conferma; oltre il 97% blocca lo scaricamento, così foto e schede hanno sempre posto.
+- **Editor a due colonne:** con il tablet in orizzontale (schermo largo almeno 1000 px) i campi stanno a sinistra, mentre GPS, foto e note vocali stanno a destra e restano visibili mentre scorri. In verticale e sul telefono non cambia nulla. Si può tornare a una colonna da *Configurazione → Scheda in modifica*.
+- Corretto: nella barra in alto dell'editor la scritta «Foto» era più grande delle altre.
+
+---
+
+## 3.37.0 · AI affidabile, correzioni dalla revisione del codice
+
+**Assistente AI**
+- **Gemini:** il modello predefinito diventa `gemini-3.5-flash`, perché Google non concede più Gemini 2.5 alle chiavi nuove. Se il modello non è concesso alla chiave (errore 400, 403 o 404, oppure quota gratuita 0) l'app sceglie da sola un altro Flash disponibile.
+- **Groq:** le slide ora funzionano. Il modello con immagini (Qwen 3.8) rifiutava ogni richiesta (400) perché il ragionamento restava nel testo; ora viene nascosto. La ricerca testuale usa `llama-3.3-70b-versatile`, più preciso del precedente 8B.
+- **Slide:** a Groq e OpenRouter le slide arrivano in JPEG, formato accettato da tutti i modelli. Gemini riceve ancora il WebP originale.
+- **Risposte lette meglio:** il JSON viene trovato anche con ragionamento o testo attorno. Sono accettate le percentuali scritte come «70%» o 0,7, le chiavi in inglese, la motivazione mancante, gli ibridi («Platanus × hispanica») e le cultivar («Prunus cerasifera 'Pissardii'»). Le proposte dalla slide accettano maiuscole e accenti diversi.
+- **Errori chiari:** ora l'errore riporta il motivo esatto dato dal servizio, con le chiavi oscurate.
+- Nuovo pulsante **«🩺 Prova i servizi AI»** in Configurazione: per ogni chiave mostra quale modello risponde o perché fallisce.
+
+**Correzioni**
+- **Cestino:** ripristinare due volte la stessa scheda (doppio tocco, o «Annulla» subito dopo) la duplicava, e il backup successivo non era più ripristinabile.
+- **Excel/CSV:** «Sostituisci» cancellava anche la traccia GPS e il catalogo delle specie identificate; ora restano. Il CSV esportato dall'app, reimportato, conserva le **coordinate GPS**.
+- **Pulizia all'avvio:** la pulizia dei file senza scheda poteva cancellare una foto o un audio appena creati; ora i file degli ultimi 10 minuti non vengono toccati.
+- **Mappa offline:** le tile della mappa offline erano salvate come risposte «opache», che contano circa 7 MB l'una sulla quota del browser e potevano riempirla, fino a impedire i salvataggi. Ora si salvano solo tile vere. Per questo la vecchia cache delle tile viene svuotata: le zone offline vanno riscaricate.
+- **Etichetta QR:** se appartiene a una scheda nel cestino, l'app propone di ripristinarla invece di dare un messaggio incomprensibile.
+- **Stampa:** non resta più su «Schede selezionate» quando non ci sono selezioni; con nessun campo spuntato avvisa, invece di stampare schede vuote.
+- **Avvio:** un errore nell'import dalla versione precedente non blocca più l'avvio.
+- **GBIF:** l'ID confermato da una ricerca non viene più sovrascritto dalla ricerca automatica.
+- Codice ripetuto unificato (valori delle scelte) e icone aggiunte alla cache offline.
+
+---
+
 ## 3.36.1 · pagina HTML: ogni scheda in una pagina propria
 
 - **Corretto:** nella pagina HTML mappa + schede, toccando il numero 13 e «Vai alla scheda» si finiva sulla scheda 11: lo scorrimento lungo la pagina veniva falsato dalle foto che si caricavano nel frattempo.

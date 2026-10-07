@@ -269,3 +269,42 @@ function scriviPref(chiave, valore) {
 function cancellaPref(chiave) {
   try { localStorage.removeItem(chiave); } catch { /* niente da fare */ }
 }
+
+// Valore di un campo come lo legge una persona (le «scelte» hanno un'etichetta).
+// Unica versione: usata da stampa, pagina HTML, elenco e report.
+function valoreLeggibile(c, v) {
+  if (c.tipo === 'scelta') return v ? (c.valori.find(([x]) => x === v) || [, v])[1] : '';
+  return String(v ?? '').trim();
+}
+
+/* Indicatore dello spazio del browser (3.38): barra usato / disponibile,
+   con l'eventuale aggiunta prevista (es. una zona di mappa da scaricare). */
+async function statoSpazio() {
+  try {
+    if (!navigator.storage?.estimate) return null;
+    const { usage = 0, quota = 0, usageDetails } = await navigator.storage.estimate();
+    if (!quota) return null;
+    return { usato: usage, quota, dettagli: usageDetails || null };
+  } catch { return null; }
+}
+function testoByte(b) {
+  const mb = b / 1048576;
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1).replace('.', ',')} GB` : `${mb < 10 ? mb.toFixed(1).replace('.', ',') : Math.round(mb)} MB`;
+}
+// Livello per colori e avvisi: ok < 70% ≤ attenzione < 90% ≤ critico.
+const livelloSpazio = (frazione) => frazione >= 0.9 ? 'critico' : frazione >= 0.7 ? 'attenzione' : 'ok';
+function barraSpazio(st, aggiunta = 0, etichettaAggiunta = 'dopo lo scaricamento') {
+  if (!st) return el('p', { class: 'spazio-nota', testo: 'Il browser non indica lo spazio disponibile.' });
+  const fUsato = Math.min(1, st.usato / st.quota), fDopo = Math.min(1, (st.usato + aggiunta) / st.quota);
+  const pct = (f) => `${(f * 100).toFixed(f < 0.1 ? 1 : 0).replace('.', ',')}%`;
+  const dettagli = st.dettagli ? [['Schede, foto e audio', st.dettagli.indexedDB], ['Mappe offline, slide e app', st.dettagli.caches]]
+    .filter(([, v]) => v > 0).map(([t, v]) => `${t}: ${testoByte(v)}`).join(' · ') : '';
+  return el('div', { class: 'spazio-ind livello-' + livelloSpazio(fDopo) },
+    el('div', { class: 'spazio-traccia', role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(fUsato * 100)),
+      'aria-label': 'Spazio usato dall’app' },
+      el('span', { class: 'spazio-usato', style: `width:${(fUsato * 100).toFixed(2)}%` }),
+      aggiunta > 0 ? el('span', { class: 'spazio-aggiunta', style: `width:${((fDopo - fUsato) * 100).toFixed(2)}%` }) : null),
+    el('p', { class: 'spazio-testo', testo: `Spazio usato ${testoByte(st.usato)} su ${testoByte(st.quota)} (${pct(fUsato)})` +
+      (aggiunta > 0 ? ` · ${etichettaAggiunta} (+${testoByte(aggiunta)}): ${pct(fDopo)}` : '') }),
+    dettagli ? el('p', { class: 'spazio-nota', testo: dettagli }) : null);
+}

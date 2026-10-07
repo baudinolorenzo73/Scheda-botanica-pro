@@ -524,9 +524,7 @@ function aggiornaApriSchedaSalvata() {
 }
 
 function etichettaValore(c, v) {
-  if (!v) return '';
-  if (c.tipo === 'scelta') return (c.valori.find(([x]) => x === v) || [, v])[1];
-  return v;
+  return v ? valoreLeggibile(c, v) : '';
 }
 
 const CAMPI_RIASSUNTO = ['grandezza', 'persistenza', 'formaChioma'].map((k) => CAMPI.find((c) => c.k === k));
@@ -1141,11 +1139,20 @@ async function spostaNelCestino(r) {
 }
 
 async function ripristinaDalCestino(r) {
-  const modifiche = { cancellata: null, modificato: oraISO() };
-  await DB.scrivi('schede', { ...r, ...modifiche });
-  Object.assign(r, modifiche);
+  // Doppio tocco o «Annulla» dopo un ripristino: la scheda è già tra quelle attive.
+  if (!S.cestino.includes(r) || S.schede.some((s) => s.uid === r.uid)) return;
+  // Lo stato cambia subito (prima dell'attesa): una seconda chiamata trova già la scheda attiva.
   S.cestino = S.cestino.filter((s) => s.uid !== r.uid);
   S.schede.push(r);
+  const modifiche = { cancellata: null, modificato: oraISO() };
+  try { await DB.scrivi('schede', { ...r, ...modifiche }); }
+  catch (e) {
+    S.schede = S.schede.filter((s) => s !== r);
+    S.cestino.push(r);
+    stato('Ripristino non riuscito: ' + e.message, true);
+    return;
+  }
+  Object.assign(r, modifiche);
   disegnaElenco();
   disegnaCestino();
   aggiornaBadgeCestino();
@@ -1247,7 +1254,7 @@ async function applicaNumeri(coppie) {
     if (!(await salvaOra(r))) throw new Error('salvataggio non riuscito');
   }
   disegnaElenco();
-  if (typeof aggiornaTitoloEditor === 'function' && $('#ed-titolo')) { try { aggiornaTitoloEditor(); } catch {} }
+  if (S.aperta) aggiornaTitoloEditor();
   stato(`${coppie.length} schede rinumerate`);
 }
 
@@ -1662,7 +1669,8 @@ async function disegnaLinkGbif() {
   const nomeCercato = r.nome;
   cont.replaceChildren(el('span', { class: 'testo-nota' }, 'Cerco il riferimento GBIF…'));
   const id = await trovaGbifId(nomeCercato);
-  if (S.aperta !== r || r.nome !== nomeCercato) return;
+  // un ID arrivato nel frattempo da una ricerca confermata (GBIF/PlantNet/AI) ha la precedenza
+  if (S.aperta !== r || r.nome !== nomeCercato || r.gbifId) return;
   if (id) { r.gbifId = id; salvaPresto(r); cont.replaceChildren(bottone(id)); }
   else cont.replaceChildren(el('button', {
     type: 'button', class: 'btn', onclick: cercaGbifDaScheda,
@@ -1906,8 +1914,13 @@ async function migraVecchiaVersione() {
     scriviPref('sb-migrazione', 'rifiutata');
     return;
   }
-  await importaDati(vecchi.map(normalizza), 'unisci');
-  scriviPref('sb-migrazione', oraISO());
+  try {
+    await importaDati(vecchi.map(normalizza), 'unisci');
+    scriviPref('sb-migrazione', oraISO());
+  } catch (e) {
+    // Un errore qui non deve bloccare l'avvio (traccia, catalogo, backup automatico).
+    stato(`Import della versione precedente non riuscito: ${e.message}`, true);
+  }
 }
 
 /* =====================================================================
@@ -2068,6 +2081,13 @@ function collegaEventi() {
   $('#btn-slide-offline').onclick = scaricaSlideDaPulsante;
   $('#btn-applica-aggiornamento').onclick = applicaAggiornamento;
   $('#sel-dimensione-interfaccia').onchange = (e) => applicaDimensioneInterfaccia(e.target.value);
+  // Editor a due colonne (in orizzontale) o sempre una: preferenza di questo dispositivo.
+  const applicaColonneEditor = (v) => { const x = v === 'una' ? 'una' : 'auto'; document.body.dataset.editor = x; $('#sel-editor-colonne').value = x; scriviPref('sb-editor-colonne', x); };
+  applicaColonneEditor(leggiPref('sb-editor-colonne'));
+  $('#sel-editor-colonne').onchange = (e) => applicaColonneEditor(e.target.value);
+  // Altezza della barra comandi dell'editor: la colonna di destra si ferma subito sotto.
+  if ('ResizeObserver' in window) new ResizeObserver(([v]) => document.documentElement.style.setProperty('--alt-comandi', Math.round(v.target.getBoundingClientRect().height) + 'px'))
+    .observe(document.querySelector('.editor-comandi'));
   $('#btn-cartella-botanica').onclick = collegaCartellaBotanica;
   $('#btn-cartella-botanica-dimentica').onclick = async () => { await dimenticaCartellaBotanica(); await aggiornaStatoCartellaBotanica(); };
   $('#chk-backup-auto').onchange = (e) => scriviPref('sb-backup-auto', e.target.checked ? '1' : '0');
@@ -2176,6 +2196,7 @@ function collegaEventi() {
   };
   $('#ai-ricorda-env').onchange = ricordaChiaviAI;
   $('#ai-rimuovi-env').onclick = () => { chiaviAI = {}; ServiziRicerca.svuotaCache(); $('#ai-file-env').value = ''; ricordaChiaviAI(); };
+  $('#ai-prova').onclick = provaServiziAI;
   $('#cg-ai-proponi').onclick = proponiCaratteriSlideAI;
   $('#cg-ai-fornitore').onchange = () => aggiornaFornitoreSlide();
   $('#cg-cerca').oninput = listaCompletaGuida;

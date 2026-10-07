@@ -794,3 +794,32 @@ body[data-interfaccia="125"]{zoom:1.25}
   #stampa{width:auto;margin:0;padding:0}
   .p-mappa{break-inside:avoid}
 }
+
+/* 3.37 — esito della prova dei servizi AI */
+.ai-prova-esito p{margin:4px 0;font-size:13px;overflow-wrap:anywhere}
+.ai-prova-esito .ai-ok{color:var(--bosco)}
+.ai-prova-esito .ai-errore{color:var(--ruggine)}
+
+/* 3.38 — indicatore dello spazio */
+.spazio-ind{margin:6px 0 4px}
+.spazio-traccia{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--linea)}
+.spazio-usato{background:var(--bosco)}
+.spazio-aggiunta{background:repeating-linear-gradient(45deg,#c9a227 0 6px,#e0c25a 6px 12px)}
+.spazio-ind.livello-attenzione .spazio-usato{background:#c9a227}
+.spazio-ind.livello-critico .spazio-usato{background:var(--ruggine)}
+.spazio-ind.livello-critico .spazio-aggiunta{background:repeating-linear-gradient(45deg,var(--ruggine) 0 6px,#e9a593 6px 12px)}
+.spazio-testo{margin:4px 0 0;font-size:13px;font-weight:600}
+.spazio-ind.livello-critico .spazio-testo{color:var(--ruggine)}
+.spazio-nota{margin:2px 0 0;font-size:12px;color:var(--tenue)}
+
+/* 3.38 — editor a due colonne: tablet o schermo largo in orizzontale.
+   A sinistra i campi, a destra (fissa mentre scorri) GPS, foto e note vocali. */
+@media (min-width:1000px) and (orientation:landscape){
+  body:not([data-editor="una"]) #editor .modulo{max-width:min(1500px,97vw);display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,1fr);column-gap:22px;align-items:start}
+  body:not([data-editor="una"]) #editor .modulo > *{grid-column:1}
+  body:not([data-editor="una"]) #editor .modulo > .nav-editor{grid-column:1 / -1}
+  body:not([data-editor="una"]) #editor .modulo > .ed-media{grid-column:2;grid-row:2 / span 30;position:sticky;top:calc(var(--alt-comandi,150px) + 8px);
+    max-height:calc(100dvh - var(--alt-comandi,150px) - 16px);overflow-y:auto;overscroll-behavior:contain;padding-right:2px}
+  body:not([data-editor="una"]) #editor .ed-media fieldset{scroll-margin-top:0}
+  body:not([data-editor="una"]) #editor .ed-media .foto-griglia{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
