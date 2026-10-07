@@ -204,6 +204,7 @@ async function apriStampa(soloQuesta = null) {
   else if (radioSel.checked) dlg.querySelector('input[value=visibili]').checked = true; // nessuna selezione: non restare su «selezionate»
   popolaCampiStampa();
   $('#st-stima').checked = leggiPref('sb-stampa-stima') !== '0';
+  $('#st-mappa').checked = leggiPref('sb-stampa-mappa') === '1';
 
   if ((await chiedi(dlg)) !== 'stampa') return;
 
@@ -222,6 +223,7 @@ async function apriStampa(soloQuesta = null) {
   if (tipo !== 'etichette' && !campiScelti.length) return alert('Nessun campo selezionato: spunta almeno un campo (o «tutti») in «Campi da includere».');
   scriviPref('sb-stampa-campi', JSON.stringify(campiScelti));
   scriviPref('sb-stampa-stima', $('#st-stima').checked ? '1' : '0');
+  scriviPref('sb-stampa-mappa', $('#st-mappa').checked ? '1' : '0');
 
   if (tipo === 'excel') {
     stato('Preparo il registro Excel…');
@@ -231,17 +233,28 @@ async function apriStampa(soloQuesta = null) {
   }
 
   const area = $('#stampa');
+  pulisciStampaMappa();
   stato('Preparo la stampa…');
+  let mappaTemp = null;
   if (tipo === 'etichette') {
     area.replaceChildren(el('div', { class: 'p-etichette' }, lista.map((r) =>
       el('div', { class: 'p-etichetta' }, qrSVG(testoQR(r)), el('b', { testo: `N° ${r.prog}` }), el('i', { testo: r.nome || '' })))));
   } else {
     const opz = { qr: $('#st-qr').checked, stima: $('#st-stima').checked, foto: $('#st-foto').checked, colonne: Number($('#st-colonne').value), fotoMax: Number($('#st-foto-max').value) || 0, campi: new Set(campiScelti) };
-    area.replaceChildren(...await Promise.all(lista.map((r) => paginaScheda(r, opz))));
+    const pagine = await Promise.all(lista.map((r) => paginaScheda(r, opz)));
+    area.replaceChildren();
+    // Prima pagina: mappa con i numeri delle schede stampate che hanno il GPS.
+    const conGps = lista.filter((r) => r.gps);
+    if ($('#st-mappa').checked && conGps.length) {
+      mappaTemp = await preparaMappaStampa(area, conGps, { primaDelleSchede: true,
+        titolo: lista.length === 1 ? `Posizione della scheda N° ${lista[0].prog}` : `Mappa delle schede – ${dataBreveIT(oggi())}` });
+    } else if ($('#st-mappa').checked) toast('Nessuna delle schede da stampare ha il GPS: stampo senza mappa.');
+    area.append(...pagine);
   }
   // aspetta che le immagini siano pronte, altrimenti escono riquadri vuoti
   await Promise.all([...area.querySelectorAll('img')].map((i) => i.decode().catch(() => {})));
   stato(`Stampa pronta: ${lista.length} ${tipo === 'etichette' ? 'etichette' : 'schede'}`);
+  if (mappaTemp) window.addEventListener('afterprint', () => { mappaTemp.remove(); pulisciStampaMappa(); }, { once: true });
   window.print();
 }
 

@@ -2,6 +2,14 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.39.0 · stampa delle schede con la mappa in prima pagina
+
+- Nella finestra **Stampa → Schede A4** c'è la nuova casella **«Prima pagina con la mappa e i numeri delle schede»**. La prima pagina mostra la mappa con i numeri delle schede stampate che hanno il GPS (verde: scheda; rosso: problemi segnalati), con scala e nord; seguono le schede, una per pagina.
+- La mappa si adatta da sola alle schede scelte (selezionate, visibili o tutte); con una sola scheda il titolo diventa «Posizione della scheda N° …». Se nessuna scheda ha il GPS, l'app stampa senza mappa e lo segnala.
+- La scelta viene ricordata. La «Stampa mappa» dalla vista Mappa usa ora la stessa funzione.
+
+---
+
 ## 3.38.0 · indicatore dello spazio ed editor a due colonne
 
 - **Indicatore dello spazio:** in *Backup e configurazione* una barra mostra lo spazio usato dall'app su quello concesso dal browser, con il dettaglio «Schede, foto e audio» e «Mappe offline, slide e app». La barra è verde fino al 70%, gialla fino al 90%, poi rossa, con un avviso.

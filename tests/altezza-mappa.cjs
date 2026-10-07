@@ -326,6 +326,26 @@ await p.waitForSelector('#dlg-import[open]');
 assert.match(await p.textContent('#import-info'),/Coordinate GPS lette per \d+ righe/);
 await p.click('#dlg-import button[value=annulla]');await p.evaluate(()=>window.__imp);
 ok('CSV: coordinate GPS lette in importazione');
+// ---- 3.39: stampa schede con la mappa come prima pagina
+await p.evaluate(()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());S.selezionate.clear();window.__stampe=0;window.print=()=>{window.__stampe++;};window.__st=apriStampa();});
+await p.waitForSelector('#dlg-stampa[open]');
+await p.check('#dlg-stampa input[value=tutte]');await p.check('#st-mappa');await p.uncheck('#st-foto');
+await p.click('#st-btn-conferma');
+await p.waitForFunction(()=>window.__stampe===1,null,{timeout:20000});
+const nGpsM=await p.evaluate(()=>S.schede.filter(r=>r.gps).length), nSchedeM=await p.evaluate(()=>S.schede.length);
+assert.equal(await p.evaluate(()=>document.querySelector('#stampa').firstElementChild.classList.contains('p-mappa-prima')),true,'la mappa è la prima pagina');
+assert.equal(await p.locator('#stampa .p-mappa-box .leaflet-marker-icon').count(),nGpsM);
+assert.equal(await p.locator('#stampa .p-scheda').count(),nSchedeM);
+await p.emulateMedia({media:'print'});
+const pdfM=await p.pdf({preferCSSPageSize:true,printBackground:true});
+await p.emulateMedia({media:'screen'});
+fs.writeFileSync(out+'/stampa-mappa-schede.pdf',pdfM);const pagineM=(pdfM.toString('latin1').match(/\/Type\s*\/Page[^s]/g)||[]).length;
+assert(pagineM>=nSchedeM+1,'mappa + schede: '+pagineM+' pagine');
+await p.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+assert.equal(await p.locator('#stampa .p-mappa').count(),0,'mappa temporanea rimossa dopo la stampa');
+assert.equal(await p.evaluate(()=>leggiPref('sb-stampa-mappa')),'1','scelta ricordata');
+await p.evaluate(()=>scriviPref('sb-stampa-mappa','0'));
+ok('stampa schede: prima pagina con mappa e numeri, poi le schede ('+pagineM+' pagine)');
 // ---- 3.38: indicatore dello spazio e controllo prima di scaricare la mappa
 const barra=await p.evaluate(()=>{const e=barraSpazio({usato:60*1048576,quota:100*1048576,dettagli:{indexedDB:50*1048576,caches:10*1048576}},20*1048576);
  return {cls:e.className,testo:e.textContent,larg:e.querySelector('.spazio-usato').style.width,agg:e.querySelector('.spazio-aggiunta').style.width};});

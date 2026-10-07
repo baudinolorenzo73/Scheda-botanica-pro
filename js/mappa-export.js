@@ -70,18 +70,28 @@ async function stampaMappa() {
 
   pulisciStampaMappa();
   const orizzontale = scelta.verso === 'orizzontale';
-  const stilePagina = el('style', { id: 'stile-pagina-mappa' }, `@page{size:A4 ${orizzontale ? 'landscape' : 'portrait'};margin:15mm}`);
-  document.head.append(stilePagina);
-
+  document.head.append(el('style', { id: 'stile-pagina-mappa' }, `@page{size:A4 ${orizzontale ? 'landscape' : 'portrait'};margin:15mm}`));
   const area = $('#stampa');
+  area.replaceChildren();
+  const m2 = await preparaMappaStampa(area, conGps, { orizzontale, legenda: scelta.legenda, traccia: scelta.traccia,
+    titolo: scelta.titolo, limiti: scelta.area === 'tutte' ? null : mappa.getBounds() });
+  stato('Mappa pronta per la stampa');
+  window.addEventListener('afterprint', () => { m2.remove(); pulisciStampaMappa(); }, { once: true });
+  window.print();
+}
+
+// Pagina A4 con la mappa e i numeri delle schede, aggiunta in fondo a «area».
+// Usata da «Stampa mappa» e come prima pagina della stampa delle schede.
+// Restituisce la mappa Leaflet temporanea (da rimuovere dopo la stampa).
+async function preparaMappaStampa(area, conGps, { orizzontale = false, legenda = false, traccia = false, titolo = '', limiti = null, primaDelleSchede = false } = {}) {
   const box = el('div', { class: 'p-mappa-box', style: `width:${orizzontale ? 267 : 180}mm;height:${orizzontale ? 142 : 226}mm` });
-  const pagina = el('article', { class: 'p-mappa' },
-    el('h2', {}, scelta.titolo || 'Mappa dei rilievi'),
+  const pagina = el('article', { class: 'p-mappa' + (primaDelleSchede ? ' p-mappa-prima' : '') },
+    el('h2', {}, titolo || 'Mappa dei rilievi'),
     el('p', { class: 'p-mappa-sotto' }, `${conGps.length} schede con GPS · stampata il ${dataIT(oraISO())} · by Lollo ®2026`),
     box,
     el('p', { class: 'p-mappa-nota' }, 'Cerchio verde: scheda · cerchio rosso: problemi segnalati · il numero è il N° progressivo. Sfondo © OpenStreetMap.'));
   const parti = [pagina];
-  if (scelta.legenda && conGps.length) {
+  if (legenda && conGps.length) {
     parti.push(el('section', { class: 'p-mappa-legenda' },
       el('h3', {}, 'Elenco delle schede'),
       el('table', {},
@@ -93,7 +103,7 @@ async function stampaMappa() {
           el('td', {}, r.altezza ? String(r.altezza).replace('.', ',') + ' m' : '—'),
           el('td', {}, `${r.gps.lat.toFixed(5)}, ${r.gps.lng.toFixed(5)}`)))))));
   }
-  area.replaceChildren(...parti);
+  area.append(...parti);
   // Leaflet ha bisogno di un riquadro con dimensioni reali: lo si prepara fuori schermo.
   area.classList.add('prepara-mappa');
 
@@ -101,13 +111,13 @@ async function stampaMappa() {
   const sfondo = L.tileLayer(TILE_URL, { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m2);
   L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(m2);
   for (const r of conGps) L.marker([r.gps.lat, r.gps.lng], { icon: iconaNumero(r) }).addTo(m2);
-  if (scelta.traccia) {
+  if (traccia) {
     for (const g of segmentiTraccia()) {
       if (g.punti.length > 1) L.polyline(g.punti.map((p) => [p.lat, p.lng]), { color: '#d0402b', weight: 3, opacity: 0.85 }).addTo(m2);
     }
   }
-  if (scelta.area === 'tutte') m2.fitBounds(conGps.map((r) => [r.gps.lat, r.gps.lng]), { padding: [30, 30], maxZoom: 18 });
-  else m2.fitBounds(mappa.getBounds());
+  if (limiti) m2.fitBounds(limiti);
+  else if (conGps.length) m2.fitBounds(conGps.map((r) => [r.gps.lat, r.gps.lng]), { padding: [30, 30], maxZoom: 18 });
   m2.getContainer().append(el('div', { class: 'p-mappa-nord', 'aria-hidden': 'true' }, 'N', el('br'), '▲'));
 
   stato('Preparo la mappa da stampare…');
@@ -117,9 +127,7 @@ async function stampaMappa() {
     sfondo.once('load', () => { clearTimeout(t); ok(); });
   });
   await new Promise((ok) => setTimeout(ok, 300));
-  stato('Mappa pronta per la stampa');
-  window.addEventListener('afterprint', () => { m2.remove(); pulisciStampaMappa(); }, { once: true });
-  window.print();
+  return m2;
 }
 
 function pulisciStampaMappa() {

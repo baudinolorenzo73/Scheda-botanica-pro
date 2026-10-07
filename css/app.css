@@ -823,3 +823,6 @@ body[data-interfaccia="125"]{zoom:1.25}
   body:not([data-editor="una"]) #editor .ed-media fieldset{scroll-margin-top:0}
   body:not([data-editor="una"]) #editor .ed-media .foto-griglia{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* 3.39 — mappa come prima pagina della stampa delle schede */
+.p-mappa-prima{break-after:page}
