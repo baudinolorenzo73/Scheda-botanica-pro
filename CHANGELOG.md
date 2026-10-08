@@ -2,6 +2,12 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.42.1 · Pinaceae e Stampa in prima pagina
+
+- **Chiave delle Pinaceae** e **Stampa** sono ora nella sezione «Sul campo» della prima pagina, sempre visibili, senza aprire «Opzioni» o il menu «Backup e configurazione».
+
+---
+
 ## 3.42.0 · chiave delle Pinaceae
 
 - Nuova pagina **Chiave delle Pinaceae** (menu «Configurazione e backup» → «Chiave delle Pinaceae»): identificazione guidata dei 7 generi (*Abies, Picea, Pinus, Cedrus, Larix, Tsuga, Pseudotsuga*), schede dei generi con illustrazioni, ripasso a domande, glossario e correzioni allo schema del corso.

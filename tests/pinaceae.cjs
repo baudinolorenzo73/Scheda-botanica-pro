@@ -53,14 +53,17 @@ const server = http.createServer((req, res) => {
     // Il ripasso copre tutti i generi e ogni indizio ha una risposta valida
     const ok = await page.evaluate(() => CLUES.every(([g]) => GENERA[g]) && Object.keys(GENERA).every(g => KEY && ILL(g)));
     assert.ok(ok);
-    // Link dal menu dell'app
+    // Link e Stampa nella sezione «Sul campo» della prima pagina, visibili senza aprire le Opzioni
     await page.goto(base + '/index.html');
-    assert.equal(await page.locator('#link-pinaceae').getAttribute('href'), 'pinaceae.html');
+    assert.equal(await page.locator('.azioni-home #link-pinaceae').getAttribute('href'), 'pinaceae.html');
+    assert.ok(await page.locator('.azioni-home > .azioni-home-extra #btn-stampa').isVisible());
+    assert.ok(await page.locator('.azioni-home > .azioni-home-extra #link-pinaceae').isVisible());
+    assert.equal(await page.locator('#dlg-menu #link-pinaceae, #opzioni-home #btn-stampa').count(), 0);
     // Cache offline: la pagina e lo schema sono nell'app shell
     const sw = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
     assert.ok(sw.includes("'./pinaceae.html'") && sw.includes("'./img/pinaceae-schema.jpg'"));
     assert.deepEqual(errori, [], 'errori JS: ' + errori.join('; '));
     assert.deepEqual(falliti, [], 'risorse non trovate: ' + falliti.join(', '));
-    console.log('OK Link dal menu, cache offline, nessun errore');
+    console.log('OK Link e Stampa in prima pagina, cache offline, nessun errore');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error('FALLITO', e); process.exit(1); });

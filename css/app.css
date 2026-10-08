@@ -639,6 +639,8 @@ dialog .azioni .btn{flex:0 1 auto}
 .azioni-home-griglia{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
 .azioni-home-griglia .btn{min-height:50px;white-space:normal;line-height:1.2;padding:10px 8px}
 .azioni-home-griglia .btn:disabled{display:none}
+.azioni-home-extra{margin-top:9px}
+a.btn{color:inherit;text-decoration:none}
 #home-traccia-stato{font-size:13px;color:var(--tenue);margin:10px 2px 0}
 #home-traccia-stato.traccia-allerta{color:var(--ruggine);font-weight:700}
 .azioni-home-nota{font-size:11.5px;line-height:1.35;color:var(--tenue);margin:4px 2px 0}

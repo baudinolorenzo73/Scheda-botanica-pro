@@ -57,12 +57,15 @@
     <button type="button" class="btn" id="home-traccia-ferma" disabled>Stop</button>
   </div>
   <p id="home-traccia-stato" role="status" aria-live="polite">Traccia ferma</p>
+  <div class="azioni-home-griglia azioni-home-extra">
+    <button type="button" class="btn" id="btn-stampa" aria-label="Stampa schede"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg><span>Stampa</span></button>
+    <a class="btn" href="pinaceae.html" id="link-pinaceae"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-book"></use></svg><span>Chiave delle Pinaceae</span></a>
+  </div>
   <details id="opzioni-home" class="opzioni-home">
     <summary>+ Opzioni</summary>
     <div class="opzioni-griglia">
       <button type="button" class="btn" id="btn-scansiona" aria-label="Trova scheda con QR"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-qr"></use></svg><span>Scansiona QR</span></button>
       <button type="button" class="btn" id="home-meteo">Meteo · 3B Meteo</button>
-      <button type="button" class="btn" id="btn-stampa" aria-label="Stampa schede"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg><span>Stampa</span></button>
       <button type="button" class="btn" id="btn-menu"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg><span>Backup e configurazione</span></button>
       <button type="button" class="btn" id="btn-cestino" title="Cestino" aria-label="Cestino"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-trash"></use></svg><span>Cestino</span><span id="cestino-badge" class="badge-cestino nascosto"></span></button>
       <button type="button" class="btn" id="btn-aiuto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-help"></use></svg><span>Aiuto</span></button>
@@ -262,7 +265,6 @@
     <h3 class="menu-titolo">Configurazione</h3>
     <button class="btn" data-az="completa-guida"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-book"></use></svg><span>Completa catalogo delle 144 piante</span></button>
     <button class="btn" data-az="plantnet"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg><span>Chiave PlantNet</span></button>
-    <a class="btn" href="pinaceae.html" id="link-pinaceae"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-book"></use></svg><span>Chiave delle Pinaceae (7 generi)</span></a>
     <div class="ai-config">
       <strong>Assistente AI · facoltativo</strong>
       <p>La scheda funziona anche senza chiavi. Seleziona <code>open.env</code> dal tablet una volta: le chiavi riconosciute vengono ricaricate automaticamente su questo browser alle aperture successive. Il file non entra nei backup dell’app.</p>
