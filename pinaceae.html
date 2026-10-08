@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chiave delle Pinaceae</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#3F6B4C">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+:root{
+  --bg:#E7ECE5; --surface:#F6F8F3; --surface-2:#DCE3D9; --ink:#1B2620; --ink-2:#4A5A50;
+  --line:#BFCBBF; --accent:#8A5A12; --accent-ink:#FFFFFF; --moss:#3F6B4C;
+  --ok:#2F6B3F; --ok-bg:#D7E8D8; --err:#9A3324; --err-bg:#F3DCD6;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Noto Serif",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101815; --surface:#18231E; --surface-2:#22302A; --ink:#DCE5DC; --ink-2:#9DAEA2;
+    --line:#2F3F37; --accent:#E0A94A; --accent-ink:#1A1206; --moss:#8DB598;
+    --ok:#9BD3A6; --ok-bg:#1E3527; --err:#F0A193; --err-bg:#3A201B;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101815; --surface:#18231E; --surface-2:#22302A; --ink:#DCE5DC; --ink-2:#9DAEA2;
+  --line:#2F3F37; --accent:#E0A94A; --accent-ink:#1A1206; --moss:#8DB598;
+  --ok:#9BD3A6; --ok-bg:#1E3527; --err:#F0A193; --err-bg:#3A201B;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--sans);-webkit-text-size-adjust:100%;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+i,.latin{font-family:var(--serif);font-style:italic}
+
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:8px;padding-top:10px;padding-bottom:10px}
+header h1{font:600 1.25rem/1.1 var(--serif);margin:0;flex:1}
+header h1 span{display:block;font:400 .78rem/1.3 var(--sans);color:var(--ink-2);margin-top:2px}
+a.icon-btn{text-decoration:none;color:inherit}
+.icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;height:40px;min-width:40px;padding:0 10px;display:inline-grid;place-items:center;cursor:pointer;font-size:.85rem}
+
+main{padding:18px 0 24px}
+h2{font:600 1.6rem/1.15 var(--serif);margin:0 0 4px}
+h3{font:600 1.05rem/1.3 var(--sans);margin:0 0 6px}
+p{margin:0 0 10px}
+.muted{color:var(--ink-2)}
+.small{font-size:.875rem}
+
+/* sentiero */
+.trail{list-style:none;margin:0 0 18px;padding:0 0 0 4px}
+.trail li{position:relative;padding:0 0 10px 22px;font-size:.9rem;color:var(--ink-2)}
+.trail li::before{content:"";position:absolute;left:0;top:6px;width:10px;height:10px;border-radius:50%;background:var(--moss)}
+.trail li::after{content:"";position:absolute;left:4.5px;top:18px;bottom:-2px;width:1px;background:var(--line)}
+.trail li:last-child::after{display:none}
+.trail li.here::before{background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.trail li.here{color:var(--ink);font-weight:600}
+.trail b{color:var(--ink);font-weight:500}
+
+.step-no{font-size:.85rem;color:var(--ink-2);margin-bottom:2px}
+.help{background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:.9rem;margin:10px 0 14px}
+
+.opts{display:grid;gap:10px}
+.opt{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer}
+.opt:hover{border-color:var(--moss)}
+.opt:active{transform:scale(.99)}
+.opt svg{width:52px;height:52px;color:var(--moss)}
+.opt .glyph{width:52px;height:52px;border-radius:12px;background:var(--surface-2);display:grid;place-items:center;font:600 1.2rem var(--serif);color:var(--moss)}
+.opt strong{display:block;font-weight:600;line-height:1.3}
+.opt span.d{display:block;font-size:.875rem;color:var(--ink-2);margin-top:2px}
+
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 16px;cursor:pointer;font-size:.9rem}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn:disabled{opacity:.45;cursor:default}
+
+/* scheda genere */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.genus-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.genus-head h2{font-style:italic;font-size:2.2rem}
+.badge{font-size:.75rem;border-radius:999px;padding:3px 10px;border:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
+.facts{margin:14px 0 0;display:grid;gap:12px}
+.facts div{border-top:1px solid var(--line);padding-top:10px}
+.facts dt{font-size:.8rem;color:var(--ink-2);margin-bottom:2px}
+.facts dd{margin:0}
+.tip{margin-top:14px;border-left:3px solid var(--accent);padding:6px 0 6px 12px}
+
+.genera{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.gen{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:left;cursor:pointer}
+.gen .latin{font-size:1.25rem;display:block}
+.gen .c{font-size:.82rem;color:var(--ink-2)}
+
+/* ripasso */
+.clue{font:1.15rem/1.45 var(--serif);margin:10px 0 14px}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ans{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;text-align:left}
+.ans.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.ans.bad{background:var(--err-bg);border-color:var(--err);color:var(--err)}
+.ans:disabled{cursor:default}
+.feedback{margin-top:12px;border-radius:10px;padding:10px 12px;font-size:.92rem}
+.feedback.ok{background:var(--ok-bg);color:var(--ok)}
+.feedback.bad{background:var(--err-bg);color:var(--err)}
+.score{font-variant-numeric:tabular-nums}
+
+/* glossario */
+details{border-top:1px solid var(--line);padding:10px 0}
+details:last-of-type{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between}
+summary::after{content:"+";color:var(--ink-2)}
+details[open] summary::after{content:"–"}
+details p{margin:6px 0 0;font-size:.92rem}
+.fix{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:10px}
+.fix li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:.92rem}
+.fix li b{display:block;font-weight:600;margin-bottom:2px}
+
+/* tab bar */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr);padding:0}
+nav.tabs button{background:none;border:0;padding:10px 4px 12px;cursor:pointer;font-size:.8rem;color:var(--ink-2);display:grid;justify-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
+
+/* schema */
+dialog{border:0;padding:0;width:min(96vw,1000px);max-height:92vh;border-radius:14px;background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgb(0 0 0 / .6)}
+.dlg-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.dlg-head h3{flex:1;margin:0}
+.dlg-body{overflow:auto;max-height:calc(92vh - 110px);background:#000}
+.dlg-body img{display:block;width:100%;height:auto}
+.dlg-body.zoom img{width:1448px;max-width:none}
+.dlg-foot{padding:8px 12px;font-size:.8rem;color:var(--ink-2)}
+
+
+/* illustrazioni */
+:root{--il-leaf:#3F6B4C;--il-leaf2:#86A85C;--il-bark:#7A5236;--il-bark2:#A8744A;--il-grey:#AEB3AC;--il-greyd:#5E605B;--il-greyb:#8A7E72;--il-cone:#9A6A3A;--il-dark:#2E1F15;--il-line:#1B2620;--il-hi:#FFFFFF;--il-red:#B3665A;--il-bg:var(--surface-2)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--il-leaf:#7FAE8B;--il-leaf2:#B8CF7E;--il-bark:#9A6E4D;--il-bark2:#C08F62;--il-grey:#9DA39B;--il-greyd:#6B6E68;--il-greyb:#8C8074;--il-cone:#C08A52;--il-dark:#1A120C;--il-line:#DCE5DC;--il-hi:#EEF3EC;--il-red:#D08A7C}}
+:root[data-theme="dark"]{--il-leaf:#7FAE8B;--il-leaf2:#B8CF7E;--il-bark:#9A6E4D;--il-bark2:#C08F62;--il-grey:#9DA39B;--il-greyd:#6B6E68;--il-greyb:#8C8074;--il-cone:#C08A52;--il-dark:#1A120C;--il-line:#DCE5DC;--il-hi:#EEF3EC;--il-red:#D08A7C}
+.ill-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+@media (min-width:640px){.ill-grid{grid-template-columns:repeat(4,1fr)}}
+.ill{margin:0;background:var(--surface-2);border-radius:12px;padding:8px 8px 10px}
+.ill svg{display:block;width:100%;height:auto}
+.ill figcaption{font-size:.78rem;line-height:1.35;color:var(--ink-2);margin-top:4px}
+.ill figcaption b{display:block;color:var(--ink);font-weight:600;font-size:.82rem}
+.ill-note{margin:8px 0 0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}.opt:active{transform:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="icon-btn" href="index.html" aria-label="Torna a Scheda Botanica" title="Torna a Scheda Botanica">←</a>
+    <h1>Chiave delle Pinaceae<span>7 generi: Abies, Picea, Pinus, Cedrus, Larix, Tsuga, Pseudotsuga</span></h1>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Cambia tema"></button>
+  </div>
+</header>
+
+<main class="wrap" id="app" aria-live="polite"></main>
+<p class="wrap small muted" style="text-align:center">by Lollo ®2026 · Scheda Botanica PRO</p>
+
+<nav class="tabs" aria-label="Sezioni">
+  <div class="wrap">
+    <button type="button" data-view="chiave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v18M12 9l-5-3M12 9l5-3M12 15l-6-3M12 15l6-3"/></svg>Chiave</button>
+    <button type="button" data-view="generi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l6 8h-3l4 6H5l4-6H6z"/><path d="M12 17v4"/></svg>Generi</button>
+    <button type="button" data-view="ripasso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg>Ripasso</button>
+    <button type="button" data-view="glossario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M9 9h6M9 13h6"/></svg>Glossario</button>
+  </div>
+</nav>
+
+<dialog id="schemaDlg">
+  <div class="dlg-head">
+    <h3>Schema del corso</h3>
+    <button class="icon-btn" type="button" id="zoomBtn">Ingrandisci</button>
+    <button class="icon-btn" type="button" id="closeDlg" aria-label="Chiudi">✕</button>
+  </div>
+  <div class="dlg-body" id="dlgBody"><img id="schemaImg" alt="Schema originale di riconoscimento dei generi di Pinaceae" src="img/pinaceae-schema.jpg"></div>
+  <div class="dlg-foot">Schema di partenza. Alcuni caratteri sono stati corretti nella chiave: vedi Glossario › Correzioni allo schema.</div>
+</dialog>
+
+<script>
+"use strict";
+
+/* ---------- Chiave ---------- */
+const ICONS = {
+  sol: '<svg viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 40L44 12"/><path d="M14 35l-5-9M20 30l-5-9M26 26l-5-9M32 21l-5-9M18 38l9 3M24 33l9 3M30 28l9 3M36 23l9 3"/></svg>',
+  ciu: '<svg viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M26 46v-8"/><rect x="23" y="33" width="6" height="6" rx="1.5"/><path d="M25 33C22 22 15 14 10 6M27 33c3-11 10-19 15-27"/></svg>',
+  maz: '<svg viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 46L46 38"/><circle cx="26" cy="42" r="3"/><path d="M26 39V14M26 39l-9-21M26 39l9-21M26 39L10 24M26 39l16-15M26 39L8 32M26 39l18-7"/></svg>'
+};
+
+const KEY = {
+  q1: {
+    step: 1,
+    title: "Come sono disposti gli aghi?",
+    help: "Guarda un ramo di almeno due anni, non il germoglio dell'anno: in Larix e Cedrus i getti lunghi portano aghi isolati, i mazzetti stanno sui rami più vecchi.",
+    options: [
+      { id: "sol", icon: "sol", label: "Solitari", detail: "Un ago per punto, distribuiti lungo il ramo", next: "q2" },
+      { id: "ciu", icon: "ciu", label: "In fascetti di 2 o 5", detail: "Aghi uniti alla base, spesso avvolti da una guaina", result: "Pinus" },
+      { id: "maz", icon: "maz", label: "In mazzetti fitti", detail: "Decine di aghi su cortissimi rametti a bottone (brachiblasti)", next: "q2m" }
+    ]
+  },
+  q2m: {
+    step: 2,
+    title: "In inverno ha gli aghi?",
+    help: "Se non è inverno: aghi rigidi e scuri con pigna a barile di 5–12 cm indicano Cedrus; aghi morbidi verde chiaro con pigne di 2–4 cm indicano Larix.",
+    options: [
+      { id: "sempre", glyph: "C", label: "Sì, sempreverde", detail: "Aghi rigidi, pigna eretta a barile 5–12 cm che si sfalda sull'albero", result: "Cedrus" },
+      { id: "caduco", glyph: "L", label: "No, resta spoglio", detail: "In autunno ingiallisce; pigne erette di 2–4 cm che restano sui rami per anni", result: "Larix" }
+    ]
+  },
+  q2: {
+    step: 2,
+    title: "Come si attacca l'ago al ramo?",
+    help: "Stacca qualche ago e osserva la base con una lente, poi passa il dito sul ramo nudo.",
+    options: [
+      { id: "ventosa", glyph: "A", label: "Base allargata a ventosa", detail: "Ago piatto e morbido; staccato lascia una cicatrice tonda e piatta, ramo liscio", result: "Abies" },
+      { id: "pulvino", glyph: "P", label: "Su un pulvino legnoso, senza picciolo", detail: "Ago rigido e pungente, a sezione quadrangolare; ramo ruvido come una grattugia", result: "Picea" },
+      { id: "picciolo", glyph: "?", label: "Con un breve picciolo", detail: "Ago piatto e morbido che si restringe prima dell'attacco, due bande bianche sotto", next: "q3" }
+    ]
+  },
+  q3: {
+    step: 3,
+    title: "Com'è la pigna?",
+    help: "Senza pigne guarda l'ago: circa 1 cm su ramo ruvido indica Tsuga, 2–3,5 cm su ramo quasi liscio con gemme appuntite indica Pseudotsuga.",
+    options: [
+      { id: "piccola", glyph: "T", label: "Minuscola, 1,5–3 cm", detail: "Ago 0,8–2 cm, ramo ruvido per piccoli pulvini, cima dell'albero ricadente", result: "Tsuga" },
+      { id: "tridente", glyph: "Ps", label: "5–10 cm, con brattee a tridente", detail: "Linguette a tre punte che sporgono tra le squame; ago 2–3,5 cm", result: "Pseudotsuga" }
+    ]
+  }
+};
+
+/* ---------- Generi ---------- */
+const GENERA = {
+  Abies: {
+    comune: "Abete bianco", status: "Autoctono",
+    specie: "A. alba; A. nebrodensis, endemica delle Madonie (Sicilia), con pochissimi individui.",
+    aghi: "Piatti, 1,5–3 cm, apice smussato o lievemente intaccato, non pungenti; due bande bianche sotto. Base allargata a ventosa, senza picciolo.",
+    rametto: "Liscio: l'ago staccato lascia una cicatrice tonda e piatta.",
+    strobilo: "Eretto, 10–20 cm, sui rami più alti. Si sfalda sull'albero: a terra trovi squame sparse, non pigne intere. In A. alba le brattee sporgono tra le squame.",
+    altro: "Corteccia grigio-argentea e liscia da giovane.",
+    distr: "Alpi e Appennino fino alla Calabria, spesso con faggio e abete rosso. Fascia montana, circa 400–1800 m.",
+    confusione: "Picea: ramo ruvido e ago pungente. Pseudotsuga: ago con picciolo e pigna pendula con tridenti.",
+    trucco: "Abies = ventosa: ago con base a dischetto, ramo liscio, pigna in piedi come una candela."
+  },
+  Picea: {
+    comune: "Abete rosso, peccio", status: "Autoctono",
+    specie: "P. abies.",
+    aghi: "Rigidi e pungenti, 1–2,5 cm, a sezione quadrangolare (si rotolano tra le dita), verdi su tutti i lati.",
+    rametto: "Ruvido: ogni ago sta su un pulvino legnoso sporgente che resta dopo la caduta.",
+    strobilo: "Pendulo, 10–15 cm, all'apice dei rametti dei rami alti. Cade intero a terra.",
+    altro: "Corteccia bruno-rossastra a scaglie sottili.",
+    distr: "Alpi, dove forma estese peccete; nell'Appennino un relitto naturale a Campolino (Abetone), altrove rimboschimenti. Circa 800–2200 m.",
+    confusione: "Abies: ramo liscio e ago morbido. Tsuga: ago piatto con picciolo e pigna di 2 cm.",
+    trucco: "Picea punge: ramo come una grattugia, ago quadrato."
+  },
+  Pinus: {
+    comune: "Pino", status: "Autoctono",
+    specie: "P. sylvestris, P. mugo, P. cembra, P. nigra (compreso il laricio), P. leucodermis, P. halepensis, P. pinaster, P. pinea (indigenato discusso).",
+    aghi: "In fascetti di 2 (quasi tutti i pini italiani) o 5 (pino cembro), lunghi 3–20 cm secondo la specie. Alla base una guaina membranosa: persistente nei pini a 2 aghi, caduca presto nei pini a 5 aghi.",
+    rametto: "Sui rami adulti gli aghi sono sempre riuniti in fascetti.",
+    strobilo: "Legnoso, squame spesse, 3–15 cm secondo la specie; matura in 2 anni (3 nel pino domestico).",
+    altro: "",
+    distr: "In tutta Italia, isole comprese: dalle pinete costiere al limite del bosco sulle Alpi, dove cembro e mugo superano i 2000 m.",
+    confusione: "Larix e Cedrus: i loro mazzetti contano decine di aghi, non 2 o 5.",
+    trucco: "Conta gli aghi uniti alla base: 2 o 5 = Pinus. La guaina aiuta, ma nel cembro può mancare."
+  },
+  Cedrus: {
+    comune: "Cedro", status: "Introdotto",
+    specie: "C. atlantica, C. libani, C. deodara.",
+    aghi: "Rigidi, 1–3 cm (fino a 5 in C. deodara), sempreverdi; in mazzetti fitti su brachiblasti, isolati sui getti lunghi.",
+    rametto: "",
+    strobilo: "Eretto, a barile, 5–12 cm. Si sfalda sull'albero come in Abies.",
+    altro: "C. atlantica: rami ascendenti, fogliame spesso glauco. C. libani: palchi orizzontali, cima piatta da adulto. C. deodara: cima e rametti ricadenti.",
+    distr: "Parchi, ville e viali in tutta Italia; C. atlantica usato anche in rimboschimenti.",
+    confusione: "Larix: spoglio d'inverno, aghi morbidi verde chiaro, pigna di 2–4 cm.",
+    trucco: "Mazzetto rigido e verde anche a gennaio con pigna a barile = Cedrus."
+  },
+  Larix: {
+    comune: "Larice", status: "Autoctono",
+    specie: "L. decidua; L. kaempferi (larice giapponese) in alcuni rimboschimenti.",
+    aghi: "Morbidi, 1,5–3,5 cm, verde chiaro, 20–40 per mazzetto su brachiblasti; isolati sui getti lunghi. In autunno gialli, poi cadono.",
+    rametto: "D'inverno i rami nudi mostrano i brachiblasti a bottone.",
+    strobilo: "Eretto, ovoide, 2–4 cm. Dopo la disseminazione resta sui rami per anni e diventa grigio scuro.",
+    altro: "Unica conifera europea a perdere gli aghi in inverno.",
+    distr: "Alpi, fino a circa 2400 m, più abbondante tra 1000 e 2000 m. Nell'Appennino solo piantato.",
+    confusione: "Cedrus: sempreverde, aghi rigidi, pigna a barile di 5–12 cm.",
+    trucco: "Larix lascia gli aghi: rami nudi d'inverno con vecchie pigne grigie ancora attaccate."
+  },
+  Tsuga: {
+    comune: "Tsuga", status: "Esotico raro",
+    specie: "T. canadensis, T. heterophylla (nordamericane).",
+    aghi: "Piatti, morbidi, 0,8–2 cm, apice arrotondato, due bande bianche sotto; breve picciolo.",
+    rametto: "Ruvido: aghi su piccoli pulvini sporgenti, come in Picea ma più minuti.",
+    strobilo: "Pendulo, 1,5–3 cm, all'apice dei rametti: la pigna più piccola della chiave.",
+    altro: "Cima dell'albero ricadente; rametti sottili e penduli.",
+    distr: "Solo parchi, giardini botanici e arboreti, soprattutto al Nord. Non spontanea.",
+    confusione: "Pseudotsuga: ago lungo il doppio, pigna di 5–10 cm con tridenti, ramo quasi liscio. Picea: ago rigido e pungente, senza picciolo.",
+    trucco: "Tsuga = tiny: ago di 1 cm, pigna di 2 cm, cima che si piega."
+  },
+  Pseudotsuga: {
+    comune: "Douglasia", status: "Introdotto",
+    specie: "P. menziesii (nordamericana).",
+    aghi: "Piatti, morbidi, 2–3,5 cm, due bande bianche sotto, breve picciolo; strofinati profumano di resina e agrumi.",
+    rametto: "Quasi liscio: le cicatrici fogliari sono ellittiche e appena rilevate.",
+    strobilo: "Pendulo, 5–10 cm, con brattee a tre punte che sporgono tra le squame. Cade intero.",
+    altro: "Gemme lunghe, appuntite e non resinose, simili a quelle del faggio. Corteccia giovane con vesciche di resina.",
+    distr: "Rimboschimenti del Novecento, soprattutto nell'Appennino (Toscana, Calabria) e nelle Prealpi. Accrescimento molto rapido.",
+    confusione: "Abies: base dell'ago a ventosa e pigna eretta. Tsuga: ago di 1 cm e pigna di 2 cm.",
+    trucco: "Pseudotsuga = punte: le linguette a tridente sulla pigna non le ha nessun altro genere."
+  }
+};
+
+const CLUES = [
+  ["Abies", "Ago piatto con base a ventosa; staccandolo resta una cicatrice tonda e liscia."],
+  ["Abies", "Sotto l'albero trovi solo squame sparse: le pigne si sono sfaldate sui rami alti."],
+  ["Picea", "Ramo ruvido come una grattugia, ago quadrangolare che punge."],
+  ["Picea", "Pigna pendula di 12 cm trovata intera a terra, aghi rigidi verdi su tutti i lati."],
+  ["Pinus", "Aghi a coppie uniti alla base da una guaina membranosa."],
+  ["Pinus", "Fascetti di 5 aghi, pianta al limite del bosco sulle Alpi."],
+  ["Cedrus", "Mazzetti di aghi rigidi, verdi a gennaio, pigna eretta a barile."],
+  ["Cedrus", "Grande albero in una villa storica: palchi orizzontali, mazzetti fitti di aghi corti e pungenti."],
+  ["Larix", "A dicembre rami nudi con brachiblasti a bottone e vecchie pigne grigie di 3 cm."],
+  ["Larix", "Mazzetti di aghi morbidi verde chiaro che in ottobre diventano gialli."],
+  ["Tsuga", "Ago piatto di 1 cm con picciolo e bande bianche, pigna pendula di 2 cm."],
+  ["Tsuga", "In un arboreto: cima dell'albero piegata, rametti ruvidi per piccoli pulvini."],
+  ["Pseudotsuga", "Pigna pendula con linguette a tre punte che sporgono tra le squame."],
+  ["Pseudotsuga", "Ago morbido di 3 cm con breve picciolo, gemme lunghe e appuntite, profumo agrumato."]
+];
+
+const GLOSSARIO = [
+  ["Brachiblasto", "Rametto cortissimo a crescita limitata, a forma di bottone, che porta un mazzetto di aghi. Tipico di Cedrus e Larix."],
+  ["Macroblasto", "Getto lungo, a crescita normale. In Cedrus e Larix porta aghi isolati: per questo la disposizione va osservata sui rami vecchi."],
+  ["Pulvino", "Sporgenza legnosa del ramo su cui si inserisce l'ago. Evidente in Picea, più piccolo in Tsuga, appena accennato in Pseudotsuga. Dopo la caduta degli aghi rende il ramo ruvido."],
+  ["Picciolo", "Breve restringimento tra la lamina dell'ago e il punto di attacco. Presente in Tsuga e Pseudotsuga, corto in entrambe."],
+  ["Guaina", "Pellicina membranosa che avvolge la base del fascetto di aghi in Pinus. Persistente nei pini a 2 aghi, cade presto nei pini a 5 aghi."],
+  ["Strobilo", "La pigna: asse con squame che portano i semi. Eretto in Abies, Cedrus e Larix; pendulo in Picea, Tsuga e Pseudotsuga."],
+  ["Brattea", "Squama sottile sotto ogni squama seminifera. Di solito nascosta; sporge in Abies alba e, con forma a tridente, in Pseudotsuga."],
+  ["Bande stomatiche", "Le due strisce biancastre sulla pagina inferiore degli aghi piatti (Abies, Tsuga, Pseudotsuga), formate da file di stomi."],
+  ["Caducifoglio", "Che perde le foglie in inverno. Tra le Pinaceae della chiave solo Larix."]
+];
+
+const CORREZIONI = [
+  ["Strobili terminali o non terminali", "Rimosso. Picea porta le pigne all'apice dei rametti, Pseudotsuga da gemme laterali vicino all'apice: il carattere non separa i generi come indicato."],
+  ["Poco o molto picciolati", "Tsuga e Pseudotsuga hanno entrambe un picciolo breve. Si separano meglio con la pigna (1,5–3 cm contro 5–10 cm con tridenti), la lunghezza dell'ago e il ramo."],
+  ["Pseudotsuga su cuscinetto", "Le cicatrici fogliari sono appena rilevate e il ramo resta quasi liscio; il pulvino evidente è di Picea e, più piccolo, di Tsuga."],
+  ["Larix: strobili che cadono interi a maturità", "Dopo aver liberato i semi le pigne restano sui rami per anni."],
+  ["Mazzetti di 30–60 aghi", "In Larix sono 20–40. Sia Larix sia Cedrus hanno anche aghi isolati sui getti lunghi."],
+  ["Punte sulle squame", "Non basta: anche in Abies alba le brattee sporgono. Il carattere di Pseudotsuga è la brattea a tridente su pigna pendula."],
+  ["Pinus riconosciuto dalla guaina", "Nei pini a 5 aghi, come il cembro, la guaina cade presto. Conta il fascetto."],
+  ["Abies solo al Nord e al Centro", "A. alba arriva fino alla Calabria; in Sicilia vive A. nebrodensis."]
+];
+
+/* ---------- Illustrazioni ---------- */
+const ILL = (() => {
+  const r1 = n => Math.round(n * 10) / 10;
+  const rad = a => a * Math.PI / 180;
+  function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const svg = (inner) => `<svg viewBox="0 0 120 120" aria-hidden="true">${inner}</svg>`;
+  const ln = (x1, y1, x2, y2, c, w, extra = "") => `<line x1="${r1(x1)}" y1="${r1(y1)}" x2="${r1(x2)}" y2="${r1(y2)}" stroke="var(--il-${c})" stroke-width="${w}" stroke-linecap="round"${extra}/>`;
+  const needle = (x, y, ang, len, c, w) => { const dx = Math.cos(rad(ang)) * len, dy = Math.sin(rad(ang)) * len; return ln(x, y, x + dx, y + dy, c, w); };
+  const ground = `<line x1="8" y1="112" x2="112" y2="112" stroke="var(--il-line)" stroke-width="1" opacity=".35"/>`;
+  const bar = (x, y, px, label) => `<g opacity=".8"><line x1="${x}" y1="${y}" x2="${x + px}" y2="${y}" stroke="var(--il-line)" stroke-width="1.2"/><line x1="${x}" y1="${y - 2}" x2="${x}" y2="${y + 2}" stroke="var(--il-line)"/><line x1="${x + px}" y1="${y - 2}" x2="${x + px}" y2="${y + 2}" stroke="var(--il-line)"/><text x="${x + px / 2}" y="${y - 3.5}" font-size="7" text-anchor="middle" fill="var(--il-line)" font-family="system-ui,sans-serif">${label}</text></g>`;
+  const along = (x1, y1, x2, y2, t) => [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t];
+
+  /* sagome a palchi: tip > 0 punte ricadenti, < 0 ascendenti */
+  function tiers(n, top, bottom, minW, maxW, tipFn, fill = "leaf"){
+    let s = "";
+    const h = (bottom - top) / n * 1.7;
+    for(let i = 0; i < n; i++){
+      const t = n === 1 ? 1 : i / (n - 1), y = top + t * (bottom - top), w = minW + t * (maxW - minW), tip = tipFn(t), yb = y + h * 0.45;
+      s += `<path d="M60 ${r1(y - h * 0.7)} L${r1(60 + w)} ${r1(yb + tip)} L${r1(60 + w - 6)} ${r1(yb + 1.5)} L${r1(60 - w + 6)} ${r1(yb + 1.5)} L${r1(60 - w)} ${r1(yb + tip)} Z" fill="var(--il-${fill})" stroke="var(--il-${fill})" stroke-width="1.2" stroke-linejoin="round"/>`;
+    }
+    return s;
+  }
+  const trunk = (x, y1, y2, w, c = "bark") => `<rect x="${x - w / 2}" y="${y1}" width="${w}" height="${y2 - y1}" fill="var(--il-${c})"/>`;
+
+  function scalesRows(cx, y1, y2, w, step, c = "dark", down = false){
+    let s = "";
+    for(let y = y1, row = 0; y < y2; y += step, row++){
+      const off = row % 2 ? step * 0.6 : 0;
+      for(let x = cx - w / 2 + off; x < cx + w / 2; x += step * 1.2){
+        s += down
+          ? `<path d="M${r1(x - step * 0.6)} ${r1(y)} Q${r1(x)} ${r1(y + step * 1.1)} ${r1(x + step * 0.6)} ${r1(y)}" fill="none" stroke="var(--il-${c})" stroke-width=".8"/>`
+          : `<path d="M${r1(x - step * 0.6)} ${r1(y + step)} Q${r1(x)} ${r1(y - step * 0.1)} ${r1(x + step * 0.6)} ${r1(y + step)}" fill="none" stroke="var(--il-${c})" stroke-width=".8"/>`;
+      }
+    }
+    return s;
+  }
+
+  function barkBox(id, fill, inner){
+    return `<defs><clipPath id="${id}"><rect x="22" y="6" width="76" height="108" rx="8"/></clipPath></defs>
+      <g clip-path="url(#${id})"><rect x="0" y="0" width="120" height="120" fill="var(--il-${fill})"/>${inner}</g>
+      <rect x="22" y="6" width="76" height="108" rx="8" fill="none" stroke="var(--il-line)" stroke-width=".8" opacity=".4"/>`;
+  }
+  function wavyV(x, rnd, w, c, amp = 3){
+    let d = `M${r1(x)} -2`;
+    for(let y = 8; y <= 124; y += 10) d += ` Q${r1(x + (rnd() - .5) * amp * 2)} ${y - 5} ${r1(x + (rnd() - .5) * amp)} ${y}`;
+    return `<path d="${d}" fill="none" stroke="var(--il-${c})" stroke-width="${w}" stroke-linecap="round"/>`;
+  }
+
+  const D = {
+    Abies: {
+      sagoma(){
+        let s = ground + trunk(60, 94, 112, 6, "grey") + `<ellipse cx="60" cy="17" rx="7" ry="6" fill="var(--il-leaf)"/>` + tiers(8, 20, 92, 9, 38, t => -2 - t * 2);
+        [[52, 26], [66, 24], [60, 18]].forEach(([x, y]) => s += `<rect x="${x - 2}" y="${y - 7}" width="4" height="8" rx="2" fill="var(--il-cone)"/>`);
+        return svg(s);
+      },
+      rametto(){
+        let s = ln(8, 44, 112, 38, "bark", 2.4);
+        for(let x = 14; x <= 104; x += 6){
+          const y = 44 - (x - 8) * 6 / 104;
+          s += needle(x, y, -68, 19, "leaf", 3) + needle(x, y, 68, 19, "leaf", 3);
+        }
+        s += `<rect x="22" y="88" width="80" height="10" rx="5" fill="var(--il-leaf)"/>
+          <path d="M98 88 L103 93 L98 98" fill="var(--il-bg)" stroke="none"/>
+          <line x1="34" y1="91.5" x2="94" y2="91.5" stroke="var(--il-hi)" stroke-width="1.2"/><line x1="34" y1="94.5" x2="94" y2="94.5" stroke="var(--il-hi)" stroke-width="1.2"/>
+          <ellipse cx="20" cy="93" rx="4" ry="8" fill="var(--il-leaf2)" stroke="var(--il-line)" stroke-width=".6"/>
+          <text x="62" y="111" font-size="7" text-anchor="middle" fill="var(--il-line)" font-family="system-ui,sans-serif">base a ventosa</text>`;
+        return svg(s);
+      },
+      strobilo(){
+        let s = ln(4, 106, 116, 106, "bark", 3);
+        for(let x = 8; x < 112; x += 5) s += needle(x, 106, -60 - (x % 3) * 20, 7, "leaf", 1.8);
+        s += `<rect x="34" y="18" width="24" height="84" rx="12" fill="var(--il-cone)"/>`;
+        s += scalesRows(46, 22, 100, 22, 6);
+        for(let y = 26, i = 0; y < 98; y += 6, i++){
+          const xs = i % 2 ? [40, 52] : [46];
+          xs.forEach(x => s += `<path d="M${x - 1.6} ${y} L${x} ${y + 5} L${x + 1.6} ${y} Z" fill="var(--il-leaf2)"/>`);
+        }
+        s += ln(90, 104, 90, 40, "bark", 1.6);
+        [[93, 60], [87, 74], [93, 86]].forEach(([x, y]) => s += `<path d="M90 ${y} L${x + (x > 90 ? 6 : -6)} ${y - 3}" stroke="var(--il-cone)" stroke-width="3" stroke-linecap="round"/>`);
+        s += bar(8, 16, 26, "5 cm");
+        return svg(s);
+      },
+      corteccia(){
+        const R = rng(11); let inner = "";
+        for(let i = 0; i < 18; i++){ const x = 26 + R() * 68, y = 8 + R() * 70; inner += `<line x1="${r1(x)}" y1="${r1(y)}" x2="${r1(x + 4 + R() * 5)}" y2="${r1(y)}" stroke="var(--il-dark)" stroke-width=".8" opacity=".5"/>`; }
+        for(let i = 0; i < 7; i++){ const x = 30 + R() * 60, y = 12 + R() * 60; inner += `<ellipse cx="${r1(x)}" cy="${r1(y)}" rx="3.2" ry="2.2" fill="var(--il-hi)" opacity=".45" stroke="var(--il-dark)" stroke-width=".5"/>`; }
+        for(let x = 30; x < 96; x += 9 + R() * 4){ inner += `<path d="M${r1(x)} 84 q${r1(R() * 4 - 2)} 10 ${r1(R() * 3 - 1.5)} 32" stroke="var(--il-dark)" stroke-width="1.2" fill="none" opacity=".7"/>`; }
+        return svg(barkBox("cl-abies", "grey", inner));
+      }
+    },
+
+    Picea: {
+      sagoma(){
+        let s = ground + trunk(60, 96, 112, 5) + tiers(10, 8, 94, 3, 30, t => 3 + t * 5);
+        [[50, 30], [70, 34], [58, 22]].forEach(([x, y]) => s += `<ellipse cx="${x}" cy="${y + 5}" rx="2.2" ry="5" fill="var(--il-cone)"/>`);
+        return svg(s);
+      },
+      rametto(){
+        let s = ln(8, 58, 112, 50, "bark", 2.6);
+        for(let x = 12; x < 44; x += 4){ const y = 58 - (x - 8) * 8 / 104; s += `<path d="M${x - 1.5} ${r1(y - 1)} L${x + 1.5} ${r1(y - 4)} L${x + 2.5} ${r1(y - 1)} Z" fill="var(--il-bark)"/><path d="M${x - .5} ${r1(y + 1)} L${x + 1.5} ${r1(y + 4)} L${x + 2.5} ${r1(y + 1)} Z" fill="var(--il-bark)"/>`; }
+        for(let x = 46, i = 0; x < 106; x += 3.2, i++){
+          const y = 58 - (x - 8) * 8 / 104, a = 42 + (i % 3) * 14, L = 10 + (i % 2) * 3;
+          s += needle(x, y, -a, L, "leaf", 1.7) + needle(x, y, a, L, "leaf", 1.7);
+          if(i % 2) s += needle(x, y, -8, 4, "leaf", 1.7);
+        }
+        s += ln(18, 96, 102, 96, "bark", 4);
+        for(let x = 24; x < 100; x += 12) s += `<path d="M${x} 94 L${x + 3} 86 L${x + 6} 94 Z" fill="var(--il-bark)"/>`;
+        s += `<path d="M84 78 l4 -4 l4 4 l-4 4 Z" fill="var(--il-leaf)" stroke="var(--il-line)" stroke-width=".5"/>
+          <text x="60" y="110" font-size="7" text-anchor="middle" fill="var(--il-line)" font-family="system-ui,sans-serif">pulvini legnosi</text>`;
+        return svg(s);
+      },
+      strobilo(){
+        let s = ln(4, 10, 116, 12, "bark", 3);
+        for(let x = 8; x < 112; x += 5) s += needle(x, 11, 50 + (x % 4) * 18, 7, "leaf", 1.6);
+        s += ln(60, 11, 60, 20, "bark", 2);
+        s += `<path d="M60 18 C74 22 76 48 74 70 C72 94 66 108 60 110 C54 108 48 94 46 70 C44 48 46 22 60 18 Z" fill="var(--il-cone)"/>`;
+        s += `<g clip-path="url(#cl-picea-c)">${scalesRows(60, 22, 110, 30, 6, "dark", true)}</g><defs><clipPath id="cl-picea-c"><path d="M60 18 C74 22 76 48 74 70 C72 94 66 108 60 110 C54 108 48 94 46 70 C44 48 46 22 60 18 Z"/></clipPath></defs>`;
+        s += bar(84, 104, 32, "5 cm");
+        return svg(s);
+      },
+      corteccia(){
+        const R = rng(7); let inner = "";
+        for(let y = 4, row = 0; y < 120; y += 8, row++){
+          for(let x = 18 + (row % 2) * 6; x < 104; x += 12){
+            const jx = x + R() * 3, jy = y + R() * 2;
+            inner += `<path d="M${r1(jx - 6)} ${r1(jy)} Q${r1(jx)} ${r1(jy + 8)} ${r1(jx + 6)} ${r1(jy)}" fill="var(--il-bark2)" stroke="var(--il-dark)" stroke-width=".8"/>`;
+          }
+        }
+        return svg(barkBox("cl-picea", "bark", inner));
+      }
+    },
+
+    Pinus: {
+      sagoma(){
+        let s = ground + `<path d="M57 112 C58 90 56 70 60 44 L63 44 C61 70 64 90 64 112 Z" fill="var(--il-bark)"/>`;
+        s += ln(60, 58, 46, 46, "bark", 2) + ln(62, 52, 78, 42, "bark", 2);
+        [[46, 38, 18, 11], [74, 34, 20, 12], [60, 24, 17, 11], [34, 48, 11, 6], [88, 44, 12, 7], [58, 40, 12, 8]].forEach(([x, y, rx, ry]) => s += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="var(--il-leaf)"/>`);
+        return svg(s);
+      },
+      rametto(){
+        let s = ln(22, 114, 72, 30, "bark", 3.4);
+        [[0.18, 1], [0.42, -1], [0.66, 1], [0.86, -1]].forEach(([t, side]) => {
+          const [x, y] = along(22, 114, 72, 30, t);
+          const a0 = -60 + side * 55, spread = 12;
+          [a0 - spread, a0 + spread].forEach((a, k) => {
+            const len = 44, bend = side * (k ? 8 : 4);
+            const ex = x + Math.cos(rad(a)) * len, ey = y + Math.sin(rad(a)) * len;
+            const mx = (x + ex) / 2 + bend, my = (y + ey) / 2 - Math.abs(bend) / 2;
+            s += `<path d="M${r1(x)} ${r1(y)} Q${r1(mx)} ${r1(my)} ${r1(ex)} ${r1(ey)}" fill="none" stroke="var(--il-leaf)" stroke-width="1.6" stroke-linecap="round"/>`;
+          });
+          s += `<rect x="${r1(x - 2)}" y="${r1(y - 6)}" width="4" height="7" rx="1" fill="var(--il-hi)" stroke="var(--il-dark)" stroke-width=".6" transform="rotate(${r1(a0 + 90)} ${r1(x)} ${r1(y)})"/>`;
+        });
+        return svg(s);
+      },
+      strobilo(){
+        let s = ln(60, 4, 60, 22, "bark", 3);
+        s += `<defs><clipPath id="cl-pinus-c"><ellipse cx="60" cy="62" rx="22" ry="38"/></clipPath></defs><ellipse cx="60" cy="62" rx="22" ry="38" fill="var(--il-cone)"/><g clip-path="url(#cl-pinus-c)">`;
+        for(let k = -80; k < 140; k += 9){ s += ln(k, 20, k + 60, 110, "dark", 1.1) + ln(k + 60, 20, k, 110, "dark", 1.1); }
+        for(let y = 28; y < 100; y += 6){ for(let x = 36; x < 86; x += 6){ const xx = x + ((y / 6) % 2 ? 3 : 0); s += `<circle cx="${xx}" cy="${y + 1}" r=".9" fill="var(--il-dark)"/>`; } }
+        s += `</g>` + bar(86, 112, 25, "2 cm");
+        return svg(s);
+      },
+      corteccia(){
+        const R = rng(3); let inner = `<rect x="0" y="0" width="120" height="44" fill="var(--il-bark2)"/>`;
+        const xs = [30, 46, 62, 78, 94];
+        xs.forEach(x => inner += wavyV(x + R() * 4, R, 2.6, "dark", 4));
+        for(let i = 0; i < xs.length - 1; i++){ for(let y = 14 + R() * 10; y < 116; y += 16 + R() * 12){ inner += ln(xs[i] + 1, y, xs[i + 1] + 1, y + R() * 6 - 3, "dark", 2); } }
+        return svg(barkBox("cl-pinus", "bark", inner));
+      }
+    },
+
+    Cedrus: {
+      sagoma(){
+        let s = ground + trunk(60, 60, 112, 8);
+        s += ln(60, 60, 60, 20, "bark", 3) + ln(58, 50, 40, 44, "bark", 2) + ln(62, 70, 90, 62, "bark", 2) + ln(58, 84, 26, 82, "bark", 2);
+        [[60, 22, 14, 5], [48, 42, 28, 6], [70, 60, 36, 7], [54, 80, 46, 8]].forEach(([x, y, rx, ry]) => s += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="var(--il-leaf)"/>`);
+        return svg(s);
+      },
+      rametto(){
+        let s = ln(8, 96, 112, 30, "bark", 2.6);
+        [0.14, 0.34, 0.54].forEach(t => {
+          const [x, y] = along(8, 96, 112, 30, t);
+          for(let a = -165; a <= -15; a += 11) s += needle(x, y - 2, a, 13, "leaf", 1.4);
+          s += `<circle cx="${r1(x)}" cy="${r1(y - 1)}" r="3.2" fill="var(--il-bark)"/>`;
+        });
+        for(let t = 0.7; t < 0.98; t += 0.05){ const [x, y] = along(8, 96, 112, 30, t); s += needle(x, y, -100 + (t * 100 % 2 > 1 ? 50 : 0), 9, "leaf", 1.4); }
+        return svg(s);
+      },
+      strobilo(){
+        let s = ln(4, 104, 116, 100, "bark", 3);
+        [20, 96].forEach(x => { for(let a = -160; a <= -20; a += 14) s += needle(x, 102, a, 9, "leaf", 1.3); });
+        s += `<path d="M38 40 Q38 30 50 30 Q60 34 70 30 Q82 30 82 40 L82 88 Q82 100 60 100 Q38 100 38 88 Z" fill="var(--il-cone)"/>`;
+        for(let y = 38; y < 98; y += 4.5) s += `<path d="M40 ${y} Q60 ${y + 3} 80 ${y}" fill="none" stroke="var(--il-dark)" stroke-width=".8"/>`;
+        s += bar(8, 16, 35, "5 cm");
+        return svg(s);
+      },
+      corteccia(){
+        const R = rng(5); let inner = "";
+        for(let y = 2, row = 0; y < 120; y += 9, row++){
+          inner += ln(18, y + R() * 2, 104, y + R() * 2, "dark", 1.2);
+          for(let x = 20 + (row % 2) * 7 + R() * 3; x < 104; x += 12 + R() * 4) inner += ln(x, y, x + R() * 2 - 1, y + 9, "dark", 1.5);
+        }
+        return svg(barkBox("cl-cedrus", "greyd", inner));
+      }
+    },
+
+    Larix: {
+      sagoma(){
+        let s = ground + `<path d="M58.5 112 L60 8 L61.5 112 Z" fill="var(--il-bark)"/>`;
+        for(let i = 0; i < 10; i++){
+          const y = 18 + i * 9, len = 7 + i * 3.6;
+          [-1, 1].forEach(sd => {
+            const ex = 60 + sd * len, ey = y + 3 + i * 0.4, tx = ex + sd * 2, ty = ey + 6;
+            s += `<path d="M60 ${y} Q${r1(60 + sd * len * .6)} ${r1(y + 1)} ${r1(ex)} ${r1(ey)} L${r1(tx)} ${r1(ty)}" fill="none" stroke="var(--il-bark)" stroke-width="1"/>`;
+            for(let k = 0.3; k <= 1; k += 0.14){ s += `<circle cx="${r1(60 + sd * len * k)}" cy="${r1(y + (ey - y) * k + 0.5)}" r="2" fill="var(--il-leaf2)" opacity=".9"/>`; }
+          });
+        }
+        return svg(s);
+      },
+      rametto(){
+        let s = ln(8, 96, 112, 30, "bark", 2.2);
+        [0.14, 0.36, 0.58].forEach(t => {
+          const [x, y] = along(8, 96, 112, 30, t);
+          for(let a = -170; a <= -10; a += 8.5) s += needle(x, y - 2, a, 17, "leaf2", .9);
+          s += `<circle cx="${r1(x)}" cy="${r1(y - 1)}" r="3.4" fill="var(--il-bark)"/>`;
+        });
+        for(let t = 0.74; t < 0.98; t += 0.045){ const [x, y] = along(8, 96, 112, 30, t); s += needle(x, y, t * 200 % 2 > 1 ? -120 : -40, 10, "leaf2", .9); }
+        return svg(s);
+      },
+      strobilo(){
+        let s = ln(6, 100, 114, 70, "bark", 2.4);
+        const cone = (cx, cy, fill, open) => {
+          let c = `<ellipse cx="${cx}" cy="${cy}" rx="11" ry="14" fill="var(--il-${fill})"/>`;
+          for(let row = 0; row < 4; row++){
+            const y = cy + 10 - row * 6, n = 3 - (row > 2 ? 1 : 0);
+            for(let k = 0; k < n; k++){ const x = cx - 7 + k * 7 + (row % 2) * 3.5; c += `<path d="M${x - (open ? 5 : 4)} ${y} Q${x} ${y - (open ? 9 : 7)} ${x + (open ? 5 : 4)} ${y}" fill="var(--il-${fill})" stroke="var(--il-dark)" stroke-width=".8"/>`; }
+          }
+          return c;
+        };
+        const [x1, y1] = along(6, 100, 114, 70, 0.3), [x2, y2] = along(6, 100, 114, 70, 0.72);
+        s += ln(x1, y1, x1, y1 - 8, "bark", 2) + cone(x1, y1 - 20, "cone", false);
+        s += ln(x2, y2, x2, y2 - 8, "bark", 2) + cone(x2, y2 - 20, "grey", true);
+        [0.12, 0.52, 0.9].forEach(t => { const [x, y] = along(6, 100, 114, 70, t); s += `<circle cx="${r1(x)}" cy="${r1(y)}" r="2.4" fill="var(--il-bark)"/>`; });
+        s += bar(8, 16, 20, "2 cm");
+        return svg(s);
+      },
+      corteccia(){
+        const R = rng(9); let inner = "";
+        [32, 50, 66, 84].forEach(x => { inner += wavyV(x, R, 4.5, "dark", 5); inner += wavyV(x, R, 1.2, "red", 5); });
+        for(let i = 0; i < 14; i++){ const x = 24 + R() * 72, y = R() * 110; inner += ln(x, y, x + 6, y + 1, "dark", 1); }
+        return svg(barkBox("cl-larix", "greyb", inner));
+      }
+    },
+
+    Tsuga: {
+      sagoma(){
+        let s = ground + trunk(60, 94, 112, 5) + tiers(9, 26, 92, 4, 32, t => 4 + t * 3);
+        s += `<path d="M60 30 Q60 16 70 14" fill="none" stroke="var(--il-leaf)" stroke-width="3.2" stroke-linecap="round"/>`;
+        for(let k = 0; k < 5; k++) s += needle(61 + k * 2, 22 - k * 1.8, 30 + k * 10, 4, "leaf", 1.4);
+        return svg(s);
+      },
+      rametto(){
+        let s = ln(6, 58, 100, 48, "bark", 1.8);
+        const lens = [6, 9, 7, 10, 5, 8];
+        for(let x = 12, i = 0; x < 96; x += 4.6, i++){
+          const y = 58 - (x - 6) * 10 / 94, L = lens[i % lens.length];
+          [-78, 78].forEach(a => { const px = x + Math.cos(rad(a)) * 2, py = y + Math.sin(rad(a)) * 2; s += ln(x, y, px, py, "bark", .7) + needle(px, py, a, L, "leaf", 2.4); });
+        }
+        s += ln(100, 48, 104, 60, "bark", 1.2) + `<ellipse cx="105" cy="67" rx="4.5" ry="7" fill="var(--il-cone)"/>` + scalesRows(105, 62, 73, 8, 3.5, "dark", true);
+        s += `<text x="54" y="104" font-size="7" text-anchor="middle" fill="var(--il-line)" font-family="system-ui,sans-serif">aghi ~1 cm · picciolo breve</text>`;
+        return svg(s);
+      },
+      strobilo(){
+        let s = ln(4, 22, 116, 16, "bark", 2);
+        for(let x = 8; x < 112; x += 4) s += needle(x, 20, (x % 8 ? 80 : -80), 7, "leaf", 2);
+        [[40, 26], [82, 24]].forEach(([x, y]) => {
+          s += ln(x, y - 4, x, y + 6, "bark", 1.4) + `<ellipse cx="${x}" cy="${y + 22}" rx="10" ry="16" fill="var(--il-cone)"/>`;
+          s += `<g clip-path="url(#cl-tsuga-${x})">${scalesRows(x, y + 7, y + 38, 20, 5, "dark", true)}</g><defs><clipPath id="cl-tsuga-${x}"><ellipse cx="${x}" cy="${y + 22}" rx="10" ry="16"/></clipPath></defs>`;
+        });
+        s += bar(45, 100, 32, "2 cm");
+        return svg(s);
+      },
+      corteccia(){
+        const R = rng(13); let inner = "";
+        [30, 44, 58, 72, 86].forEach(x => inner += wavyV(x + R() * 3, R, 2.4, "dark", 6));
+        for(let i = 0; i < 26; i++){ const x = 24 + R() * 72, y = R() * 116; inner += `<path d="M${r1(x)} ${r1(y)} q3 -2 6 0" stroke="var(--il-dark)" stroke-width=".9" fill="none"/>`; }
+        return svg(barkBox("cl-tsuga", "bark", inner));
+      }
+    },
+
+    Pseudotsuga: {
+      sagoma(){
+        return svg(ground + trunk(60, 90, 112, 5) + tiers(11, 6, 88, 3, 22, t => -5 + t * 11));
+      },
+      rametto(){
+        let s = ln(6, 60, 96, 50, "bark", 2);
+        for(let x = 10, i = 0; x < 92; x += 5, i++){
+          const y = 60 - (x - 6) * 10 / 90;
+          [-(58 + (i % 3) * 8), 58 + (i % 3) * 8].forEach(a => { const px = x + Math.cos(rad(a)) * 2, py = y + Math.sin(rad(a)) * 2; s += ln(x, y, px, py, "bark", .7) + needle(px, py, a, 19, "leaf", 2.4); });
+        }
+        s += `<path d="M95 50.5 Q104 46 116 47.5 Q104 51 95 52.5 Z" fill="var(--il-bark)"/>`;
+        s += `<text x="58" y="108" font-size="7" text-anchor="middle" fill="var(--il-line)" font-family="system-ui,sans-serif">gemma lunga e appuntita</text>`;
+        return svg(s);
+      },
+      strobilo(){
+        let s = ln(4, 10, 116, 12, "bark", 2.4);
+        for(let x = 8; x < 112; x += 5) s += needle(x, 11, 50 + (x % 4) * 18, 9, "leaf", 2);
+        s += ln(60, 11, 60, 22, "bark", 2);
+        const body = "M60 20 C76 24 78 50 76 70 C74 94 66 106 60 108 C54 106 46 94 44 70 C42 50 44 24 60 20 Z";
+        s += `<path d="${body}" fill="var(--il-cone)"/><defs><clipPath id="cl-pseudo-c"><path d="${body}"/></clipPath></defs><g clip-path="url(#cl-pseudo-c)">${scalesRows(60, 24, 108, 34, 8, "dark", true)}</g>`;
+        for(let y = 30, row = 0; y < 96; y += 8, row++){
+          (row % 2 ? [53, 67] : [60]).forEach(x => {
+            const by = y + 7;
+            s += `<path d="M${x} ${by} L${x} ${by + 7} M${x - 2.4} ${by} L${x - 2.6} ${by + 4} M${x + 2.4} ${by} L${x + 2.6} ${by + 4}" stroke="var(--il-leaf2)" stroke-width="1.6" stroke-linecap="round" fill="none"/>`;
+          });
+        }
+        s += bar(80, 112, 36, "4 cm");
+        return svg(s);
+      },
+      corteccia(){
+        const R = rng(21);
+        let inner = `<rect x="0" y="0" width="60" height="120" fill="var(--il-greyb)"/>`;
+        for(let i = 0; i < 6; i++){ const x = 28 + R() * 24, y = 12 + R() * 96; inner += `<ellipse cx="${r1(x)}" cy="${r1(y)}" rx="2.2" ry="3.2" fill="var(--il-hi)" opacity=".5" stroke="var(--il-dark)" stroke-width=".5"/>`; }
+        inner += `<rect x="60" y="0" width="60" height="120" fill="var(--il-bark)"/>`;
+        [66, 78, 90].forEach(x => inner += wavyV(x, R, 5.5, "dark", 3));
+        inner += `<line x1="60" y1="0" x2="60" y2="120" stroke="var(--il-line)" stroke-width=".8" stroke-dasharray="3 3" opacity=".6"/>`;
+        return svg(barkBox("cl-pseudo", "bark", inner));
+      }
+    }
+  };
+
+  const CAP = {
+    Abies: { sagoma: "Conica, a palchi regolari; pigne erette in cima", rametto: "Aghi piatti su due file, base a ventosa", strobilo: "Eretto 10–20 cm, brattee sporgenti; si sfalda e resta l'asse", corteccia: "Grigio-argentea e liscia, con vescicole di resina" },
+    Picea: { sagoma: "Slanciata e appuntita, rametti pendenti", rametto: "Aghi tutto intorno su pulvini; il tratto nudo resta ruvido", strobilo: "Pendulo 10–15 cm, squame sottili; cade intero", corteccia: "Bruno-rossastra, a scaglie sottili arrotondate" },
+    Pinus: { sagoma: "Tronco nudo, chioma irregolare in alto (pino silvestre)", rametto: "Fascetti di 2 aghi con guaina alla base", strobilo: "Legnoso, squame spesse a rombo con umbone", corteccia: "A grandi placche; nel silvestre arancione in alto" },
+    Cedrus: { sagoma: "Ampia, a palchi orizzontali (C. libani)", rametto: "Mazzetti rigidi su brachiblasti, aghi isolati sul getto lungo", strobilo: "Eretto a barile 5–12 cm; si sfalda sull'albero", corteccia: "Grigio scura, fessurata in piccole placche" },
+    Larix: { sagoma: "Conica e rada, rametti ricadenti; spoglia d'inverno", rametto: "Mazzetti di 20–40 aghi morbidi su brachiblasti", strobilo: "Eretto 2–4 cm; le pigne vecchie grigie restano sui rami", corteccia: "Grigio-bruna, fessure profonde rossastre all'interno" },
+    Tsuga: { sagoma: "Conica, con la cima ricadente", rametto: "Aghi di circa 1 cm su due file, pigna all'apice", strobilo: "Pendulo 1,5–3 cm, il più piccolo della chiave", corteccia: "Bruna, solcata in creste scagliose" },
+    Pseudotsuga: { sagoma: "Alta e slanciata, rami alti ascendenti e bassi penduli", rametto: "Aghi 2–3,5 cm con breve picciolo, gemma appuntita", strobilo: "Pendulo 5–10 cm con brattee a tridente", corteccia: "Giovane liscia con vesciche di resina (sx), adulta profondamente solcata (dx)" }
+  };
+
+  const TITLES = { sagoma: "Sagoma", rametto: "Rametto e aghi", strobilo: "Strobilo", corteccia: "Fusto e corteccia" };
+
+  return function(g){
+    return `<div class="ill-grid">${Object.keys(TITLES).map(k => `
+      <figure class="ill">${D[g][k]()}<figcaption><b>${TITLES[k]}</b>${CAP[g][k]}</figcaption></figure>`).join("")}</div>
+      <p class="muted small ill-note">Disegni schematici, non in scala tra loro; nello strobilo la barra indica la misura reale.</p>`;
+  };
+})();
+
+/* ---------- Stato ---------- */
+const state = {
+  view: "chiave",
+  path: [],            // [{q, o}]
+  genus: null,         // scheda aperta dalla vista Generi
+  quiz: null
+};
+
+function nodeAfter(path){
+  if(!path.length) return { q: "q1" };
+  const last = path[path.length - 1];
+  const opt = KEY[last.q].options.find(o => o.id === last.o);
+  return opt.result ? { result: opt.result } : { q: opt.next };
+}
+
+function pathTo(genus, q = "q1", acc = []){
+  for(const o of KEY[q].options){
+    const step = acc.concat({ q, o: o.id });
+    if(o.result === genus) return step;
+    if(o.next){ const r = pathTo(genus, o.next, step); if(r) return r; }
+  }
+  return null;
+}
+
+function optLabel(p){ return KEY[p.q].options.find(o => o.id === p.o).label; }
+
+function shuffle(a){
+  const b = a.slice();
+  for(let i = b.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
+  return b;
+}
+
+function newQuiz(){ state.quiz = { deck: shuffle(CLUES), i: 0, score: 0, chosen: null }; }
+
+/* ---------- Render ---------- */
+const app = document.getElementById("app");
+
+function trailHTML(path, result){
+  if(!path.length) return "";
+  const items = path.map(p => `<li><b>${optLabel(p)}</b></li>`);
+  if(result) items.push(`<li class="here"><span class="latin">${result}</span></li>`);
+  return `<ol class="trail" aria-label="Percorso scelto">${items.join("")}</ol>`;
+}
+
+function genusCard(g){
+  const d = GENERA[g];
+  const f = (label, txt) => txt ? `<div><dt>${label}</dt><dd>${fmt(txt)}</dd></div>` : "";
+  return `<article class="card">
+    <div class="genus-head">
+      <div><h2>${g}</h2><p class="muted">${d.comune}</p></div>
+      <span class="badge">${d.status}</span>
+    </div>
+    ${ILL(g).replace(/<figcaption><b>([^<]*)<\/b>([^<]*)<\/figcaption>/g, (m, t, c) => `<figcaption><b>${t}</b>${fmt(c)}</figcaption>`)}
+    <dl class="facts">
+      ${f("Specie in Italia", d.specie)}
+      ${f("Aghi", d.aghi)}
+      ${f("Rametto", d.rametto)}
+      ${f("Strobilo", d.strobilo)}
+      ${f("Altri caratteri", d.altro)}
+      ${f("Distribuzione in Italia", d.distr)}
+      ${f("Si confonde con", d.confusione)}
+    </dl>
+    <p class="tip">${fmt(d.trucco)}</p>
+  </article>`;
+}
+
+function fmt(t){ return t ? t.replace(/\b(Abies alba|[A-Z]\. [a-z]+|Abies|Picea|Pinus|Cedrus|Larix|Tsuga|Pseudotsuga)\b/g, "<i>$1</i>") : t; }
+
+function renderChiave(){
+  const node = nodeAfter(state.path);
+  if(node.result){
+    app.innerHTML = trailHTML(state.path, node.result) + genusCard(node.result) + `
+      <div class="row">
+        <button class="btn" data-act="back">Torna indietro</button>
+        <button class="btn primary" data-act="restart">Nuova identificazione</button>
+      </div>`;
+    return;
+  }
+  const q = KEY[node.q];
+  app.innerHTML = trailHTML(state.path) + `
+    <p class="step-no">Passo ${q.step}</p>
+    <h2>${q.title}</h2>
+    <p class="help">${fmt(q.help)}</p>
+    <div class="opts">
+      ${q.options.map(o => `
+        <button class="opt" data-act="choose" data-o="${o.id}">
+          ${o.icon ? ICONS[o.icon] : `<span class="glyph" aria-hidden="true">${o.glyph}</span>`}
+          <span><strong>${o.label}</strong><span class="d">${o.detail}</span></span>
+        </button>`).join("")}
+    </div>
+    <div class="row">
+      <button class="btn" data-act="back" ${state.path.length ? "" : "disabled"}>Torna indietro</button>
+      <button class="btn" data-act="restart" ${state.path.length ? "" : "disabled"}>Ricomincia</button>
+      <button class="btn" data-act="schema">Schema del corso</button>
+    </div>`;
+}
+
+function renderGeneri(){
+  if(state.genus){
+    app.innerHTML = `<div class="row" style="margin:0 0 12px"><button class="btn" data-act="closeGenus">Tutti i generi</button></div>`
+      + genusCard(state.genus)
+      + `<div class="row"><button class="btn primary" data-act="toKey" data-g="${state.genus}">Mostra il percorso nella chiave</button></div>`;
+    return;
+  }
+  app.innerHTML = `<h2>Generi</h2><p class="muted small">Tocca un genere per la scheda completa.</p>
+    <div class="genera">${Object.keys(GENERA).map(g => `
+      <button class="gen" data-act="openGenus" data-g="${g}">
+        <span class="latin">${g}</span><span class="c">${GENERA[g].comune}</span>
+      </button>`).join("")}</div>`;
+}
+
+function renderRipasso(){
+  if(!state.quiz) newQuiz();
+  const z = state.quiz;
+  if(z.i >= z.deck.length){
+    app.innerHTML = `<h2>Ripasso completato</h2>
+      <p class="clue">Hai risposto correttamente a <span class="score">${z.score} su ${z.deck.length}</span>.</p>
+      <div class="row"><button class="btn primary" data-act="quizRestart">Ricomincia il ripasso</button></div>`;
+    return;
+  }
+  const [answer, clue] = z.deck[z.i];
+  const done = z.chosen !== null;
+  app.innerHTML = `<p class="step-no score">Domanda ${z.i + 1} di ${z.deck.length} · Corrette ${z.score}</p>
+    <h2>Quale genere è?</h2>
+    <p class="clue">${clue}</p>
+    <div class="answers">${Object.keys(GENERA).map(g => {
+      let cls = "";
+      if(done && g === answer) cls = "ok";
+      else if(done && g === z.chosen) cls = "bad";
+      return `<button class="ans ${cls}" data-act="answer" data-g="${g}" ${done ? "disabled" : ""}><span class="latin">${g}</span></button>`;
+    }).join("")}</div>
+    ${done ? `<div class="feedback ${z.chosen === answer ? "ok" : "bad"}">
+        ${z.chosen === answer ? "Esatto." : `Era <i>${answer}</i>.`} ${fmt(GENERA[answer].trucco)}
+      </div>
+      <div class="row"><button class="btn primary" data-act="next">${z.i + 1 < z.deck.length ? "Domanda successiva" : "Vedi il risultato"}</button></div>` : ""}`;
+}
+
+function renderGlossario(){
+  app.innerHTML = `<h2>Glossario</h2>
+    ${GLOSSARIO.map(([t, d]) => `<details><summary>${t}</summary><p>${fmt(d)}</p></details>`).join("")}
+    <h2 style="margin-top:28px">Correzioni allo schema</h2>
+    <p class="muted small">Punti dello schema del corso modificati nella chiave. All'esame tieni presente anche la versione originale.</p>
+    <ul class="fix">${CORREZIONI.map(([t, d]) => `<li><b>${fmt(t)}</b>${fmt(d)}</li>`).join("")}</ul>
+    <div class="row"><button class="btn" data-act="schema">Schema del corso</button></div>`;
+}
+
+function render(){
+  document.querySelectorAll("nav.tabs button").forEach(b => {
+    if(b.dataset.view === state.view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  ({ chiave: renderChiave, generi: renderGeneri, ripasso: renderRipasso, glossario: renderGlossario })[state.view]();
+}
+
+function go(view){ state.view = view; render(); window.scrollTo({ top: 0 }); }
+
+/* ---------- Eventi ---------- */
+app.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if(!b || b.disabled) return;
+  const act = b.dataset.act;
+  switch(act){
+    case "choose": {
+      const q = nodeAfter(state.path).q;
+      state.path = state.path.concat({ q, o: b.dataset.o });
+      render(); window.scrollTo({ top: 0 });
+      break;
+    }
+    case "back": state.path = state.path.slice(0, -1); render(); break;
+    case "restart": state.path = []; render(); break;
+    case "schema": openSchema(); break;
+    case "openGenus": state.genus = b.dataset.g; render(); window.scrollTo({ top: 0 }); break;
+    case "closeGenus": state.genus = null; render(); break;
+    case "toKey": state.path = pathTo(b.dataset.g) || []; state.genus = null; go("chiave"); break;
+    case "answer": {
+      const z = state.quiz;
+      z.chosen = b.dataset.g;
+      if(z.chosen === z.deck[z.i][0]) z.score++;
+      render();
+      break;
+    }
+    case "next": state.quiz.i++; state.quiz.chosen = null; render(); window.scrollTo({ top: 0 }); break;
+    case "quizRestart": newQuiz(); render(); break;
+  }
+});
+
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => {
+  if(b.dataset.view === "generi" && state.view === "generi") state.genus = null;
+  go(b.dataset.view);
+}));
+
+/* ---------- Schema ---------- */
+const dlg = document.getElementById("schemaDlg");
+const dlgBody = document.getElementById("dlgBody");
+const zoomBtn = document.getElementById("zoomBtn");
+function openSchema(){
+  dlgBody.classList.remove("zoom"); zoomBtn.textContent = "Ingrandisci";
+  if(typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+}
+zoomBtn.addEventListener("click", () => {
+  const z = dlgBody.classList.toggle("zoom");
+  zoomBtn.textContent = z ? "Adatta" : "Ingrandisci";
+});
+document.getElementById("closeDlg").addEventListener("click", () => dlg.close ? dlg.close() : dlg.removeAttribute("open"));
+dlg.addEventListener("click", e => { if(e.target === dlg) dlg.close(); });
+
+/* ---------- Tema ---------- */
+const THEMES = ["auto", "light", "dark"];
+const THEME_LABEL = { auto: "◐ Auto", light: "☀ Chiaro", dark: "☾ Scuro" };
+const themeBtn = document.getElementById("themeBtn");
+let theme = "auto";
+try { theme = localStorage.getItem("pinaceae-theme") || "auto"; } catch(_){}
+if(!THEMES.includes(theme)) theme = "auto";
+function applyTheme(){
+  if(theme === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
+  themeBtn.textContent = THEME_LABEL[theme];
+  themeBtn.setAttribute("aria-label", "Tema: " + THEME_LABEL[theme].slice(2) + ". Tocca per cambiare");
+}
+themeBtn.addEventListener("click", () => {
+  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+  try { localStorage.setItem("pinaceae-theme", theme); } catch(_){}
+  applyTheme();
+});
+applyTheme();
+render();
+</script>
+</body>
+</html>

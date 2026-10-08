@@ -2,6 +2,14 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.42.0 · chiave delle Pinaceae
+
+- Nuova pagina **Chiave delle Pinaceae** (menu «Configurazione e backup» → «Chiave delle Pinaceae»): identificazione guidata dei 7 generi (*Abies, Picea, Pinus, Cedrus, Larix, Tsuga, Pseudotsuga*), schede dei generi con illustrazioni, ripasso a domande, glossario e correzioni allo schema del corso.
+- Funziona offline (pagina e schema del corso sono nella cache dell'app) e ha un pulsante per tornare alla scheda botanica.
+- Nessuna modifica ai dati delle schede e al catalogo delle 144 specie.
+
+---
+
 ## 3.41.2 · testo libero stampato senza etichetta
 
 - Il testo scritto nella casella «Altro» della finestra di stampa esce in prima pagina **senza la parola «Altro:»**: viene stampato solo quello che hai scritto.
