@@ -535,7 +535,7 @@ async function esportaZIP(modo = 'scarica', opzioni = {}) {
       `Scheda Botanica by Lollo ®2026 — esportazione completa del ${dataIT(oraISO())}\n` +
       `${tutteLeSchede.length} schede, foto nella cartella /foto, audio nella cartella /audio.\n\n` +
       `CSV, GeoJSON, KML e GPX si aprono con Excel, QGIS e Google Earth.\n` +
-      `Per ripristinare tutto nell'app: menu ⋮ → "Ripristina backup" e scegli questo ZIP (non scompattarlo).`);
+      `Per ripristinare tutto nell'app: + Opzioni → Backup e configurazione → "Ripristina backup" e scegli questo ZIP (non scompattarlo).`);
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
     const nomeFileZip = opzioni.nomeFile || `scheda-botanica-backup-${oggi()}.zip`;
 

@@ -45,7 +45,10 @@
 
 <header class="testata">
   <div class="marchio-app"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-leaf"></use></svg><h1>Scheda Botanica <small id="stato-rete" title="Stato della connessione"></small></h1></div>
+  <div class="testata-destra">
+    <button type="button" id="btn-aiuto-testa" class="aiuto-testa-btn" aria-label="Aiuto: come funziona l’app"><span class="aiuto-q" aria-hidden="true">?</span><span>Aiuto</span></button>
   <button type="button" id="btn-versione" class="versione-app" aria-label="Controlla aggiornamenti">Versione — ↻</button>
+  </div>
 </header>
 
 <section class="azioni-home" aria-label="Azioni sul campo">
@@ -259,108 +262,142 @@
   <div class="azioni"><button type="button" class="btn" id="meteo-chiudi">Chiudi</button></div>
 </dialog>
 
-<dialog id="dlg-menu">
-  <h2>Configurazione e backup</h2>
+<dialog id="dlg-menu" aria-labelledby="menu-titolo-dlg">
+  <div class="menu-testa">
+    <h2 id="menu-titolo-dlg">Configurazione e backup</h2>
+    <p>Tocca un gruppo per aprirlo o chiuderlo. Il primo, Backup, è il più importante: fallo spesso.</p>
+  </div>
   <div class="menu-lista">
-    <h3 class="menu-titolo">Configurazione</h3>
-    <button class="btn" data-az="completa-guida"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-book"></use></svg><span>Completa catalogo delle 144 piante</span></button>
-    <button class="btn" data-az="plantnet"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg><span>Chiave PlantNet</span></button>
-    <div class="ai-config">
-      <strong>Assistente AI · facoltativo</strong>
-      <p>La scheda funziona anche senza chiavi. Seleziona <code>open.env</code> dal tablet una volta: le chiavi riconosciute vengono ricaricate automaticamente su questo browser alle aperture successive. Il file non entra nei backup dell’app.</p>
-      <div class="cg-trasferimento">
-        <button type="button" class="btn" id="ai-carica-env">Carica open.env</button>
-        <button type="button" class="btn" id="ai-rimuovi-env">Dimentica chiavi</button>
+    <details class="menu-gruppo" id="mg-backup" open>
+      <summary><span class="mg-icona" aria-hidden="true">💾</span><span class="mg-testo"><b>Backup e ripristino</b><small>Salva in un file .zip tutte le schede, con foto e audio; ripristinalo qui o su un altro dispositivo</small></span></summary>
+      <div class="mg-corpo">
+        <button class="btn primario" data-az="zip"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Backup completo, con foto e audio</span></button>
+        <button class="btn" data-az="zip-condividi"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Condividi backup</span></button>
+        <button class="btn" data-az="ripristina"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Ripristina backup</span></button>
+        <div class="backup-auto">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:600">
+            <input type="checkbox" id="chk-backup-auto" checked> 💾 Backup automatico
+          </label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span>Scarica un backup da solo</span>
+            <select id="sel-backup-auto-giorni" class="campo-base" style="min-height:32px;padding:2px 6px">
+              <option value="1" selected>ogni giorno</option>
+              <option value="3">ogni 3 giorni</option>
+              <option value="7">ogni settimana</option>
+            </select>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:400">
+            <input type="checkbox" id="chk-notifica-backup"> 🔔 Avvisami anche con una notifica se il backup è in ritardo
+          </label>
+          <p id="notifica-backup-stato" style="font-size:12px;color:var(--tenue);margin:4px 0 0"></p>
+        </div>
+        <div class="cartella-botanica">
+          <strong>Cartella dei salvataggi</strong>
+          <p id="cartella-botanica-stato" role="status" aria-live="polite">Download normali del browser.</p>
+          <div class="cg-trasferimento">
+            <button type="button" class="btn" id="btn-cartella-botanica">Scegli Download/Botanica</button>
+            <button type="button" class="btn nascosto" id="btn-cartella-botanica-dimentica">Dimentica cartella</button>
+          </div>
+          <small>Prima della richiesta del browser, l’app ti spiega perché serve l’autorizzazione e chiede conferma. Il permesso vale soltanto per la cartella scelta: l’app non cancella file, non legge le altre cartelle e non invia i contenuti online. Nei browser non compatibili i file restano nei Download normali.</small>
+        </div>
       </div>
-      <input type="file" id="ai-file-env" accept=".env,.txt,text/plain" class="nascosto">
-      <label><input type="checkbox" id="ai-ricorda-env" checked> Ricorda le chiavi su questo browser</label>
-      <p id="ai-env-stato" role="status" aria-live="polite">Nessuna chiave caricata.</p>
-      <button type="button" class="btn" id="ai-prova">🩺 Prova i servizi AI</button>
-      <div id="ai-prova-esito" class="ai-prova-esito" role="status" aria-live="polite"></div>
-      <label for="ai-ricerca-servizio">Servizio per la ricerca AI</label>
-      <select id="ai-ricerca-servizio" class="campo-base">
-        <option value="auto">Automatico · servizio selezionato nel catalogo o prima chiave disponibile</option>
-        <option value="gemini">Google Gemini</option><option value="groq">Groq</option><option value="openrouter">OpenRouter</option>
-      </select>
-      <details>
-        <summary>Modelli AI · impostazioni avanzate</summary>
-        <p>Lascia vuoto per i modelli predefiniti. Se il modello predefinito non è disponibile per la tua chiave (ritirato, non concesso o senza quota gratuita), Gemini/Groq controllano i modelli disponibili e riprovano una volta nello stesso servizio. «🩺 Prova i servizi AI» mostra quale modello risponde e l’eventuale errore esatto. Un modello impostato da te non viene sostituito. Disponibilità e gratuità dipendono dal tuo account: verifica prezzi e limiti prima dell’uso.</p>
-        <label for="ai-modello-gemini">ID modello Gemini · testo e slide</label>
-        <input id="ai-modello-gemini" class="campo-base" placeholder="Automatico · gemini-3.5-flash o il Flash disponibile" autocomplete="off" spellcheck="false">
-        <label for="ai-modello-groq">ID modello Groq · ricerca testuale</label>
-        <input id="ai-modello-groq" class="campo-base" placeholder="Automatico · llama-3.3-70b-versatile" autocomplete="off" spellcheck="false">
-        <label for="ai-modello-groq-vision">ID modello Groq · slide con immagini</label>
-        <input id="ai-modello-groq-vision" class="campo-base" placeholder="Automatico · qwen/qwen3.8-27b" autocomplete="off" spellcheck="false">
-        <label for="ai-modello-openrouter">ID modello OpenRouter · verifica prezzi e supporto immagini</label>
-        <input id="ai-modello-openrouter" class="campo-base" placeholder="fornitore/modello" autocomplete="off" spellcheck="false">
-      </details>
-      <small>Il browser salva una copia locale delle chiavi, non il percorso di open.env. “Dimentica chiavi” la elimina; cancellare i dati del sito la elimina ugualmente. Evita dispositivi condivisi. Tieni open.env fuori da ZIP, Drive e GitHub. Una ricerca AI invia al servizio scelto soltanto il nome e le caratteristiche botaniche compilate; l’analisi del catalogo invia invece la slide selezionata.</small>
-    </div>
-    <label class="dimensione-interfaccia" for="sel-editor-colonne">Scheda in modifica
-      <select id="sel-editor-colonne" class="campo-base">
-        <option value="auto">Due colonne con tablet in orizzontale (foto e GPS a destra)</option>
-        <option value="una">Sempre una colonna</option>
-      </select>
-    </label>
-    <label class="dimensione-interfaccia" for="sel-dimensione-interfaccia">Dimensione interfaccia
-      <select id="sel-dimensione-interfaccia" class="campo-base">
-        <option value="auto">Adatta allo schermo</option>
-        <option value="110">Ingrandita · 110%</option>
-        <option value="125">Molto ingrandita · 125%</option>
-      </select>
-    </label>
-    <div class="aggiornamento-app">
-      <p id="rinumera-stato">Dopo aver cancellato delle schede, i N° progressivi hanno dei buchi (1, 2, 5, 8…). Qui li riporti in fila: 1, 2, 3…</p>
-      <button type="button" class="btn" id="btn-rinumera"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Rinumera le schede</span></button>
-    </div>
-    <div class="aggiornamento-app">
-      <p id="aggiornamento-stato" role="status" aria-live="polite">Versione installata: —</p>
-      <button type="button" class="btn" id="btn-controlla-aggiornamenti">Controlla aggiornamenti</button>
-      <button type="button" class="btn primario nascosto" id="btn-applica-aggiornamento">Aggiorna ora</button>
-    </div>
-    <div class="aggiornamento-app">
-      <p id="slide-offline-stato" role="status" aria-live="polite">Slide del corso offline: verifica in corso…</p>
-      <button type="button" class="btn" id="btn-slide-offline">Scarica slide per uso offline (~9 MB)</button>
-    </div>
-    <h3 class="menu-titolo">Backup ed esportazioni</h3>
-    <div class="cartella-botanica">
-      <strong>Cartella dei salvataggi</strong>
-      <p id="cartella-botanica-stato" role="status" aria-live="polite">Download normali del browser.</p>
-      <div class="cg-trasferimento">
-        <button type="button" class="btn" id="btn-cartella-botanica">Scegli Download/Botanica</button>
-        <button type="button" class="btn nascosto" id="btn-cartella-botanica-dimentica">Dimentica cartella</button>
+    </details>
+    <details class="menu-gruppo" id="mg-dati">
+      <summary><span class="mg-icona" aria-hidden="true">📤</span><span class="mg-testo"><b>Importa ed esporta dati</b><small>Excel e CSV per correggere al PC; GeoJSON, KML e GPX per QGIS e navigatori</small></span></summary>
+      <div class="mg-corpo">
+        <button class="btn" data-az="excel"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Importa Excel o CSV</span></button>
+        <div class="mg-griglia">
+          <button class="btn" data-az="csv"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta CSV</span></button>
+          <button class="btn" data-az="geojson"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta GeoJSON</span></button>
+          <button class="btn" data-az="kml"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta KML</span></button>
+          <button class="btn" data-az="gpx"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta GPX</span></button>
+        </div>
       </div>
-      <small>Prima della richiesta del browser, l’app ti spiega perché serve l’autorizzazione e chiede conferma. Il permesso vale soltanto per la cartella scelta: l’app non cancella file, non legge le altre cartelle e non invia i contenuti online. Nei browser non compatibili i file restano nei Download normali.</small>
-    </div>
-    <button class="btn primario" data-az="zip"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Backup completo, con foto e audio</span></button>
-    <button class="btn" data-az="zip-condividi"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Condividi backup</span></button>
-    <button class="btn" data-az="ripristina"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Ripristina backup</span></button>
-    <button class="btn" data-az="excel"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-upload"></use></svg><span>Importa Excel o CSV</span></button>
-    <button class="btn" data-az="csv"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta CSV</span></button>
-    <button class="btn" data-az="geojson"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta GeoJSON</span></button>
-    <button class="btn" data-az="kml"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta KML</span></button>
-    <button class="btn" data-az="gpx"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-download"></use></svg><span>Esporta GPX</span></button>
+    </details>
+    <details class="menu-gruppo" id="mg-schermo">
+      <summary><span class="mg-icona" aria-hidden="true">🖥</span><span class="mg-testo"><b>Schermo e modifica delle schede</b><small>Dimensione dell’interfaccia; scheda a una o due colonne sul tablet</small></span></summary>
+      <div class="mg-corpo">
+        <label class="dimensione-interfaccia" for="sel-editor-colonne">Scheda in modifica
+          <select id="sel-editor-colonne" class="campo-base">
+            <option value="auto">Due colonne con tablet in orizzontale (foto e GPS a destra)</option>
+            <option value="una">Sempre una colonna</option>
+          </select>
+        </label>
+        <label class="dimensione-interfaccia" for="sel-dimensione-interfaccia">Dimensione interfaccia
+          <select id="sel-dimensione-interfaccia" class="campo-base">
+            <option value="auto">Adatta allo schermo</option>
+            <option value="110">Ingrandita · 110%</option>
+            <option value="125">Molto ingrandita · 125%</option>
+          </select>
+        </label>
+      </div>
+    </details>
+    <details class="menu-gruppo" id="mg-catalogo">
+      <summary><span class="mg-icona" aria-hidden="true">🌳</span><span class="mg-testo"><b>Catalogo delle 144 piante e riconoscimento</b><small>Integra il catalogo del corso, chiave PlantNet, slide per l’uso offline</small></span></summary>
+      <div class="mg-corpo">
+        <button class="btn" data-az="completa-guida"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-book"></use></svg><span>Completa catalogo delle 144 piante</span></button>
+        <button class="btn" data-az="plantnet"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-search"></use></svg><span>Chiave PlantNet</span></button>
+        <div class="aggiornamento-app">
+          <p id="slide-offline-stato" role="status" aria-live="polite">Slide del corso offline: verifica in corso…</p>
+          <button type="button" class="btn" id="btn-slide-offline">Scarica slide per uso offline (~9 MB)</button>
+        </div>
+      </div>
+    </details>
+    <details class="menu-gruppo" id="mg-ai">
+      <summary><span class="mg-icona" aria-hidden="true">🤖</span><span class="mg-testo"><b>Assistente AI · facoltativo</b><small>Chiavi in open.env, servizio e modelli per la ricerca con AI</small></span></summary>
+      <div class="mg-corpo">
+        <div class="ai-config">
+          <p>La scheda funziona anche senza chiavi. Seleziona <code>open.env</code> dal tablet una volta: le chiavi riconosciute vengono ricaricate automaticamente su questo browser alle aperture successive. Il file non entra nei backup dell’app.</p>
+          <div class="cg-trasferimento">
+            <button type="button" class="btn" id="ai-carica-env">Carica open.env</button>
+            <button type="button" class="btn" id="ai-rimuovi-env">Dimentica chiavi</button>
+          </div>
+          <input type="file" id="ai-file-env" accept=".env,.txt,text/plain" class="nascosto">
+          <label><input type="checkbox" id="ai-ricorda-env" checked> Ricorda le chiavi su questo browser</label>
+          <p id="ai-env-stato" role="status" aria-live="polite">Nessuna chiave caricata.</p>
+          <button type="button" class="btn" id="ai-prova">🩺 Prova i servizi AI</button>
+          <div id="ai-prova-esito" class="ai-prova-esito" role="status" aria-live="polite"></div>
+          <label for="ai-ricerca-servizio">Servizio per la ricerca AI</label>
+          <select id="ai-ricerca-servizio" class="campo-base">
+            <option value="auto">Automatico · servizio selezionato nel catalogo o prima chiave disponibile</option>
+            <option value="gemini">Google Gemini</option><option value="groq">Groq</option><option value="openrouter">OpenRouter</option>
+          </select>
+          <details>
+            <summary>Modelli AI · impostazioni avanzate</summary>
+            <p>Lascia vuoto per i modelli predefiniti. Se il modello predefinito non è disponibile per la tua chiave (ritirato, non concesso o senza quota gratuita), Gemini/Groq controllano i modelli disponibili e riprovano una volta nello stesso servizio. «🩺 Prova i servizi AI» mostra quale modello risponde e l’eventuale errore esatto. Un modello impostato da te non viene sostituito. Disponibilità e gratuità dipendono dal tuo account: verifica prezzi e limiti prima dell’uso.</p>
+            <label for="ai-modello-gemini">ID modello Gemini · testo e slide</label>
+            <input id="ai-modello-gemini" class="campo-base" placeholder="Automatico · gemini-3.5-flash o il Flash disponibile" autocomplete="off" spellcheck="false">
+            <label for="ai-modello-groq">ID modello Groq · ricerca testuale</label>
+            <input id="ai-modello-groq" class="campo-base" placeholder="Automatico · llama-3.3-70b-versatile" autocomplete="off" spellcheck="false">
+            <label for="ai-modello-groq-vision">ID modello Groq · slide con immagini</label>
+            <input id="ai-modello-groq-vision" class="campo-base" placeholder="Automatico · qwen/qwen3.8-27b" autocomplete="off" spellcheck="false">
+            <label for="ai-modello-openrouter">ID modello OpenRouter · verifica prezzi e supporto immagini</label>
+            <input id="ai-modello-openrouter" class="campo-base" placeholder="fornitore/modello" autocomplete="off" spellcheck="false">
+          </details>
+          <small>Il browser salva una copia locale delle chiavi, non il percorso di open.env. “Dimentica chiavi” la elimina; cancellare i dati del sito la elimina ugualmente. Evita dispositivi condivisi. Tieni open.env fuori da ZIP, Drive e GitHub. Una ricerca AI invia al servizio scelto soltanto il nome e le caratteristiche botaniche compilate; l’analisi del catalogo invia invece la slide selezionata.</small>
+        </div>
+      </div>
+    </details>
+    <details class="menu-gruppo" id="mg-manutenzione">
+      <summary><span class="mg-icona" aria-hidden="true">🛠</span><span class="mg-testo"><b>Aggiornamenti e manutenzione</b><small>Versione installata, aggiornamento dell’app, rinumerazione delle schede</small></span></summary>
+      <div class="mg-corpo">
+        <div class="aggiornamento-app">
+          <p id="aggiornamento-stato" role="status" aria-live="polite">Versione installata: —</p>
+          <button type="button" class="btn" id="btn-controlla-aggiornamenti">Controlla aggiornamenti</button>
+          <button type="button" class="btn primario nascosto" id="btn-applica-aggiornamento">Aggiorna ora</button>
+        </div>
+        <div class="aggiornamento-app">
+          <p id="rinumera-stato">Dopo aver cancellato delle schede, i N° progressivi hanno dei buchi (1, 2, 5, 8…). Qui li riporti in fila: 1, 2, 3…</p>
+          <button type="button" class="btn" id="btn-rinumera"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-plus"></use></svg><span>Rinumera le schede</span></button>
+        </div>
+      </div>
+    </details>
   </div>
-  <div style="margin:10px 0 2px;padding:8px 10px;background:var(--focus);border-radius:8px;font-size:13.5px">
-    <label style="display:flex;align-items:center;gap:8px;font-weight:600">
-      <input type="checkbox" id="chk-backup-auto" checked> 💾 Backup automatico
-    </label>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-      <span>Scarica un backup da solo</span>
-      <select id="sel-backup-auto-giorni" class="campo-base" style="min-height:32px;padding:2px 6px">
-        <option value="1" selected>ogni giorno</option>
-        <option value="3">ogni 3 giorni</option>
-        <option value="7">ogni settimana</option>
-      </select>
-    </div>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:400">
-      <input type="checkbox" id="chk-notifica-backup"> 🔔 Avvisami anche con una notifica se il backup è in ritardo
-    </label>
-    <p id="notifica-backup-stato" style="font-size:12px;color:var(--tenue);margin:4px 0 0"></p>
+  <div class="menu-piede">
+    <p id="dispositivo-info"></p>
+    <div id="spazio-barra"></div>
+    <p id="spazio"></p>
   </div>
-  <p id="dispositivo-info" style="font-size:13px;color:var(--tenue);margin-bottom:0"></p>
-  <div id="spazio-barra"></div>
-  <p id="spazio" style="font-size:13px;color:var(--tenue)"></p>
   <div class="azioni"><button class="btn" data-az="chiudi">Chiudi</button></div>
   <input type="file" id="in-backup" accept=".zip,.json,application/zip,application/json" class="nascosto">
   <input type="file" id="in-excel" accept=".xlsx,.csv" class="nascosto">
@@ -458,7 +495,7 @@
     <button type="button" class="btn" id="cg-importa-completo">Importa catalogo completo</button>
     <input type="file" id="cg-file-completo" accept=".json,application/json" class="nascosto">
   </div>
-  <p class="cg-intro">Include i dati originali delle 144 piante e tutte le integrazioni salvate. Non include le immagini delle pagine. L'importazione sostituisce solo le integrazioni del catalogo. Per schede, foto e audio usa «Backup completo» nel menu ⋮.</p>
+  <p class="cg-intro">Include i dati originali delle 144 piante e tutte le integrazioni salvate. Non include le immagini delle pagine. L'importazione sostituisce solo le integrazioni del catalogo. Per schede, foto e audio usa «Backup completo» in Configurazione e backup → Backup e ripristino.</p>
   <p id="cg-messaggio" role="status" aria-live="polite"></p>
   <div class="cg-filtri">
     <label class="visually-hidden" for="cg-cerca">Cerca una pianta</label>
@@ -609,109 +646,251 @@
   <div class="azioni"><button type="button" class="btn" id="scanner-chiudi">Chiudi</button></div>
 </dialog>
 
-<dialog id="dlg-aiuto">
-  <h2>Aiuto · Scheda Botanica</h2>
-  <p>Usa la ricerca e i filtri per trovare una scheda. «Schede» mostra l’elenco, «Mappa» i rilievi con coordinate. «+ Opzioni» raccoglie stampa, QR, meteo, nuovo elenco, cestino, configurazione e tema. «+ Nuova scheda» resta accessibile dalla pagina principale.</p>
+<dialog id="dlg-aiuto" aria-labelledby="aiuto-titolo">
+  <div class="aiuto-testa">
+    <div class="aiuto-titolo-riga">
+      <h2 id="aiuto-titolo">Aiuto · Scheda Botanica PRO</h2>
+      <button type="button" class="aiuto-x" id="aiuto-x" aria-label="Chiudi l’aiuto">✕</button>
+    </div>
+    <label class="aiuto-cerca"><span class="visually-hidden">Cerca nell’aiuto</span>
+      <input type="search" id="aiuto-cerca" class="campo-base" placeholder="Cerca nell’aiuto: GPS, backup, stampa, QR…" autocomplete="off">
+    </label>
+    <nav class="aiuto-indice" aria-label="Argomenti dell’aiuto">
+      <button type="button" data-vai="progetto">Il progetto</button>
+      <button type="button" data-vai="inizio">Primi passi</button>
+      <button type="button" data-vai="campo">Sul campo</button>
+      <button type="button" data-vai="scheda">La scheda</button>
+      <button type="button" data-vai="altezza">Altezza</button>
+      <button type="button" data-vai="specie">Riconoscere la specie</button>
+      <button type="button" data-vai="pinaceae">Pinaceae</button>
+      <button type="button" data-vai="mappa">Mappa e traccia</button>
+      <button type="button" data-vai="stampa">Stampa e QR</button>
+      <button type="button" data-vai="backup">Backup e dati</button>
+      <button type="button" data-vai="config">Configurazione</button>
+      <button type="button" data-vai="dispositivo">Offline e aggiornamenti</button>
+      <button type="button" data-vai="glossario">Glossario</button>
+      <button type="button" data-vai="problemi">Problemi</button>
+    </nav>
+    <p id="aiuto-esito" class="aiuto-esito" role="status" aria-live="polite"></p>
+  </div>
 
-  <h3>Come funziona il salvataggio</h3>
-  <p>Ogni modifica viene salvata da sola, pochi istanti dopo che smetti di scrivere: non serve nessun pulsante "salva". I dati restano sul telefono (non su internet), quindi funzionano anche senza rete. Proprio per questo conviene esportare un backup ogni tanto dal menu ⋮: se il telefono si rompe o l'app viene disinstallata, senza backup i dati si perdono.</p>
+  <div class="aiuto-corpo">
 
-  <h3>Rilievo sul campo</h3>
-  <ul>
-    <li><b>+ Nuova scheda</b> crea una rilevazione con il numero progressivo successivo.</li>
-    <li>In alto nella scheda trovi <b>📷 Foto</b>, <b>📍 GPS</b> e <b>🎙 Nota vocale</b>. La barra resta visibile anche mentre scorri o apri la tastiera.</li>
-    <li><b>GPS preciso</b>: sotto gli alberi il segnale è debole, quindi l'app ascolta i satelliti per qualche secondo e tiene la posizione migliore, mostrando la precisione mentre migliora. Puoi fermarla prima toccando di nuovo 📍. Accanto alle coordinate vedi anche una valutazione (ottimo/buono/scarso) e se al momento del rilievo eri online o offline.</li>
-    <li><b>Due numerazioni diverse</b>: "N° progressivo" identifica la scheda nell’elenco corrente; "N° nel giorno" riparte da 1 ogni volta che scegli una nuova data. Il QR usa invece un identificativo interno permanente, quindi resta univoco anche quando inizi un nuovo elenco.</li>
-    <li><b>Scegli dalla mappa</b>: se non riesci a rilevare il GPS (o vuoi correggerlo dopo), nella sezione Posizione GPS c'è anche "Scegli dalla mappa": tocchi il punto giusto sulla cartina invece di aspettare il satellite.</li>
-    <li><b>Traccia (percorso)</b>: usa «Avvia traccia», «Pausa/Riprendi» e «Stop» dalla prima pagina. «Pausa» sospende il GPS e «Riprendi» crea un nuovo tratto; «Stop» termina la registrazione senza cancellare i punti. I punti con precisione peggiore di 50 m e i salti anomali vengono ignorati. La traccia si esporta in GPX ed è inclusa nel backup completo. Su alcuni telefoni il browser può sospendere il GPS a schermo spento.</li>
-    <li><b>Cestino</b>: eliminando una scheda (dall'elenco o dall'editor) non sparisce subito, va nel cestino (sotto «+ Opzioni»): da lì puoi ripristinarla o eliminarla per sempre. Dopo il numero di giorni che scegli tu (di default 30), le schede nel cestino vengono eliminate da sole.</li>
-    <li>I campi con icona (persistenza, forma della chioma, rami, crescita, tipologia di estensione, tipo di foglia, lamina, margine) si scelgono toccando il riquadro: si apre una schermata con un disegno e una spiegazione per ogni valore, così anche chi è alle prime armi riconosce cosa sta osservando. Se nessuna voce corrisponde, si può scrivere un valore libero in "Altro".</li>
-    <li><b>Foto</b>: "Scatta" apre subito la fotocamera, "Dalla galleria" ne permette di scegliere più di una insieme. Le foto vengono ridotte automaticamente per occupare meno spazio.</li>
-    <li><b>Note vocali</b>: utile per dettare a voce le osservazioni mentre si è impegnati con metro o fotocamera. Si registra, si ferma, e la nota compare con la sua durata: si può riascoltarla e darle un titolo.</li>
-    <li><b>GPS</b>: "Rileva posizione" richiede il permesso la prima volta; conviene farlo all'aperto per una precisione migliore.</li>
-  </ul>
+  <details class="aiuto-sez" data-sez="progetto" open>
+    <summary><span aria-hidden="true">🌳</span> Che cos’è Scheda Botanica PRO</summary>
+    <p><b>Scheda Botanica PRO</b> è un’app per il <b>rilievo degli alberi sul campo</b>: per ogni albero compili una scheda con nome, misure, caratteri botanici, foto, posizione GPS e note vocali. A fine giornata stampi le schede, le esporti per QGIS o Excel e salvi tutto in un backup.</p>
+    <p>Nasce per il corso <b>«Gli alberi — Riconoscimento vegetale»</b>: contiene il <b>catalogo delle 144 piante</b> del corso, con le slide originali, e la <b>Chiave delle Pinaceae</b> per distinguere i 7 generi di conifere della famiglia.</p>
+    <h3>Tre principi</h3>
+    <ul>
+      <li><b>Funziona offline.</b> Dopo la prima apertura con Internet, schede, catalogo, slide e mappa già vista funzionano senza rete. Servono Internet solo le ricerche web, PlantNet, l’AI e il meteo.</li>
+      <li><b>I dati restano sul dispositivo.</b> Non c’è un server né un account: le schede sono salvate nel browser del telefono o del tablet. Per questo il <b>backup</b> è indispensabile.</li>
+      <li><b>Niente viene deciso al posto tuo.</b> Ricerche, PlantNet e AI propongono; il nome e i campi cambiano solo quando confermi. Un campo già compilato non viene mai sovrascritto.</li>
+    </ul>
+    <h3>Come è organizzata l’app</h3>
+    <ul>
+      <li><b>Sul campo</b> (in alto nella prima pagina): traccia GPS, Nuovo elenco, Stampa, Chiave delle Pinaceae e «+ Opzioni».</li>
+      <li><b>Ricerca e filtri</b>: trovano le schede per nome, numero, note, data e altri criteri.</li>
+      <li><b>Schede</b> e <b>Mappa</b>: l’elenco dei rilievi oppure i rilievi sulla cartina.</li>
+      <li><b>+ Nuova scheda</b> (in basso): crea un nuovo rilievo.</li>
+      <li><b>+ Opzioni</b>: Scansiona QR, Meteo, Backup e configurazione, Cestino, Aiuto, Tema chiaro/scuro.</li>
+    </ul>
+    <p class="aiuto-nota">Progetto personale <b>by Lollo ®2026</b>. Il codice è pubblicato su GitHub (baudinolorenzo73/Scheda-botanica-pro).</p>
+  </details>
 
-  <h3>Misura dell’altezza</h3>
-  <p>Sotto il campo «Altezza» tocca <b>📐 Misura altezza</b> e scegli come misurare. Ogni schermata chiede una cosa sola; il valore entra nella scheda solo con «Usa nella scheda».</p>
-  <ul>
-    <li><b>Con il telefono</b> (consigliato): 1) scrivi quanti metri sei lontano dal tronco (o conta i passi); 2) metti la croce rossa sulla punta più alta e tocca; 3) mettila alla base del tronco e tocca. Se la base è nascosta e il terreno è piano, «Salta» usa l’altezza dei tuoi occhi. La misura è più precisa se la cima si vede tra 25° e 60°: l’app te lo dice.</li>
-    <li><b>Da una foto</b>: metti una persona o un bastone accanto al tronco, scatta da lontano (o usa una foto della scheda), scegli cosa c’è nella foto e tocca i 4 punti che l’app ti chiede uno alla volta.</li>
-    <li><b>Con l’ombra</b>: ombra dell’albero, altezza di un bastone e sua ombra, misurate nello stesso momento.</li>
-  </ul>
-  <p>Se fotocamera o sensore non rispondono, l’app chiede di scrivere l’angolo a mano. «Altezza occhi e taratura» corregge il sensore se gli angoli sembrano sbagliati.</p>
+  <details class="aiuto-sez" data-sez="inizio">
+    <summary><span aria-hidden="true">🚀</span> Primi passi in 5 minuti</summary>
+    <ol>
+      <li><b>Installa l’app</b>: apri il sito con Chrome e scegli «Aggiungi a schermata Home». Da quel momento si apre come un’app.</li>
+      <li><b>Aspetta «offline pronta»</b> sotto il titolo: significa che l’app può lavorare senza rete.</li>
+      <li><b>Attiva il backup</b>: «+ Opzioni → Backup e configurazione → Backup e ripristino». Controlla che «Backup automatico» sia attivo e, se il browser lo permette, collega la cartella <i>Download/Botanica</i>.</li>
+      <li><b>Crea la prima scheda</b> con «+ Nuova scheda»: scrivi il nome, tocca 📍 GPS e 📷 Foto in alto.</li>
+      <li><b>Torna all’elenco</b> con la freccia ←: la scheda è già salvata, non c’è un pulsante «Salva».</li>
+    </ol>
+    <div class="aiuto-esempio"><b>Esempio.</b> Nel parco trovi una quercia isolata. Tocchi «+ Nuova scheda», scrivi <i>Quercus robur</i> (i suggerimenti compaiono già alla terza lettera), tocchi 📍 e aspetti che la precisione scenda sotto 10 m, scatti una foto del portamento, inserisci circonferenza 310 cm e scegli «espansa» in «Forma della chioma». Torni all’elenco: la scheda n. 1 c’è, con foto e GPS.</div>
+  </details>
 
-  <h3>Foglia composta</h3>
-  <p>Quando «Tipo di foglia» è <b>composta</b> compare «Tipo di foglia composta»: <b>imparipennata</b> (fogliolina singola in punta), <b>paripennata</b> (solo coppie), <b>bipennata</b> (composta due volte) Con gli altri tipi di foglia il campo sparisce e si svuota.</p>
-  <p>Le foglie seguono la tabella «Caratteristiche distintive»: <b>Tipo</b> (semplice, composta, a squame), <b>Lamina</b> (rotonda, lobata, ovata, obovata, ellittica, lanceolata, romboidale, palmata, palmato-lobata, flabello, aghiforme) e <b>Margine</b> (intero, dentato, ondulato, seghettato, roncinato, crenato, dentato-spinoso). Gli aghi delle conifere sono una lamina «aghiforme»; con foglie a squame o lamina aghiforme i campi non pertinenti spariscono. Le schede salvate con le vecchie diciture si adeguano da sole; i valori che non esistono più (es. «digitata») restano come li avevi scritti.</p>
+  <details class="aiuto-sez" data-sez="campo">
+    <summary><span aria-hidden="true">🥾</span> Rilievo sul campo</summary>
+    <ul>
+      <li><b>+ Nuova scheda</b> crea un rilievo con il numero progressivo successivo e la data di oggi. Il nome resta vuoto finché non lo scrivi.</li>
+      <li>In alto nella scheda ci sono sempre <b>📷 Foto</b>, <b>📍 GPS</b> e <b>🎙 Nota vocale</b>, anche mentre scorri o scrivi.</li>
+      <li><b>Salvataggio automatico</b>: ogni modifica si salva da sola pochi istanti dopo. Se esci da una scheda senza aver inserito nulla, la bozza vuota non viene tenuta.</li>
+      <li><b>GPS preciso</b>: sotto le chiome il segnale è debole. L’app ascolta i satelliti per qualche secondo, tiene la posizione migliore e mostra la precisione mentre migliora. Tocca di nuovo 📍 per fermarla prima. Accanto alle coordinate vedi la valutazione (ottimo, buono, scarso).</li>
+      <li><b>Scegli dalla mappa</b>: se il GPS non va o vuoi correggerlo, nella sezione «Posizione GPS» tocchi il punto giusto sulla cartina.</li>
+      <li><b>Foto</b>: «Scatta» apre la fotocamera, «Dalla galleria» permette di sceglierne più di una. Le foto vengono ridotte da sole per occupare meno spazio.</li>
+      <li><b>Note vocali</b>: per dettare le osservazioni quando hai le mani occupate. Registri, fermi, e la nota compare con la sua durata; puoi riascoltarla e darle un titolo.</li>
+      <li><b>Due numerazioni</b>: «N° progressivo» identifica la scheda nell’elenco corrente; «N° nel giorno» riparte da 1 a ogni nuova data. Il QR usa un identificativo interno permanente.</li>
+      <li><b>Nuovo elenco</b> (in «Sul campo»): salva le schede attuali in un backup con data e ora nel nome, le sposta nel cestino e riparte dal numero 1.</li>
+      <li><b>Cestino</b> (in «+ Opzioni»): una scheda eliminata va prima nel cestino. Da lì la ripristini o la elimini per sempre; dopo i giorni scelti (di base 30) si svuota da solo.</li>
+      <li><b>Meteo</b> (in «+ Opzioni»): apre 3B Meteo, un servizio esterno. Verifica sempre località e orario della previsione, soprattutto in montagna.</li>
+    </ul>
+  </details>
 
-  <h3>Stampa e pagina HTML della mappa</h3>
-  <p>Nella finestra «Stampa» delle schede A4 puoi spuntare <b>Prima pagina con la mappa</b> (mappa con i numeri delle schede stampate che hanno il GPS) e spuntare o togliere <b>Codice QR</b>, <b>Stima ambientale</b> e foto. La casella «Stima ambientale» c’è anche quando crei la pagina HTML e il report di una singola scheda; l’app ricorda la scelta.</p>
-  <p>Nella vista «Mappa»: <b>🖨 Stampa mappa</b> stampa l’area che vedi o tutte le schede con GPS, su A4 orizzontale o verticale, con scala, nord ed elenco delle schede; dalla finestra di stampa puoi anche «Salva come PDF». <b>⭳ Pagina HTML mappa + schede</b> crea un unico file da aprire su qualsiasi telefono o computer: mappa con i numeri, schede complete (tutte le sezioni e i campi come nella stampa, con stima ambientale; oppure solo i campi compilati), foto (una, tutte o nessuna; piccole, medie o grandi: le piccole bastano sul telefono e tengono il file leggero) e una casella di ricerca. Toccando un numero sulla mappa e «Apri la scheda →» (o l’intestazione di una scheda) la scheda si apre da sola in una pagina, con i tasti ← Mappa, ‹ e › per spostarti; Indietro torna alla mappa. Schede e foto si vedono sempre. Lo sfondo della mappa (stradale, satellite o topografica, si sceglie con il pulsante 🗺️) si vede con Internet; scegliendo «Salva nel file» le tile della zona delle schede vengono messe dentro la pagina e la mappa si vede <b>anche senza Internet</b>. Per salvarle serve la rete mentre crei la pagina.</p>
+  <details class="aiuto-sez" data-sez="scheda">
+    <summary><span aria-hidden="true">📝</span> La scheda: campi illustrati e foglie</summary>
+    <p>La scheda è divisa in sezioni: <b>Dati</b> (osservazioni generali), <b>Foglie</b>, <b>Terreno</b>, <b>Salute</b> (problemi di tronco e foglie) e <b>Note</b>. I collegamenti in alto portano subito alla sezione.</p>
+    <p>I <b>campi con icona</b> (persistenza, forma della chioma, rami, crescita, estensione delle gemme, tipo di foglia, lamina, margine) si scelgono toccando il riquadro: si apre una schermata con un disegno e una spiegazione per ogni valore. Se nessuna voce corrisponde, scrivi un valore libero in «Altro».</p>
+    <h3>Foglie</h3>
+    <p>Seguono la tabella «Caratteristiche distintive» del corso:</p>
+    <ul>
+      <li><b>Tipo</b>: semplice, composta, a squame.</li>
+      <li><b>Foglia composta</b> (solo se il tipo è «composta»): imparipennata (fogliolina singola in punta), paripennata (solo coppie), bipennata (composta due volte).</li>
+      <li><b>Lamina</b>: rotonda, lobata, ovata, obovata, ellittica, lanceolata, romboidale, palmata, palmato-lobata, flabello, aghiforme.</li>
+      <li><b>Margine</b>: intero, dentato, ondulato, seghettato, roncinato, crenato, dentato-spinoso.</li>
+    </ul>
+    <p>I campi non pertinenti spariscono da soli: con foglie <b>a squame</b> spariscono lamina e margine; con lamina <b>aghiforme</b> sparisce il margine. Le schede salvate con le vecchie diciture si adeguano da sole.</p>
+    <p>Se il nome corrisponde a una pianta del catalogo, i campi diversi dal catalogo vengono segnalati con «⚠ il catalogo per questa specie indica…». È un avviso: la tua osservazione resta com’è.</p>
+  </details>
 
-  <h3>Identificazione specie (PlantNet)</h3>
-  <p>Su ogni foto c'è un pulsante "🔎 Identifica" che manda quella foto a PlantNet, un servizio online gratuito, e propone le specie più probabili con una percentuale di confidenza: tu scegli se usarla come nome dell'esemplare. Serve una chiave gratuita (una tantum, si ottiene in due minuti da ⋮ → "Chiave PlantNet", con le istruzioni dentro). Senza chiave configurata l'app non manda mai foto in rete da sola. Anche con un risultato ad alta percentuale, trattalo come un suggerimento da confermare a occhio, non come una certezza.</p>
-  <p>Ogni specie confermata resta anche in un piccolo <b>catalogo sul dispositivo</b>, che cresce da solo: da quel momento il campo "Nome esemplare" la propone tra i suggerimenti anche <b>senza connessione</b>, senza dover richiamare PlantNet. Il catalogo viaggia anche dentro il backup completo, così si arricchisce con il lavoro di tutto il gruppo. Ogni specie porta con sé anche l'<b>ID GBIF</b> (il database naturalistico più usato al mondo): compare nella scheda come link "Apri la specie su GBIF", nel report per il cliente e nelle esportazioni CSV/GeoJSON/KML — utile per collegare i tuoi dati a un riferimento tassonomico riconosciuto ovunque.</p>
+  <details class="aiuto-sez" data-sez="altezza">
+    <summary><span aria-hidden="true">📐</span> Misura dell’altezza</summary>
+    <p>Sotto il campo «Altezza» tocca <b>📐 Misura altezza</b> e scegli il metodo. Ogni schermata chiede una cosa sola; il valore entra nella scheda solo con «Usa nella scheda».</p>
+    <ul>
+      <li><b>Con il telefono</b> (consigliato): 1) scrivi a quanti metri sei dal tronco, o conta i passi; 2) metti la croce rossa sulla cima e tocca; 3) mettila alla base del tronco e tocca. Se la base è nascosta e il terreno è piano, «Salta» usa l’altezza dei tuoi occhi. La misura è più precisa se la cima si vede tra 25° e 60°: l’app te lo dice.</li>
+      <li><b>Da una foto</b>: metti una persona o un bastone accanto al tronco, scatta da lontano (o usa una foto della scheda) e tocca i 4 punti che l’app chiede uno alla volta.</li>
+      <li><b>Con l’ombra</b>: ombra dell’albero, altezza di un bastone e sua ombra, misurate nello stesso momento.</li>
+    </ul>
+    <div class="aiuto-esempio"><b>Esempio.</b> Sei a 20 m dal tronco; la cima si vede a 45° e la base a −4°. L’altezza è circa 20 × (tan 45° + tan 4°) ≈ 20 × (1 + 0,07) ≈ 21,4 m.</div>
+    <p>Se fotocamera o sensore non rispondono, l’app chiede di scrivere l’angolo a mano. «Altezza occhi e taratura» corregge il sensore se gli angoli sembrano sbagliati.</p>
+  </details>
 
-  <h3>Guida alle specie (144 alberi del corso)</h3>
-  <p>Sotto «Nome esemplare» trovi «Cerca» con Wikipedia/Wikidata, PlantNet, GBIF, ricerca da foto, da caratteristiche, per zona d’origine e con AI. Wikipedia e le proposte AI vengono mostrate solo dopo una verifica botanica su GBIF. «Cerca intelligente» dà precedenza al nome e ai possibili refusi nella guida locale; senza nome confronta i caratteri. Controlla il nome sui servizi disponibili, consulta l’AI se è configurata e usa PlantNet quando trova una foto salvata e la relativa chiave. La percentuale AI è una stima del modello, non una misurazione scientifica. Scegli tu se applicare un risultato; i dati osservati non vengono sovrascritti.</p>
-  <p>Il <b>catalogo delle 144 piante</b> è separato dalle schede rilevate sul campo. In «Configurazione e backup → Completa catalogo» puoi aprire ogni pagina, aggiungere caratteristiche mancanti, indicare la fonte e salvarle. I dati originali restano distinti e non modificabili, tranne il <b>nome scientifico</b>: in cima alla pagina di ogni pianta puoi correggerlo (es. «Platanus x» → «Platanus x acerifolia»); se svuoti il campo torna il nome originale. Esporta le sole integrazioni per unirle a un altro dispositivo, oppure il catalogo completo con le integrazioni; queste ultime sono comprese anche nel backup generale.</p>
-  <p><b>Assistente AI facoltativo:</b> in Configurazione carica <code>open.env</code> dal tablet. Se scegli «Ricorda le chiavi», il browser ne conserva una copia locale; «Dimentica chiavi» la elimina. Nel catalogo seleziona Gemini, Groq o OpenRouter e premi «Proponi caratteristiche dalla slide». Controlla ogni proposta e le eventuali discordanze prima di salvarla. La slide e la nota della pianta vengono inviate solo al servizio scelto quando premi il pulsante; verifica disponibilità e costo del modello. La scheda funziona anche senza chiavi. Se l’AI non risponde, premi «🩺 Prova i servizi AI» in Configurazione: per ogni servizio vedi quale modello risponde oppure il motivo esatto dell’errore (chiave, quota, modello non disponibile).</p>
-  <p><b>Aggiornamenti:</b> il numero di versione è visibile in alto. Toccandolo apri il controllo; lo stesso comando è in «+ Opzioni → Backup e configurazione». Se una versione nuova è pronta compare «Aggiorna ora». Salva eventuali modifiche e ferma prima una traccia GPS o una nota vocale in corso. Il controllo richiede rete e funziona dal sito HTTPS.</p>
-  <p>Non sai ancora il nome? Nella guida tocca "🧩 Per caratteristiche": imposta quello che vedi (persistenza, forma chioma, rami, foglia…) e la guida propone le specie più probabili, ordinate per quante corrispondono. Se apri la guida dal campo "Nome esemplare" quando è ancora vuoto ma hai già compilato altri campi della scheda, parte già precompilata con quelli.</p>
-  <p><button type="button" class="btn" onclick="this.closest('dialog').close(); apriGuidaSpecie()">📖 Apri la guida alle specie</button></p>
+  <details class="aiuto-sez" data-sez="specie">
+    <summary><span aria-hidden="true">🔎</span> Riconoscere la specie</summary>
+    <p>Sotto «Nome esemplare» il pulsante <b>Cerca</b> raccoglie tutti gli strumenti. Quale usare:</p>
+    <ul>
+      <li><b>Digitazione del nome</b>: suggerimenti immediati dal catalogo delle 144 piante e dai nomi già salvati, anche offline.</li>
+      <li><b>Apri scheda locale</b>: apre la pagina del catalogo corrispondente al nome, con slide, note e integrazioni. Non cambia il rilievo.</li>
+      <li><b>Per caratteristiche</b> (guida locale): imposti quello che vedi (persistenza, chioma, rami, foglia…) e la guida propone le specie del catalogo ordinate per caratteri concordanti, indicati come «2/2», non come probabilità.</li>
+      <li><b>Zona d’origine</b>: filtra la provenienza riportata nel catalogo.</li>
+      <li><b>Wikipedia / Wikidata</b> e <b>GBIF</b>: verificano un nome scientifico nel regno delle piante; animali, funghi e pagine non botaniche vengono scartati.</li>
+      <li><b>PlantNet</b>: «Cerca su PlantNet» per nome; «Cerca da foto» o «🔎 Identifica» su una foto della scheda. Serve la chiave PlantNet gratuita, impostata in Configurazione. Senza chiave l’app non invia mai foto.</li>
+      <li><b>Cerca con AI</b> (facoltativo): invia solo nome e caratteri botanici al servizio scelto, mai foto, GPS o note personali. I nomi proposti vengono verificati su GBIF. Le percentuali sono stime del modello.</li>
+      <li><b>Cerca intelligente</b>: combina guida, Wikipedia, GBIF e, se configurati, AI e PlantNet. Un servizio in errore non cancella i risultati degli altri.</li>
+    </ul>
+    <p>Il nome cambia solo quando premi «Usa questo nome». Ogni specie confermata entra in un piccolo catalogo sul dispositivo e viene proposta anche offline; il suo ID GBIF compare come link «Apri la specie su GBIF» e nelle esportazioni.</p>
+    <h3>Il catalogo delle 144 piante</h3>
+    <p>È separato dalle schede rilevate. In «Configurazione → Catalogo delle 144 piante e riconoscimento → Completa catalogo» apri ogni pagina, aggiungi le caratteristiche mancanti, indichi la fonte e salvi. I dati originali restano distinti; si può correggere solo il nome scientifico. Le integrazioni sono comprese nel backup.</p>
+    <p><b>Assistente AI facoltativo</b>: carica il file <code>open.env</code> con le tue chiavi in «Configurazione → Assistente AI». Nel catalogo scegli Gemini, Groq o OpenRouter e premi «Proponi caratteristiche dalla slide»: controlla ogni proposta prima di salvarla. Se l’AI non risponde, «🩺 Prova i servizi AI» mostra per ogni servizio il modello che risponde o l’errore esatto.</p>
+    <p><button type="button" class="btn" onclick="this.closest('dialog').close(); apriGuidaSpecie()">📖 Apri la guida alle specie</button></p>
+  </details>
 
-  <h3>QR e ricerca rapida</h3>
-  <p>Ogni scheda ha un codice QR con un identificativo permanente. Si può scaricare come immagine e stamparlo su un'etichetta da applicare vicino alla pianta. Il pulsante "Trova con QR" apre la fotocamera e porta alla scheda esatta. Le vecchie etichette restano compatibili quando il loro numero non è duplicato.</p>
+  <details class="aiuto-sez" data-sez="pinaceae">
+    <summary><span aria-hidden="true">🌲</span> Chiave delle Pinaceae</summary>
+    <p>Si apre dal pulsante <b>Chiave delle Pinaceae</b> nella sezione «Sul campo». È una chiave guidata per i 7 generi: <i>Abies, Picea, Pinus, Cedrus, Larix, Tsuga, Pseudotsuga</i>.</p>
+    <ul>
+      <li><b>Chiave</b>: al massimo tre domande (disposizione degli aghi, attacco al ramo, pigna) portano al genere.</li>
+      <li><b>Generi</b>: scheda di ogni genere con disegni di sagoma, rametto, strobilo e corteccia, distribuzione in Italia, confusioni possibili e un trucco per ricordarlo. In fondo ci sono le <b>slide del corso</b> delle specie di quel genere.</li>
+      <li><b>Ripasso</b>: 14 domande a indizi, con la risposta spiegata.</li>
+      <li><b>Glossario</b>: brachiblasto, pulvino, guaina, brattea… e le correzioni allo schema del corso.</li>
+    </ul>
+    <p>Dal catalogo delle 144 piante, ogni specie di Pinaceae ha il pulsante «🌲 Chiave delle Pinaceae · genere», che apre direttamente la scheda del genere.</p>
+  </details>
 
-  <h3>Mappa</h3>
-  <p>La scheda "Mappa" mostra tutte le rilevazioni con coordinate GPS. I numeri colorati di rosso hanno un problema segnalato. Le zone della cartina già viste o scaricate restano disponibili offline; lo stato in alto indica quando tutti i file dell’app sono pronti per l’uso senza rete.</p>
+  <details class="aiuto-sez" data-sez="mappa">
+    <summary><span aria-hidden="true">🗺️</span> Mappa e traccia GPS</summary>
+    <ul>
+      <li>La vista <b>Mappa</b> mostra i rilievi con coordinate. I numeri rossi hanno un problema segnalato. Le zone già viste restano disponibili offline; prima di scaricare una zona vedi lo spazio che serve.</li>
+      <li><b>Traccia</b>: «Avvia traccia», «Pausa» e «Stop» nella sezione «Sul campo». «Pausa» sospende il GPS e «Riprendi» inizia un nuovo tratto; «Stop» termina senza cancellare i punti. I punti con precisione peggiore di 50 m e i salti anomali vengono ignorati. La traccia si esporta in GPX ed è compresa nel backup completo. Su alcuni telefoni il GPS si sospende a schermo spento: controlla i punti nella Mappa.</li>
+      <li><b>🖨 Stampa mappa</b>: stampa l’area visibile o tutte le schede con GPS, su A4 orizzontale o verticale, con scala, nord ed elenco; puoi anche «Salva come PDF».</li>
+      <li><b>⭳ Pagina HTML mappa + schede</b>: un unico file da aprire su qualsiasi telefono o computer, con mappa numerata, schede, foto e ricerca. Con «Salva nel file» lo sfondo della mappa si vede anche senza Internet.</li>
+    </ul>
+  </details>
 
-  <h3>Ricerca, filtri e meteo</h3>
-  <p>La ricerca sulla pagina principale trova nomi, numeri e note delle schede. «Apri scheda salvata…» porta direttamente a una scheda tramite numero, nome e data. Puoi limitare l’elenco per data e usare «Filtri» per combinare altri criteri. «Meteo · 3B Meteo» sotto «+ Opzioni» apre il servizio esterno: cerca una località per nome oppure lascia che 3B Meteo chieda il permesso GPS. Verifica sempre luogo e orario della previsione.</p>
+  <details class="aiuto-sez" data-sez="stampa">
+    <summary><span aria-hidden="true">🖨</span> Stampa, QR e report</summary>
+    <ul>
+      <li><b>Stampa</b> (in «Sul campo»): schede selezionate, quelle visibili con il filtro attuale o tutte. Puoi aggiungere la <b>prima pagina con la mappa</b>, il <b>codice QR</b>, la <b>stima ambientale</b> e le foto, oppure stampare solo le <b>etichette QR</b> da ritagliare.</li>
+      <li>La casella <b>«Altro»</b> della finestra di stampa è un testo libero che esce solo nella prima pagina, senza etichetta.</li>
+      <li>Una sola scheda: icona 🖨 in alto nella scheda aperta.</li>
+      <li><b>QR</b>: ogni scheda ha un codice permanente. «Scarica QR» crea l’etichetta PNG; «Scansiona QR» (in «+ Opzioni») apre la fotocamera e porta alla scheda esatta.</li>
+      <li><b>Report per il cliente</b>: dalla scheda, un file con dati, foto e stima ambientale (volume della chioma, ombra, CO₂ stoccata).</li>
+    </ul>
+  </details>
 
-  <h3>Stampa</h3>
-  <p>Si può stampare una scheda alla volta (icona 🖨 nell'editor) oppure più schede dal pulsante «Stampa» sotto «+ Opzioni»: quelle selezionate con la casella, quelle visibili con il filtro attuale, o tutte. È possibile stampare anche solo le etichette con il QR, pronte per il taglio.</p>
+  <details class="aiuto-sez" data-sez="backup">
+    <summary><span aria-hidden="true">💾</span> Backup, importazione ed esportazione</summary>
+    <p>Le schede vivono solo nel browser del dispositivo. Se il telefono si rompe, se cancelli i dati del sito o se disinstalli il browser, <b>senza backup si perde tutto</b>.</p>
+    <ul>
+      <li><b>Backup completo (.zip)</b>: tutte le schede, foto, audio, catalogo, cestino e traccia in un unico file. Contiene anche CSV, GeoJSON, KML e GPX leggibili con Excel e QGIS. Fallo a fine giornata.</li>
+      <li><b>Backup automatico</b>: attivo di base, scarica un backup ogni giorno, ogni 3 giorni o ogni settimana. Puoi farti avvisare con una notifica se è in ritardo.</li>
+      <li><b>Cartella Download/Botanica</b>: se il browser lo permette, autorizzi una sola cartella e i backup finiscono lì invece che nei Download normali. L’app non legge né cancella altri file.</li>
+      <li><b>Condividi backup</b>: come il backup completo, ma apre il pannello «Condividi» per mandarlo a Drive, Dropbox o WhatsApp.</li>
+      <li><b>Ripristina backup</b>: accetta lo .zip e i vecchi .json. Prima mostra un riepilogo; con «Sostituisci», se il file è incompleto, l’archivio attuale resta intatto.</li>
+      <li><b>Importa Excel o CSV</b>: le colonne vengono riconosciute dal titolo (N° progressivo, Data, Nome…). Utile per correggere molti dati al PC.</li>
+      <li><b>Esporta CSV, GeoJSON, KML, GPX</b>: per Excel, QGIS, Google Earth e navigatori. Non sostituiscono il backup: non contengono foto e audio.</li>
+    </ul>
+    <div class="aiuto-esempio"><b>Esempio: passare a un nuovo tablet.</b> Sul vecchio: «Backup completo». Copia lo .zip sul nuovo (Drive o cavo). Sul nuovo: apri l’app, «Ripristina backup», scegli il file e conferma «Sostituisci». Schede, foto e catalogo sono tutti lì.</div>
+  </details>
 
-  <h3>Backup, Excel e ZIP</h3>
-  <ul>
-    <li><b>Cartella Download/Botanica</b>: premi «Scegli Download/Botanica». L’app spiega perché serve il permesso e chiede conferma prima di mostrare la richiesta del browser. Se accetti, seleziona Download: viene creata la sottocartella Botanica. L’autorizzazione riguarda solo quella cartella e può essere dimenticata dalla Configurazione. Se Android o il browser non offre questa funzione, ogni file viene scaricato normalmente.</li>
-    <li><b>Backup completo (.zip)</b>: un unico archivio con tutti i dati, le foto e gli audio. Serve a due cose: si reimporta nell'app con "Ripristina backup" (anche su un altro telefono), e dentro ha CSV, GeoJSON, KML e GPX leggibili con Excel e QGIS. È il modo più sicuro per non perdere nulla: fallo a fine giornata.</li>
-    <li><b>Backup automatico</b>: attivo di default, prepara un backup completo con la frequenza scelta. Se hai autorizzato Download/Botanica lo salva lì; altrimenti usa il normale download del browser.</li>
-    <li><b>Rinumera le schede</b> (Configurazione e backup → Configurazione): dopo aver cancellato delle schede, riporta i N° progressivi in fila 1, 2, 3… senza cambiare l’ordine. QR, etichette e stampe già fatti restano con i vecchi numeri; subito dopo puoi premere «Annulla».</li>
-    <li><b>Nuovo elenco</b> (nella sezione «Sul campo»): salva le schede di adesso in un backup con data e ora nel nome, le sposta nel cestino e riparte da un elenco vuoto, con «N° progressivo» nuovamente da 1.</li>
-    <li><b>Condividi backup</b>: come sopra, ma invece di scaricare il file apre il pannello "Condividi" del telefono, per mandarlo con un tocco in più a Drive, Dropbox o WhatsApp. Se il browser non lo supporta, scarica il file normalmente.</li>
-    <li><b>Ripristina backup</b>: accetta lo .zip e i vecchi backup .json. Prima mostra un riepilogo di schede, foto, audio, catalogo e traccia. La modalità “Sostituisci” conserva l’archivio attuale se il file è incompleto o una scrittura fallisce.</li>
-    <li><b>Importa da Excel o CSV</b>: le colonne vengono riconosciute dal nome dell'intestazione (N° progressivo, Data, Nome…), utile per correggere molti dati insieme al PC.</li>
-    <li><b>Esporta CSV, GeoJSON, KML o GPX</b>: dal menu Configurazione e backup scegli il formato richiesto da Excel, software cartografici o navigatori. Questi formati non sostituiscono il backup ZIP completo con foto e audio.</li>
-  </ul>
+  <details class="aiuto-sez" data-sez="config">
+    <summary><span aria-hidden="true">⚙️</span> Configurazione: dove trovare cosa</summary>
+    <p>«+ Opzioni → Backup e configurazione» apre sei gruppi. Tocca il titolo per aprirlo o chiuderlo; l’app ricorda quali hai lasciato aperti.</p>
+    <table class="aiuto-tabella">
+      <thead><tr><th>Gruppo</th><th>Cosa contiene</th></tr></thead>
+      <tbody>
+        <tr><td>💾 Backup e ripristino</td><td>Backup completo, Condividi, Ripristina, Backup automatico, cartella Download/Botanica</td></tr>
+        <tr><td>📤 Importa ed esporta dati</td><td>Importa Excel o CSV; esporta CSV, GeoJSON, KML, GPX</td></tr>
+        <tr><td>🖥 Schermo e modifica</td><td>Scheda a una o due colonne sul tablet; dimensione dell’interfaccia (adatta allo schermo, 110%, 125%)</td></tr>
+        <tr><td>🌳 Catalogo e riconoscimento</td><td>Completa catalogo delle 144 piante, chiave PlantNet, slide offline</td></tr>
+        <tr><td>🤖 Assistente AI</td><td>open.env, prova dei servizi, servizio e modelli AI</td></tr>
+        <tr><td>🛠 Aggiornamenti e manutenzione</td><td>Versione installata, controlla aggiornamenti, rinumera le schede</td></tr>
+      </tbody>
+    </table>
+    <p>In fondo alla finestra vedi il tipo di dispositivo e lo <b>spazio occupato</b> dall’app.</p>
+  </details>
 
-  <h3>Dispositivo</h3>
-  <p>L'app riconosce da sola se stai usando uno smartphone, un tablet o un PC (lo vedi in «Backup e configurazione») e adatta l'impaginazione: una colonna su telefono, due su tablet, tre su PC. Si aggiorna anche ruotando il dispositivo.</p>
-  <p>Con il tablet in orizzontale la scheda in modifica si divide in due colonne: campi a sinistra; GPS, foto e note vocali a destra, sempre visibili. Da Configurazione → «Scheda in modifica» puoi tenerla sempre a una colonna. La barra dello spazio in Configurazione mostra quanto occupa l’app; prima di scaricare una zona di mappa vedi quanto spazio servirà e, se non basta, lo scaricamento viene bloccato.</p>
-  <p>In Configurazione puoi scegliere «Adatta allo schermo», 110% o 125% per ingrandire l’interfaccia. Sotto «+ Opzioni» puoi cambiare tema chiaro/scuro. Dopo la prima apertura completa, l’app conserva le risorse essenziali per lavorare offline e scarica da sola le 144 slide del corso (circa 9 MB); in Configurazione puoi controllarne il numero o riscaricarle con «Scarica slide per uso offline». Le ricerche web, PlantNet, l’AI e il meteo richiedono invece connessione.</p>
+  <details class="aiuto-sez" data-sez="dispositivo">
+    <summary><span aria-hidden="true">📱</span> Offline, dispositivo e aggiornamenti</summary>
+    <ul>
+      <li>L’app riconosce telefono, tablet o PC e adatta l’impaginazione. Con il tablet in orizzontale la scheda si divide in due colonne: campi a sinistra; GPS, foto e note vocali a destra.</li>
+      <li>Dopo la prima apertura completa l’app conserva i propri file per lavorare offline e scarica le 144 slide del corso (circa 9 MB). Lo stato sotto il titolo dice «offline pronta» quando è tutto a posto.</li>
+      <li><b>Aggiornamenti</b>: tocca il numero di versione in alto. Se ce n’è una nuova compare «Aggiorna ora»: prima ferma una traccia GPS o una nota vocale in corso. Serve la rete.</li>
+      <li><b>Tema chiaro/scuro</b> in «+ Opzioni»; <b>dimensione</b> dell’interfaccia in Configurazione.</li>
+    </ul>
+    <p id="aiuto-versione" class="aiuto-nota">Versione dell'app: —</p>
+  </details>
 
-  <h3>Nuove schede e aggiornamenti</h3>
-  <p>Ogni nuova scheda nasce con la data odierna; nessun nome o etichetta viene aggiunto automaticamente. «Nome esemplare» resta vuoto. Le vecchie etichette Prova1, Prova2 ecc. non sono più visualizzate, ma i nomi botanici e i dati già salvati restano invariati. Se esci senza aggiungere alcun dato reale, foto, GPS o nota vocale, la bozza viene eliminata e non compare tra le schede salvate. Il pulsante della versione in alto a destra controlla il file pubblicato senza usare la cache; se trova una versione più recente chiede conferma prima di scaricarla e mostra poi «Aggiorna ora».</p>
+  <details class="aiuto-sez" data-sez="glossario">
+    <summary><span aria-hidden="true">📚</span> Glossario rapido</summary>
+    <dl class="aiuto-glossario">
+      <dt>Backup completo</dt><dd>File .zip con tutto l’archivio: schede, foto, audio, catalogo, cestino e traccia.</dd>
+      <dt>Brachiblasto</dt><dd>Rametto cortissimo che porta un mazzetto di aghi (Larix, Cedrus).</dd>
+      <dt>Catalogo delle 144 piante</dt><dd>Le specie del corso con slide e caratteristiche; si può integrare ma resta separato dalle schede.</dd>
+      <dt>Circonferenza a 1,30 m</dt><dd>Misura del tronco all’altezza del petto, in centimetri.</dd>
+      <dt>Classe di grandezza</dt><dd>Dimensione dell’albero adulto, dalla 1ª (alberi più grandi) alla 4ª (più piccoli), come nelle slide del corso.</dd>
+      <dt>GBIF</dt><dd>Database internazionale della biodiversità usato per verificare i nomi scientifici.</dd>
+      <dt>GeoJSON, KML, GPX</dt><dd>Formati di dati geografici per QGIS, Google Earth e navigatori.</dd>
+      <dt>Lamina</dt><dd>La parte espansa della foglia; nelle conifere è «aghiforme».</dd>
+      <dt>N° progressivo</dt><dd>Numero della scheda nell’elenco corrente; riparte da 1 con «Nuovo elenco».</dd>
+      <dt>open.env</dt><dd>File di testo con le tue chiavi AI; resta sul dispositivo e non va mai pubblicato.</dd>
+      <dt>Persistenza</dt><dd>Se l’albero tiene le foglie tutto l’anno (sempreverde) o le perde (caduca).</dd>
+      <dt>PlantNet</dt><dd>Servizio di identificazione delle piante da foto; richiede una chiave gratuita.</dd>
+      <dt>PWA</dt><dd>App web installabile sulla schermata Home, che funziona anche offline.</dd>
+      <dt>QR permanente</dt><dd>Codice che identifica una scheda per sempre, anche dopo un nuovo elenco.</dd>
+      <dt>Strobilo</dt><dd>La pigna delle conifere.</dd>
+    </dl>
+    <p>Il glossario completo e l’indice analitico sono nel <a href="manuali/manuale-utente.pdf" target="_blank" rel="noopener">manuale utente (PDF)</a>.</p>
+  </details>
 
-  <h3>Ricerca botanica: quale pulsante usare</h3>
-  <ul>
-    <li><b>Digitazione del nome</b>: suggerimenti immediati dalla guida delle 144 piante e dai nomi già salvati, anche offline.</li>
-    <li><b>Wikipedia / Wikidata</b>: cerca un nome scientifico strutturato e lo verifica nel regno Plantae su GBIF. Animali, funghi e pagine non botaniche sono scartati.</li>
-    <li><b>Cerca su PlantNet</b>: interroga il catalogo per nome scientifico o genere. Se non trova il nome comune prova a convertirlo tramite Wikipedia. Richiede Internet e la chiave PlantNet (separata dalle chiavi AI). Mostra fino a 20 specie; non apre semplicemente la pagina iniziale.</li>
-    <li><b>Scheda PlantNet / Apri la specie su GBIF</b>: collegamenti esterni esplicitamente distinti dalla ricerca. Appaiono quando è noto il riferimento della specie. Se GBIF non è già associato puoi avviare la verifica del nome dal pulsante «Cerca su GBIF».</li>
-    <li><b>Cerca da foto</b>: scegli fotocamera, galleria o una foto già salvata nella scheda. PlantNet analizza la foto con l’organo selezionato; richiede la sua chiave, rete e quota disponibile. Una foto di una sola pianta ben a fuoco dà risultati migliori.</li>
-    <li><b>Miniatura sotto la data</b>: compare quando il nome corrisponde esattamente a una specie o cultivar nel catalogo delle 144. Tocca l’immagine per aprire la slide ingrandita. Si aggiorna cambiando nome; non compare per nomi parziali o non presenti, né quando l’immagine non è disponibile.</li>
-    <li><b>Apri scheda locale</b>: apre direttamente la specie o varietà del catalogo delle 144 corrispondente al nome inserito, con slide, note e integrazioni salvate. Con nome parziale mostra l’elenco filtrato; senza nome mostra tutto il catalogo. Funziona offline con il catalogo già disponibile sul dispositivo; consultare o chiudere non modifica il rilievo. «Usa questo nome nella scheda» applica il nome solo su tua scelta, con gli avvisi già previsti per i campi compilati.</li>
-    <li><b>Caratteristiche · guida locale</b>: confronto con i dati e le note del catalogo delle 144. Non è un’interrogazione testuale a PlantNet e non copre tutte le piante del mondo.</li>
-    <li><b>Zona d’origine</b>: filtra la provenienza riportata nella guida, non certifica la distribuzione attuale della specie né usa il tuo GPS.</li>
-    <li><b>Cerca con AI</b>: invia solo nome e caratteristiche botaniche al servizio configurato (non foto, GPS, note personali o intero DB). Verifica i nomi suggeriti su GBIF prima di proporli. Le percentuali AI sono stime, non probabilità scientificamente calibrate.</li>
-    <li><b>Errori AI 502/503/504</b>: servizio temporaneamente indisponibile; fino a due riprove nello stesso servizio e modello, poi «Riprova AI». La scheda non cambia. 401/403 richiedono il controllo della chiave o degli accessi; 429 indica quota o frequenza superata.</li>
-    <li><b>Cerca intelligente</b>: confronta la guida, Wikipedia, GBIF e, se configurati, AI e prima foto salvata su PlantNet. Un servizio in errore non elimina i risultati degli altri. Il nome ha precedenza sulle somiglianze generiche; i caratteri concordanti sono indicati come 2/2, senza una probabilità di identificazione. Le percentuali delle fonti non vengono mediate.</li>
-  </ul>
-  <p>La scelta del nome richiede una tua conferma. I campi già compilati non vengono sovrascritti: eventuali conflitti con la guida vengono segnalati. Il catalogo PlantNet fornisce nomi e riferimenti, non tutti i caratteri morfologici della scheda; l’app non inventa dati mancanti.</p>
+  <details class="aiuto-sez" data-sez="problemi">
+    <summary><span aria-hidden="true">🩺</span> Problemi frequenti</summary>
+    <dl class="aiuto-glossario">
+      <dt>Il GPS è impreciso o non parte</dt><dd>Esci dalla chioma, aspetta qualche secondo e controlla che il browser abbia il permesso di posizione. In alternativa usa «Scegli dalla mappa».</dd>
+      <dt>Non vedo la versione nuova</dt><dd>Tocca il numero di versione in alto e poi «Aggiorna ora». Serve la rete.</dd>
+      <dt>La mappa è grigia</dt><dd>Quella zona non è mai stata vista con Internet. Aprila una volta online o scaricala dalla Mappa.</dd>
+      <dt>Le slide non si vedono offline</dt><dd>Configurazione → Catalogo → «Scarica slide per uso offline».</dd>
+      <dt>PlantNet o l’AI danno errore</dt><dd>401/403: chiave sbagliata o non abilitata. 429: quota superata, riprova più tardi. 502/503/504: servizio momentaneamente non disponibile. Usa «🩺 Prova i servizi AI».</dd>
+      <dt>Ho cancellato una scheda per sbaglio</dt><dd>«+ Opzioni → Cestino» e «Ripristina».</dd>
+      <dt>Lo spazio sta finendo</dt><dd>Fai un backup completo, poi «Nuovo elenco» e svuota il cestino. Le foto sono la parte più pesante.</dd>
+    </dl>
+  </details>
 
-  <p id="aiuto-versione" style="font-size:11px;color:var(--tenue);margin-top:16px">Versione dell'app: —</p>
-  <div class="azioni"><button type="button" class="btn" id="aiuto-chiudi" onclick="this.closest('dialog').close()">Chiudi</button></div>
+  </div>
+  <p id="aiuto-nessuno" class="aiuto-esito nascosto">Nessun argomento trovato. Prova con un’altra parola, per esempio «foto» o «backup».</p>
+  <div class="azioni">
+    <a class="btn" href="manuali/manuale-utente.pdf" target="_blank" rel="noopener">📘 Manuale completo (PDF)</a>
+    <button type="button" class="btn primario" id="aiuto-chiudi">Chiudi</button>
+  </div>
 </dialog>
 
 <dialog id="dlg-stampa">

@@ -33,6 +33,8 @@ const server = http.createServer((req, res) => {
   const base = `http://127.0.0.1:${server.address().port}`;
   const test = async (nome, fn) => { await fn(); results.push(nome); console.log('OK', nome); };
   const apriOpzioni = async () => { if (!await page.locator('#opzioni-home').evaluate(e => e.open)) await page.locator('#opzioni-home summary').click(); };
+  // La configurazione è divisa in gruppi comprimibili: nei test si aprono tutti.
+  const apriMenu = async () => { await page.click('#btn-menu'); await page.evaluate(() => document.querySelectorAll('#dlg-menu .menu-gruppo').forEach(g => { g.open = true; })); };
   try {
     await page.goto(base);
     await page.waitForFunction(() => DB.db && document.querySelector('#elenco').children.length > 0);
@@ -248,7 +250,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.locator('#pannello-filtri').isVisible(),true);
       assert.equal(await page.locator('#btn-filtri-avanzati').getAttribute('aria-expanded'),'true');
       await page.click('#btn-filtri-avanzati');
-      await page.click('#btn-menu');
+      await apriMenu();
       assert.equal(await page.locator('#dlg-menu').evaluate(el=>el.open),true);
       await page.locator('#dlg-menu [data-az=chiudi]').click();
       await page.click('#btn-stampa');
@@ -270,7 +272,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.locator('#home-nuova').count(),0);
       assert.equal(await page.locator('#btn-nuova').count(),1);
       assert.match(await page.locator('#opzioni-home summary').textContent(),/\+ Opzioni/);
-      await apriOpzioni();await page.click('#btn-menu');
+      await apriOpzioni();await apriMenu();
       await page.selectOption('#sel-dimensione-interfaccia','125');
       assert.equal(await page.evaluate(()=>localStorage.getItem('sb-dimensione-interfaccia')),'125');
       await page.locator('#dlg-menu [data-az=chiudi]').click();
@@ -281,7 +283,7 @@ const server = http.createServer((req, res) => {
       }
       await page.reload();await page.waitForFunction(()=>DB.db);
       assert.equal(await page.evaluate(()=>document.body.dataset.interfaccia),'125');
-      await apriOpzioni();await page.click('#btn-menu');
+      await apriOpzioni();await apriMenu();
       await page.selectOption('#sel-dimensione-interfaccia','auto');
       await page.locator('#dlg-menu [data-az=chiudi]').click();
       await page.setViewportSize({width:390,height:844});
@@ -334,7 +336,7 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.evaluate(()=>S.schede.some(s=>s.nome==='Specie inserita a mano')),true);
     });
     await test('Catalogo delle 144 piante: integrazione, persistenza e backup',async()=>{
-      await apriOpzioni();await page.click('#btn-menu');
+      await apriOpzioni();await apriMenu();
       await page.click('[data-az="completa-guida"]');
       assert.equal(await page.locator('#cg-lista .cg-riga').count(),144);
       await page.locator('#cg-lista .cg-riga').first().click();
@@ -370,7 +372,7 @@ const server = http.createServer((req, res) => {
         const json=JSON.parse(await zip.file('backup.json').async('string'));
         return json.guida?.[0]?.campi?.chiomaForma;
       },[...bytes]),'globosa');
-      await apriOpzioni();await page.click('#btn-menu');await page.click('[data-az="completa-guida"]');
+      await apriOpzioni();await apriMenu();await page.click('[data-az="completa-guida"]');
       await page.locator('#cg-lista .cg-riga').first().click();
       assert.equal(await page.locator('#cg-form [name="chiomaForma"]').inputValue(),'globosa');
       await page.selectOption('#cg-form [name="chiomaForma"]','');
@@ -406,7 +408,7 @@ const server = http.createServer((req, res) => {
       },[...bytes]),true);
     });
     await test('Catalogo completo: 144 piante, integrità e ripristino senza modificare le schede',async()=>{
-      await apriOpzioni();await page.click('#btn-menu');await page.click('[data-az="completa-guida"]');
+      await apriOpzioni();await apriMenu();await page.click('[data-az="completa-guida"]');
       const download=page.waitForEvent('download');
       await page.click('#cg-esporta-completo');
       const bytes=fs.readFileSync(await (await download).path());
@@ -443,7 +445,7 @@ const server = http.createServer((req, res) => {
       )),{GOOGLE_API_KEY:'prova#123',GROQ_API_KEY:'senza-virgolette',OPENROUTER_API_KEY:'router'});
     });
     await test('AI facoltativa: open.env locale, proposta verificabile e salvataggio esplicito',async()=>{
-      await apriOpzioni(); await page.click('#btn-menu');
+      await apriOpzioni(); await apriMenu();
       await page.locator('#ai-file-env').setInputFiles({name:'open.env',mimeType:'text/plain',buffer:Buffer.from('# prova\nGOOGLE_API_KEY="chiave-di-prova"\n')});
       await page.waitForFunction(()=>Boolean(chiaviAI.GOOGLE_API_KEY));
       assert.match(await page.locator('#ai-env-stato').textContent(),/Gemini, Groq o OpenRouter/);
@@ -465,7 +467,7 @@ const server = http.createServer((req, res) => {
       await page.reload();await page.waitForFunction(()=>DB.db && GUIDA_SPECIE[0].fiore==='Bianco');
       assert.equal(await page.evaluate(()=>Object.keys(chiaviAI).length),1);
       assert.equal(await page.evaluate(()=>GUIDA_SPECIE[0].fiore),'Bianco');
-      await apriOpzioni(); await page.click('#btn-menu');
+      await apriOpzioni(); await apriMenu();
       await page.click('#ai-rimuovi-env');
       assert.equal(await page.evaluate(()=>localStorage.getItem('sb-ai-keys')),null);
     });
@@ -503,7 +505,7 @@ const server = http.createServer((req, res) => {
       await page.waitForFunction(()=>document.querySelectorAll('#cg-ai-risultati .cg-ai-proposta').length===1);
       assert.equal(chiamate,2);
       await page.click('#cg-chiudi');
-      await page.click('#btn-menu'); await page.click('#ai-rimuovi-env');
+      await apriMenu(); await page.click('#ai-rimuovi-env');
       await page.locator('#dlg-menu [data-az="chiudi"]').click();
     });
     await test('Ricerca AI: propone solo piante verificate e non modifica automaticamente la scheda',async()=>{

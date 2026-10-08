@@ -733,6 +733,15 @@ function disegnaListaGuidaSpecie() {
   }));
 }
 
+// Per le Pinaceae: collegamento alla scheda del genere nella Chiave delle Pinaceae.
+const GENERI_PINACEAE = ['Abies', 'Picea', 'Pinus', 'Cedrus', 'Larix', 'Tsuga', 'Pseudotsuga'];
+function linkChiavePinaceae(v) {
+  const genere = String(v.nomeSci || '').split(' ')[0];
+  if (v.famiglia !== 'Pinaceae' || !GENERI_PINACEAE.includes(genere)) return null;
+  return el('a', { class: 'btn', href: `pinaceae.html#genere=${genere}`, style: 'margin-top:12px;width:100%;text-decoration:none;color:inherit' },
+    `🌲 Chiave delle Pinaceae · ${genere}`);
+}
+
 function schedaGuidaSpecie(v) {
   const integrazione = S.guida.find(g => g.id === v.id);
   const righe = [
@@ -759,6 +768,7 @@ function schedaGuidaSpecie(v) {
     v.note ? el('p', { style: 'font-size:13.5px;line-height:1.5;margin:0', testo: v.note }) : null,
     v.noteExtra ? el('p', { style: 'font-size:13px;line-height:1.5;margin:8px 0 0', testo: `Integrazione: ${v.noteExtra}` }) : null,
     v.pagina ? el('p', { style: 'font-size:11.5px;color:var(--tenue);margin:8px 0 0', testo: `Slide ${v.pagina} del PDF del corso` }) : null,
+    linkChiavePinaceae(v),
     S.aperta ? el('button', { type: 'button', class: 'btn primario', style: 'margin-top:12px', onclick: () => usaNomeDaGuidaSpecie(v) }, '✓ Usa questo nome nella scheda') : null);
 }
 

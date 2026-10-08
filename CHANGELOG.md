@@ -2,6 +2,34 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.44.0 · configurazione ordinata, nuovo Aiuto, manuale e README
+
+- **Configurazione e backup riordinata in sei gruppi** che si aprono e si chiudono: 💾 Backup e ripristino · 📤 Importa ed esporta dati · 🖥 Schermo e modifica delle schede · 🌳 Catalogo delle 144 piante e riconoscimento · 🤖 Assistente AI · 🛠 Aggiornamenti e manutenzione. Ogni gruppo ha una riga che spiega cosa contiene. All’apertura è aperto solo Backup; l’app ricorda quali gruppi hai lasciato aperti. Toccando la versione in alto si apre direttamente il gruppo degli aggiornamenti. Nessuna funzione è stata tolta o rinominata.
+- **Nuovo pulsante «? Aiuto»** in alto, accanto alla versione (resta anche in «+ Opzioni»).
+- **Aiuto riscritto**: presentazione del progetto, primi passi in 5 minuti, 14 argomenti con esempi, tabella «dove trovare cosa», glossario rapido e problemi frequenti. Casella di **ricerca** (trova anche parole scritte senza accenti), **indice a etichette** e collegamento al manuale PDF.
+- **Manuale utente nuovo** (`manuali/manuale-utente.pdf` e `.docx`, 48 pagine): cinque parti, 27 schermate della versione attuale, esempi pratici, problemi frequenti, riferimento rapido, glossario di 39 voci e indice analitico con i numeri di pagina.
+- **Guida rapida** aggiornata in una pagina (`manuali/guida-rapida.pdf` e `.docx`); la precedente era ferma alla versione 3.9.3.
+- **README** riscritto per GitHub, con schermate nuove, privacy, struttura, test e pubblicazione.
+- Quattro messaggi dell’app (salvataggio non riuscito, backup in ritardo, catalogo, istruzioni dentro lo ZIP) citavano ancora il vecchio «menu ⋮»: ora indicano il percorso attuale.
+- Test: nuovo `tests/interfaccia.cjs` (gruppi della configurazione, Aiuto con indice e ricerca); `tests/browser.cjs` adattato ai gruppi.
+
+---
+
+## 3.43.1 · dal catalogo alla chiave delle Pinaceae
+
+- Nella pagina di una specie del catalogo appartenente alle Pinaceae (Abies, Picea, Pinus, Cedrus, Larix) compare il pulsante **«Chiave delle Pinaceae · [genere]»**: apre direttamente la scheda di quel genere, con le sue slide del corso.
+- Insieme al collegamento inverso (dalla chiave alle slide) le due parti ora si raggiungono a vicenda.
+
+---
+
+## 3.43.0 · slide del corso nella chiave delle Pinaceae
+
+- Nella scheda di ogni genere della **Chiave delle Pinaceae** c'è ora «Slide del corso»: le miniature delle slide del catalogo per quel genere (Abies 1, Picea 3, Pinus 7, Cedrus 6, Larix 1, in tutto 18 slide). Toccando una miniatura si apre la slide a tutto schermo, con «Precedente» e «Successiva» tra le slide dello stesso genere.
+- Tsuga e Pseudotsuga: nel materiale del corso non hanno slide, e la scheda lo dice.
+- Le slide sono quelle già nell'app, quindi funzionano offline se hai usato «Scarica slide per uso offline».
+
+---
+
 ## 3.42.1 · Pinaceae e Stampa in prima pagina
 
 - **Chiave delle Pinaceae** e **Stampa** sono ora nella sezione «Sul campo» della prima pagina, sempre visibili, senza aprire «Opzioni» o il menu «Backup e configurazione».

@@ -182,7 +182,7 @@ async function salvaOra(r) {
     return true;
   } catch (e) {
     stato('ERRORE: salvataggio non riuscito — ' + e.message, true);
-    alert('Salvataggio non riuscito: ' + e.message + '\nEsporta subito un backup dal menu ⋮.');
+    alert('Salvataggio non riuscito: ' + e.message + '\nEsporta subito un backup da + Opzioni → Backup e configurazione.');
     return false;
   } finally {
     if (scrittureInCorso.get(r.uid) === operazione) scrittureInCorso.delete(r.uid);
@@ -2000,11 +2000,46 @@ async function collegaCartellaBotanica() {
   }
 }
 
+// Apre i gruppi della configurazione rimasti aperti l'ultima volta (di base solo «Backup e ripristino»).
+function ripristinaGruppiMenu() {
+  let aperti = ['mg-backup'];
+  try { const v = JSON.parse(leggiPref('sb-menu-gruppi') || 'null'); if (Array.isArray(v)) aperti = v; } catch { /* preferenza non valida: si usa quella di base */ }
+  document.querySelectorAll('#dlg-menu .menu-gruppo').forEach((g) => { g.open = aperti.includes(g.id); });
+}
+
+// ---------- Aiuto: indice, ricerca e apertura per argomento ----------
+function apriAiuto(sezione) {
+  $('#aiuto-versione').textContent = `Versione dell'app: ${APP_VERSIONE}`;
+  $('#aiuto-cerca').value = '';
+  filtraAiuto('');
+  if (sezione) {
+    document.querySelectorAll('#dlg-aiuto .aiuto-sez').forEach((d) => { d.open = d.dataset.sez === sezione; });
+  }
+  $('#dlg-aiuto').showModal();
+  if (sezione) $(`#dlg-aiuto details[data-sez="${sezione}"]`)?.scrollIntoView({ block: 'start' });
+}
+// Normalizza per la ricerca: minuscole e senza accenti («città» trova «citta»).
+const normAiuto = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+function filtraAiuto(testo) {
+  const parole = normAiuto(testo).split(/\s+/).filter((p) => p.length > 1);
+  let trovate = 0;
+  document.querySelectorAll('#dlg-aiuto .aiuto-sez').forEach((d) => {
+    const ok = !parole.length || parole.every((p) => normAiuto(d.textContent).includes(p));
+    d.classList.toggle('nascosto', !ok);
+    if (parole.length) d.open = ok;
+    if (ok) trovate++;
+  });
+  $('#aiuto-nessuno').classList.toggle('nascosto', trovate > 0);
+  $('#aiuto-esito').textContent = parole.length ? (trovate ? `${trovate} ${trovate === 1 ? 'argomento trovato' : 'argomenti trovati'}` : '') : '';
+  $('#dlg-aiuto .aiuto-indice').classList.toggle('nascosto', parole.length > 0);
+}
+
 function collegaEventi() {
   $('#btn-versione').textContent = `v${APP_VERSIONE} ↻`;
   $('#btn-versione').onclick = () => {
     $('#btn-menu').click();
-    $('#dlg-menu .aggiornamento-app').scrollIntoView({ block: 'nearest' });
+    $('#mg-manutenzione').open = true;
+    $('#mg-manutenzione').scrollIntoView({ block: 'nearest' });
     verificaAggiornamenti(true);
   };
   $('.nav-editor').onclick = (e) => { const link = e.target.closest('a'); if (link) { e.preventDefault(); $(link.getAttribute('href')).scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
@@ -2090,8 +2125,15 @@ function collegaEventi() {
     aggiornaStatoCartellaBotanica();
     $('#aggiornamento-stato').textContent = `Versione installata: ${APP_VERSIONE}`;
     aggiornaPannelloSlide().catch(() => {});
+    ripristinaGruppiMenu();
     $('#dlg-menu').showModal();
   };
+  // Gruppi della configurazione: si ricorda quali erano aperti su questo dispositivo.
+  document.querySelectorAll('#dlg-menu .menu-gruppo').forEach((g) => g.addEventListener('toggle', () => {
+    if (!$('#dlg-menu').open) return;
+    const aperti = [...document.querySelectorAll('#dlg-menu .menu-gruppo[open]')].map((x) => x.id);
+    scriviPref('sb-menu-gruppi', JSON.stringify(aperti));
+  }));
   $('#btn-controlla-aggiornamenti').onclick = () => verificaAggiornamenti(true);
   $('#btn-slide-offline').onclick = scaricaSlideDaPulsante;
   $('#btn-applica-aggiornamento').onclick = applicaAggiornamento;
@@ -2156,7 +2198,19 @@ function collegaEventi() {
   });
 
   // aiuto
-  $('#btn-aiuto').onclick = () => { $('#aiuto-versione').textContent = `Versione dell'app: ${APP_VERSIONE}`; $('#dlg-aiuto').showModal(); };
+  $('#btn-aiuto').onclick = () => apriAiuto();
+  $('#btn-aiuto-testa').onclick = () => apriAiuto();
+  $('#aiuto-chiudi').onclick = () => $('#dlg-aiuto').close();
+  $('#aiuto-x').onclick = () => $('#dlg-aiuto').close();
+  $('#aiuto-cerca').oninput = (e) => filtraAiuto(e.target.value);
+  $('#dlg-aiuto .aiuto-indice').onclick = (e) => {
+    const b = e.target.closest('[data-vai]');
+    if (!b) return;
+    $('#aiuto-cerca').value = ''; filtraAiuto('');
+    const sez = $(`#dlg-aiuto details[data-sez="${b.dataset.vai}"]`);
+    sez.open = true;
+    sez.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   $('#gs-cerca').oninput = disegnaListaGuidaSpecie;
   $('#auto-chiudi').onclick = () => { AUTO_RICERCA.serie++; $('#dlg-cerca-auto').close(); };
   $('#dlg-cerca-auto').addEventListener('cancel', () => { AUTO_RICERCA.serie++; });
@@ -2422,7 +2476,7 @@ function controllaPromemoriaBackup() {
   const giorni = giorniDaUltimoBackup();
   if (giorni > intervalloBackupAtteso()) {
     const testo = giorni === Infinity ? 'Nessun backup è mai stato fatto.' : `Ultimo backup ${Math.floor(giorni)} giorni fa.`;
-    mostraAvvisoBackup(`⚠ ${testo} Conviene farne uno adesso (menu ⋮ → Backup completo).`);
+    mostraAvvisoBackup(`⚠ ${testo} Conviene farne uno adesso (+ Opzioni → Backup e configurazione → Backup completo).`);
     notificaBackupInRitardo(testo + ' Apri Scheda Botanica PRO per farne uno.');
   }
 }
@@ -2489,7 +2543,7 @@ async function avvio() {
 
   // Backup automatico: scarica da sola un backup completo ogni tot giorni,
   // così non dipende dal ricordarsene. Attivo di default; si spegne o si
-  // regola la frequenza dal menu ⋮. Se il download fallisce (es. permesso
+  // regola la frequenza in Configurazione → Backup e ripristino. Se il download fallisce (es. permesso
   // negato dal browser) lo segnaliamo con il promemoria qui sotto, invece
   // di ignorarlo in silenzio come prima.
   const ultimo = leggiPref('sb-ultimo-backup');

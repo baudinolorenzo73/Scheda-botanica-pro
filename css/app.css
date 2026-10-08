@@ -829,3 +829,74 @@ body[data-interfaccia="125"]{zoom:1.25}
 
 /* 3.39 — mappa come prima pagina della stampa delle schede */
 .p-mappa-prima{break-after:page}
+
+/* ---------- Configurazione e backup: gruppi comprimibili (3.44) ---------- */
+#dlg-menu .menu-testa p{margin:-4px 0 12px;font-size:13px;color:var(--tenue);line-height:1.4}
+#dlg-menu .menu-lista{gap:10px}
+.menu-gruppo{border:1.5px solid var(--linea);border-radius:var(--r-grande);background:var(--foglio);overflow:hidden}
+.menu-gruppo[open]{border-color:var(--bosco)}
+.menu-gruppo>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;min-height:64px}
+.menu-gruppo>summary::-webkit-details-marker{display:none}
+.menu-gruppo>summary::after{content:"";flex:none;width:9px;height:9px;margin-left:auto;border-right:2px solid var(--tenue);border-bottom:2px solid var(--tenue);transform:rotate(45deg);transition:transform .15s}
+.menu-gruppo[open]>summary::after{transform:rotate(-135deg)}
+.menu-gruppo[open]>summary{background:var(--focus);border-bottom:1px solid var(--linea)}
+.mg-icona{flex:none;width:40px;height:40px;display:grid;place-items:center;font-size:21px;border-radius:12px;background:var(--focus)}
+.menu-gruppo[open] .mg-icona{background:var(--foglio)}
+.mg-testo{display:grid;gap:2px;min-width:0}
+.mg-testo b{font-size:15.5px;color:var(--bosco)}
+.mg-testo small{font-size:12.5px;line-height:1.35;color:var(--tenue)}
+.mg-corpo{display:flex;flex-direction:column;gap:8px;padding:12px}
+.mg-corpo>.ai-config{margin:0;border:0;padding:0}
+.mg-corpo .dimensione-interfaccia,.mg-corpo .aggiornamento-app,.mg-corpo .cartella-botanica{margin:0}
+.mg-griglia{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mg-griglia .btn{min-height:48px}
+.backup-auto{padding:10px 12px;background:var(--focus);border-radius:var(--r-piccolo);font-size:13.5px}
+.menu-piede{margin-top:12px;padding-top:8px;border-top:1px solid var(--linea)}
+.menu-piede p{font-size:13px;color:var(--tenue);margin:4px 0}
+@media (prefers-reduced-motion:reduce){.menu-gruppo>summary::after{transition:none}}
+
+/* ---------- Aiuto (3.44): pulsante in testata, indice, ricerca, sezioni ---------- */
+.testata-destra{display:flex;align-items:center;gap:8px;flex:none}
+.aiuto-testa-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.5);border-radius:999px;background:#fff;color:var(--bosco-scuro);padding:4px 13px 4px 5px;font:700 13px/1.2 system-ui,sans-serif;min-height:36px;cursor:pointer;box-shadow:0 2px 8px #0002}
+.aiuto-testa-btn:hover,.aiuto-testa-btn:focus-visible{background:var(--focus)}
+.aiuto-q{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--bosco);color:#fff;font:700 15px/1 Georgia,serif}
+@media (max-width:760px){
+  .testata-destra{display:grid;grid-template-columns:auto 1fr;width:100%}
+  .testata-destra .versione-app{width:100%}
+}
+#dlg-aiuto{max-width:min(720px,calc(100vw - 24px));padding:0;display:none;flex-direction:column}
+#dlg-aiuto[open]{display:flex}
+.aiuto-testa{position:sticky;top:0;z-index:2;background:var(--foglio);padding:16px 18px 8px;border-bottom:1px solid var(--linea)}
+.aiuto-titolo-riga{display:flex;align-items:center;gap:10px}
+.aiuto-titolo-riga h2{flex:1;margin:0}
+.aiuto-x{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--linea);background:var(--foglio);color:var(--inchiostro);font:600 17px/1 system-ui,sans-serif;cursor:pointer;display:grid;place-items:center}
+.aiuto-cerca{display:block;margin:10px 0 8px}
+.aiuto-cerca input{width:100%}
+.aiuto-indice{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+.aiuto-indice button{flex:none;border:1px solid var(--linea);background:var(--focus);color:var(--bosco-scuro);border-radius:999px;padding:6px 12px;font:600 12.5px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.aiuto-indice button:hover{border-color:var(--bosco)}
+.aiuto-esito{margin:2px 0 0;font-size:12.5px;color:var(--tenue)}
+.aiuto-esito:empty{display:none}
+.aiuto-corpo{padding:8px 18px 4px;overflow:auto}
+#dlg-aiuto > .aiuto-esito{padding:0 18px}
+#dlg-aiuto > .azioni{position:sticky;bottom:0;background:var(--foglio);margin:0;padding:10px 18px 14px;border-top:1px solid var(--linea)}
+.aiuto-sez{border-bottom:1px solid var(--linea);padding:4px 0}
+.aiuto-sez>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:11px 2px;font:600 16px Georgia,serif;color:var(--bosco);scroll-margin-top:170px}
+.aiuto-sez>summary::-webkit-details-marker{display:none}
+.aiuto-sez>summary::after{content:"+";margin-left:auto;font:400 22px system-ui;color:var(--tenue)}
+.aiuto-sez[open]>summary::after{content:"–"}
+.aiuto-sez{scroll-margin-top:170px}
+.aiuto-sez[open]{padding-bottom:12px}
+#dlg-aiuto .aiuto-sez h3{margin:14px 0 4px}
+#dlg-aiuto ol{margin:4px 0;padding-left:22px}
+#dlg-aiuto ol li{font-size:13.5px;line-height:1.5;margin-bottom:4px}
+.aiuto-esempio{margin:10px 0;padding:10px 12px;border-left:4px solid var(--lichene);background:var(--focus);border-radius:0 var(--r-piccolo) var(--r-piccolo) 0;font-size:13.5px;line-height:1.5}
+.aiuto-nota{font-size:12.5px;color:var(--tenue)}
+.aiuto-tabella{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+.aiuto-tabella th,.aiuto-tabella td{border:1px solid var(--linea);padding:6px 8px;text-align:left;vertical-align:top}
+.aiuto-tabella th{background:var(--focus)}
+.aiuto-glossario{margin:4px 0;display:grid;grid-template-columns:minmax(120px,32%) 1fr;gap:6px 12px;font-size:13.5px;line-height:1.45}
+.aiuto-glossario dt{font-weight:700}
+.aiuto-glossario dd{margin:0}
+@media (max-width:520px){.aiuto-glossario{grid-template-columns:1fr;gap:0}.aiuto-glossario dd{margin-bottom:8px}}
+@media (min-width:700px){.aiuto-indice{flex-wrap:wrap;overflow:visible}}

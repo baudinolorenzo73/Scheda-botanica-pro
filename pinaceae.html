@@ -145,6 +145,16 @@ dialog::backdrop{background:rgb(0 0 0 / .6)}
 .ill figcaption{font-size:.78rem;line-height:1.35;color:var(--ink-2);margin-top:4px}
 .ill figcaption b{display:block;color:var(--ink);font-weight:600;font-size:.82rem}
 .ill-note{margin:8px 0 0}
+.slides{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+.slides dl{margin:0}
+.slides dd{margin:0}
+.slides dt{font-size:.8rem;color:var(--ink-2);margin-bottom:6px}
+.slide-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.slide-th{padding:0;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);cursor:pointer;overflow:hidden;text-align:left;display:block}
+.slide-th img{display:block;width:100%;height:auto;aspect-ratio:900/507;object-fit:cover}
+.slide-th span{display:block;font-size:.78rem;line-height:1.3;padding:5px 7px}
+.dlg-nav{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line)}
+.dlg-nav .btn{flex:1}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}.opt:active{transform:none}}
 </style>
 </head>
@@ -177,6 +187,19 @@ dialog::backdrop{background:rgb(0 0 0 / .6)}
   </div>
   <div class="dlg-body" id="dlgBody"><img id="schemaImg" alt="Schema originale di riconoscimento dei generi di Pinaceae" src="img/pinaceae-schema.jpg"></div>
   <div class="dlg-foot">Schema di partenza. Alcuni caratteri sono stati corretti nella chiave: vedi Glossario › Correzioni allo schema.</div>
+</dialog>
+
+<dialog id="slideDlg">
+  <div class="dlg-head">
+    <h3 id="slideTit">Slide del corso</h3>
+    <button class="icon-btn" type="button" id="closeSlide" aria-label="Chiudi">✕</button>
+  </div>
+  <div class="dlg-body"><img id="slideImg" alt="Slide del corso" src=""></div>
+  <div class="dlg-nav">
+    <button class="btn" type="button" id="slidePrev">← Precedente</button>
+    <button class="btn" type="button" id="slideNext">Successiva →</button>
+  </div>
+  <div class="dlg-foot" id="slideFoot"></div>
 </dialog>
 
 <script>
@@ -309,6 +332,17 @@ const GENERA = {
     confusione: "Abies: base dell'ago a ventosa e pigna eretta. Tsuga: ago di 1 cm e pigna di 2 cm.",
     trucco: "Pseudotsuga = punte: le linguette a tridente sulla pigna non le ha nessun altro genere."
   }
+};
+
+/* Slide del corso (cartella slides/ dell'app) per ogni genere: [numero, specie] */
+const SLIDES = {
+  Abies: [[156, "Abies nordmanniana"]],
+  Picea: [[157, "Picea abies"], [158, "Picea pungens"], [159, "Picea pungens 'Koster'"]],
+  Pinus: [[161, "Pinus sylvestris"], [162, "Pinus nigra (austriaco)"], [163, "Pinus nigra (di Corsica)"], [164, "Pinus pinaster"], [165, "Pinus pinea"], [167, "Pinus strobus"], [168, "Pinus wallichiana"]],
+  Cedrus: [[170, "Cedrus deodara"], [171, "Cedrus deodara 'Pendula'"], [172, "Cedrus atlantica"], [173, "Cedrus atlantica 'Glauca'"], [174, "Cedrus atlantica 'Pendula'"], [175, "Cedrus libani"]],
+  Larix: [[176, "Larix decidua"]],
+  Tsuga: [],
+  Pseudotsuga: []
 };
 
 const CLUES = [
@@ -764,7 +798,19 @@ function genusCard(g){
       ${f("Si confonde con", d.confusione)}
     </dl>
     <p class="tip">${fmt(d.trucco)}</p>
+    ${slidesHTML(g)}
   </article>`;
+}
+
+function slidesHTML(g){
+  const L = SLIDES[g] || [];
+  if(!L.length) return `<div class="slides"><dl><dt>Slide del corso</dt><dd class="muted small">Nel materiale del corso non ci sono slide di specie di questo genere.</dd></dl></div>`;
+  return `<div class="slides"><dl><dt>Slide del corso · ${L.length} ${L.length === 1 ? "specie" : "specie e varietà"}</dt>
+    <dd><div class="slide-grid">${L.map(([n, nome], i) => `
+      <button type="button" class="slide-th" data-act="slide" data-g="${g}" data-i="${i}" aria-label="Apri la slide: ${nome}">
+        <img src="slides/${n}.webp" alt="" loading="lazy" onerror="this.closest('.slide-th').classList.add('manca');this.remove()">
+        <span>${fmt(nome)}</span>
+      </button>`).join("")}</div></dd></dl></div>`;
 }
 
 function fmt(t){ return t ? t.replace(/\b(Abies alba|[A-Z]\. [a-z]+|Abies|Picea|Pinus|Cedrus|Larix|Tsuga|Pseudotsuga)\b/g, "<i>$1</i>") : t; }
@@ -871,6 +917,7 @@ app.addEventListener("click", e => {
     case "back": state.path = state.path.slice(0, -1); render(); break;
     case "restart": state.path = []; render(); break;
     case "schema": openSchema(); break;
+    case "slide": openSlide(b.dataset.g, +b.dataset.i); break;
     case "openGenus": state.genus = b.dataset.g; render(); window.scrollTo({ top: 0 }); break;
     case "closeGenus": state.genus = null; render(); break;
     case "toKey": state.path = pathTo(b.dataset.g) || []; state.genus = null; go("chiave"); break;
@@ -906,6 +953,28 @@ zoomBtn.addEventListener("click", () => {
 document.getElementById("closeDlg").addEventListener("click", () => dlg.close ? dlg.close() : dlg.removeAttribute("open"));
 dlg.addEventListener("click", e => { if(e.target === dlg) dlg.close(); });
 
+/* ---------- Slide del corso ---------- */
+const slideDlg = document.getElementById("slideDlg");
+let slideCur = { g: null, i: 0 };
+function openSlide(g, i){
+  const L = SLIDES[g];
+  if(!L || !L[i]) return;
+  slideCur = { g, i };
+  const [n, nome] = L[i];
+  document.getElementById("slideTit").textContent = nome;
+  const img = document.getElementById("slideImg");
+  img.alt = "Slide del corso: " + nome;
+  img.src = "slides/" + n + ".webp";
+  document.getElementById("slideFoot").textContent = `${g} · slide ${i + 1} di ${L.length} (pagina ${n} del corso). Le slide sono quelle del catalogo dell'app: aprile online almeno una volta per averle anche offline.`;
+  document.getElementById("slidePrev").disabled = i === 0;
+  document.getElementById("slideNext").disabled = i === L.length - 1;
+  if(!slideDlg.open){ if(typeof slideDlg.showModal === "function") slideDlg.showModal(); else slideDlg.setAttribute("open", ""); }
+}
+document.getElementById("slidePrev").addEventListener("click", () => openSlide(slideCur.g, slideCur.i - 1));
+document.getElementById("slideNext").addEventListener("click", () => openSlide(slideCur.g, slideCur.i + 1));
+document.getElementById("closeSlide").addEventListener("click", () => slideDlg.close ? slideDlg.close() : slideDlg.removeAttribute("open"));
+slideDlg.addEventListener("click", e => { if(e.target === slideDlg) slideDlg.close(); });
+
 /* ---------- Tema ---------- */
 const THEMES = ["auto", "light", "dark"];
 const THEME_LABEL = { auto: "◐ Auto", light: "☀ Chiaro", dark: "☾ Scuro" };
@@ -925,6 +994,12 @@ themeBtn.addEventListener("click", () => {
   applyTheme();
 });
 applyTheme();
+/* Collegamento dal catalogo dell'app: pinaceae.html#genere=Larix apre la scheda di quel genere */
+(function apriDaLink(){
+  const m = /[#&]genere=([A-Za-z]+)/.exec(location.hash);
+  if(m && GENERA[m[1]]){ state.view = "generi"; state.genus = m[1]; render(); }
+})();
+window.addEventListener("hashchange", () => { const m = /[#&]genere=([A-Za-z]+)/.exec(location.hash); if(m && GENERA[m[1]]){ state.view = "generi"; state.genus = m[1]; render(); window.scrollTo({ top: 0 }); } });
 render();
 </script>
 </body>

@@ -1,129 +1,191 @@
 # 🌳 Scheda Botanica PRO
 
-App **offline** per il rilievo botanico sul campo: schede per censire alberi con foto, GPS, note vocali, stima ambientale, stampa e backup, senza server e senza account.
+**App offline per il rilievo degli alberi sul campo**: schede con foto, GPS, note vocali, misura dell’altezza e stima ambientale; catalogo delle 144 piante del corso con le slide originali; Chiave delle Pinaceae; stampa, etichette QR, mappa e backup. Niente server, niente account: i dati restano sul dispositivo.
 
-**by Lollo ®2026 — versione 3.42.1**
+**by Lollo ®2026 — versione 3.44.0**
 
-[Novità e storico delle versioni](CHANGELOG.md) · [Guida all’AI e alle chiavi](ASSISTENTE-AI.md)
+👉 **[Apri l’app](https://baudinolorenzo73.github.io/Scheda-botanica-pro/)** · [📘 Manuale utente (PDF)](manuali/manuale-utente.pdf) · [Guida rapida (PDF)](manuali/guida-rapida.pdf) · [Novità (CHANGELOG)](CHANGELOG.md) · [Assistente AI e chiavi](ASSISTENTE-AI.md)
 
----
-
-## 📱 Prova l'app
-
-👉 **[Apri Scheda Botanica PRO](https://baudinolorenzo73.github.io/Scheda-botanica-pro/)** *(link attivo dopo aver pubblicato con GitHub Pages, vedi sotto)*
-
-È una **PWA** (Progressive Web App): si può usare direttamente nel browser oppure installare sulla schermata home del telefono, e da quel momento funziona anche **senza connessione a internet**.
-
-### Installarla sul telefono
-
-- **Android (Chrome)** — apri il link, poi menu ⋮ → *Aggiungi a schermata Home* (o tocca il banner "Installa app" che compare da solo).
-- **iPhone / iPad (Safari)** — apri il link, tocca l'icona di condivisione 􀈂, poi *Aggiungi a Home*.
-
-Una volta installata si apre a schermo intero come un'app normale, con la sua icona.
+| Prima pagina | Scheda | Chiave delle Pinaceae | Configurazione |
+|---|---|---|---|
+| ![Prima pagina](screenshot/elenco.png) | ![Scheda compilata](screenshot/scheda.png) | ![Scheda del genere Larix](screenshot/pinaceae.png) | ![Configurazione a gruppi](screenshot/configurazione.png) |
 
 ---
 
-## ✨ Funzionalità principali
+## Indice
 
-- **Schede albero complete**: dati dendrometrici, botanici, pedologici e fitopatologici, con campi a scelta illustrata (icona + spiegazione per ogni valore) e campi che si adattano da soli — per esempio se scegli una lamina **aghiforme** o una foglia **a squame**, i campi non pertinenti spariscono automaticamente. Le foglie seguono la tabella «Caratteristiche distintive» (tipo, lamina, margine).
-- **Foto** (compresse in automatico) e **note vocali** direttamente sulla scheda.
-- **GPS** con affinamento della precisione sotto la chioma.
-- **Stima ambientale**: volume della chioma, ombra proiettata, CO₂ stoccata.
-- **Riconoscimento specie** da foto con [PlantNet](https://plantnet.org) (chiave gratuita, opzionale).
-- **Codice QR permanente** per ogni scheda, per ritrovarla senza ambiguità anche dopo l’apertura di un nuovo elenco.
-- **Ricerca immediata del nome** nel catalogo locale delle specie e nei nomi già registrati, utilizzabile anche offline. Il nome può essere inserito liberamente.
-- **Comandi di ricerca della specie** raccolti sotto «Cerca» nel campo nome: Wikipedia/Wikidata, PlantNet, GBIF, foto, caratteristiche e zona d’origine. La ricerca Wikipedia considera i primi cinque risultati e mostra solo nomi tassonomici strutturati su Wikidata che GBIF classifica nel regno Plantae; se GBIF non risponde, non propone nomi non verificati. «Cerca auto» combina la guida locale con la verifica del nome e, se c’è una foto e la chiave PlantNet, l’identificazione da foto; mostra la provenienza e il significato di ogni percentuale senza sintetizzarle in una probabilità fittizia. La provenienza d’origine non dimostra la presenza locale. I dati già osservati non vengono sovrascritti e le discordanze vengono evidenziate.
-- **Aggiornamenti controllati:** toccando la versione in alto a destra l’app confronta la versione installata con `versione.json` pubblicato. Se trova una versione più recente mostra il numero e chiede conferma prima di scaricarla; quando è pronta compare «Aggiorna ora». Schede e dati locali non vengono cancellati.
-- **Foto, GPS e nota vocale** sempre accessibili in alto nell’editor, anche mentre scorri la scheda.
-- **Catalogo integrabile** in Configurazione: sfoglia le 144 pagine originali, aggiungi le caratteristiche mancanti e registra la fonte; le integrazioni hanno un editor viola distinto dalle schede di rilievo. Trasferisci solo le integrazioni o il catalogo completo delle 144 piante in JSON, oppure includi le integrazioni nel backup ZIP di schede, foto e audio.
-- **Azioni in prima pagina**: «Nuova scheda» resta sempre visibile nella barra inferiore; avvio/pausa/stop della traccia GPS e «Nuovo elenco» sono nel riquadro «Sul campo»; «+ Opzioni» raccoglie meteo 3B Meteo, QR, stampa, backup, cestino, guida e tema. In Configurazione si può scegliere la dimensione dell’interfaccia.
-- **Nuove schede senza nomi automatici**: la data è quella odierna e «Nome esemplare» resta vuoto. Nessuna etichetta `Prova…` viene generata o visualizzata, neppure per le vecchie schede. Se si torna indietro senza inserire alcun dato reale, la bozza non viene memorizzata.
-- **PlantNet per nome dentro l’app**: il pulsante interroga il catalogo ufficiale per prefisso scientifico; i nomi comuni sono risolti tramite Wikipedia quando necessario. Richiede la chiave PlantNet. Il collegamento alla scheda esterna è un comando separato. Le caratteristiche sono confrontate nella guida locale o con l’AI, non con un inesistente motore testuale PlantNet.
-- **AI con recupero dai modelli non disponibili**: modelli diversi per testo e immagini; per i predefiniti Gemini/Groq un errore 404 avvia il controllo del catalogo ufficiale e una sola riprova nello stesso servizio. Modelli e servizio si configurano da Configurazione. Non c’è passaggio automatico fra provider o scelta arbitraria di modelli OpenRouter.
-- **Nuovo elenco** dalla prima schermata: scarica un backup delle schede correnti e le sposta nel cestino, poi riparte dalla scheda numero 1.
-- **Mappa offline** e registrazione del percorso con filtro dei punti GPS imprecisi ed esportazione GPX.
-- **Stampa** di una o più schede, anche solo come etichette QR.
-- **Backup completo (.zip)** con ripristino protetto di schede, cestino, foto, audio, catalogo e traccia; import/export CSV, GeoJSON, KML e GPX. Nei browser che supportano File System Access puoi autorizzare Download e l’app crea/usa la sottocartella `Botanica`. Prima spiega lo scopo e chiede conferma; il permesso riguarda esclusivamente la cartella scelta. Negli altri browser usa il download normale.
-- **100% offline-first**: tutti i dati restano sul dispositivo (IndexedDB), archivio locale; alcune funzioni consultano servizi esterni.
+- [Che cos’è](#che-cosè)
+- [Installazione](#installazione)
+- [Funzionalità](#funzionalità)
+- [Documentazione](#documentazione)
+- [Privacy e dati](#privacy-e-dati)
+- [Struttura del repository](#struttura-del-repository)
+- [Sviluppo e test](#sviluppo-e-test)
+- [Pubblicare una nuova versione](#pubblicare-una-nuova-versione)
+- [Tecnologie](#tecnologie)
+- [Licenza](#licenza)
 
-## 🖼️ Screenshot
+---
 
-| Elenco schede | Compilazione scheda |
-|---|---|
-| ![Elenco schede](screenshot/elenco.png) | ![Scheda compilata](screenshot/scheda.png) |
+## Che cos’è
 
-| Campo illustrato | Mappa |
-|---|---|
-| ![Campo illustrato](screenshot/campo-illustrato.png) | ![Mappa](screenshot/mappa.png) |
+Scheda Botanica PRO nasce per il corso **«Gli alberi — Riconoscimento vegetale»** e serve a censire alberi in parchi, viali e giardini. Per ogni albero compili una scheda; a fine giornata stampi, esporti per Excel o QGIS e salvi un backup.
 
-## 📖 Manuali
+Tre principi guidano tutto il progetto:
+
+1. **Offline prima di tutto.** Dopo la prima apertura con Internet funzionano senza rete schede, catalogo, slide, Chiave delle Pinaceae e mappa delle zone già viste.
+2. **I dati restano sul dispositivo.** Archivio nel browser (IndexedDB), nessun server. Il backup .zip è il modo per conservarli e spostarli.
+3. **Niente viene deciso al posto dell’utente.** Ricerche, PlantNet e AI propongono; nome e campi cambiano solo con una conferma esplicita, e i campi già compilati non vengono mai sovrascritti.
+
+## Installazione
+
+È una **PWA** (Progressive Web App): si usa dal browser o si installa sulla schermata Home.
+
+- **Android (Chrome):** apri il link, poi menu ⋮ → *Aggiungi a schermata Home*.
+- **iPhone / iPad (Safari):** apri il link, *Condividi* → *Aggiungi alla schermata Home*. Su iOS l’installazione è importante: Safari può cancellare i dati dei siti non usati per 7 giorni.
+
+Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento l’app lavora anche senza connessione.
+
+## Funzionalità
+
+### Sul campo
+- **Schede albero** con dati dendrometrici, botanici, pedologici e fitopatologici. Salvataggio automatico, senza pulsante «Salva».
+- **Campi illustrati**: persistenza, chioma, rami, crescita, gemme, foglia, lamina e margine si scelgono da disegni con spiegazione. Le foglie seguono la tabella «Caratteristiche distintive» del corso; i campi non pertinenti (per esempio il margine di un ago) spariscono da soli.
+- **GPS** con affinamento della precisione sotto la chioma, valutazione del segnale e scelta manuale sulla mappa.
+- **Foto** compresse automaticamente e **note vocali**.
+- **Misura dell’altezza** con il telefono (inclinometro), da una foto o con l’ombra.
+- **Stima ambientale** indicativa: volume della chioma, ombra proiettata, CO₂ stoccata.
+- **Traccia GPS** del percorso con filtro dei punti imprecisi, esportabile in GPX.
+
+### Riconoscere le piante
+- **Catalogo delle 144 piante** del corso con slide originali, consultabile e integrabile offline; ricerca per nome, per caratteristiche e per zona d’origine.
+- **Chiave delle Pinaceae**: chiave guidata dei 7 generi (*Abies, Picea, Pinus, Cedrus, Larix, Tsuga, Pseudotsuga*), schede con illustrazioni, slide del corso per genere, ripasso a domande e glossario. Collegata in entrambe le direzioni con il catalogo.
+- **Ricerche online**: Wikipedia/Wikidata e GBIF per verificare i nomi; **PlantNet** per nome e da foto (chiave gratuita); **assistente AI facoltativo** (Gemini, Groq, OpenRouter) con le chiavi in `open.env`. Le proposte vengono verificate su GBIF e richiedono conferma.
+
+### Organizzare e condividere
+- **Ricerca, filtri** (specie, date, senza foto, senza GPS, con problemi), **Nuovo elenco** e **cestino** con svuotamento automatico.
+- **Mappa** offline delle schede, stampa A4 della mappa e **pagina HTML mappa + schede** da aprire su qualsiasi dispositivo.
+- **Stampa** di schede A4 (con prima pagina della mappa, QR, stima ambientale, foto e testo libero), **etichette QR 5×5 cm** e registro Excel.
+- **Codice QR permanente** per ogni scheda e scansione per ritrovarla; **report per il cliente**.
+- **Backup completo .zip** (schede, foto, audio, catalogo, cestino, traccia), backup automatico, cartella Download/Botanica, ripristino con **Sostituisci** o **Unisci** campo per campo per il lavoro in squadra; import Excel/CSV, export CSV, GeoJSON, KML, GPX.
+
+### Interfaccia
+- **? Aiuto** in testata, con ricerca (anche senza accenti), indice a etichette e 14 argomenti con esempi.
+- **Configurazione in sei gruppi** comprimibili: Backup e ripristino · Importa ed esporta dati · Schermo e modifica · Catalogo e riconoscimento · Assistente AI · Aggiornamenti e manutenzione.
+- Impaginazione adattiva per telefono, tablet (scheda a due colonne in orizzontale) e PC; tema chiaro/scuro; interfaccia ingrandibile.
+- **Aggiornamenti controllati**: toccando la versione l’app confronta quella installata con `versione.json` pubblicato e aggiorna solo dopo conferma.
+
+![La scheda su tablet in orizzontale](screenshot/tablet.png)
+
+## Documentazione
 
 Nella cartella [`manuali/`](manuali/):
 
-- **[Manuale utente completo](manuali/manuale-utente.pdf)** ([.docx](manuali/manuale-utente.docx)) — guida capitolo per capitolo, con screenshot, glossario e indice analitico.
-- **[Guida rapida](manuali/guida-rapida.pdf)** ([.docx](manuali/guida-rapida.docx)) — riepilogo pratico in una sola pagina.
+- **[Manuale utente](manuali/manuale-utente.pdf)** ([.docx](manuali/manuale-utente.docx)) — 48 pagine in cinque parti (Iniziare · Sul campo · Riconoscere le piante · Organizzare e condividere · Impostazioni), con 27 schermate, esempi pratici, problemi frequenti, riferimento rapido, glossario e indice analitico.
+- **[Guida rapida](manuali/guida-rapida.pdf)** ([.docx](manuali/guida-rapida.docx)) — tutto l’essenziale in una pagina.
+- **[ASSISTENTE-AI.md](ASSISTENTE-AI.md)** — chiavi, servizi, modelli ed errori dell’assistente AI.
+- **[CHANGELOG.md](CHANGELOG.md)** — le novità di ogni versione.
 
-## 🗂️ Struttura del repository
+Nell’app, il pulsante **? Aiuto** contiene una versione breve del manuale, disponibile anche offline.
+
+## Privacy e dati
+
+L’app non ha un server: schede, foto, note vocali e coordinate restano **solo sul dispositivo** (IndexedDB) e nei backup creati dall’utente. Escono dal dispositivo soltanto, e solo quando si usa la funzione:
+
+| Funzione | Dati inviati | Destinatario |
+|---|---|---|
+| Sfondo della mappa | la zona visualizzata | OpenStreetMap |
+| Wikipedia, GBIF | il nome cercato | Wikimedia, GBIF |
+| PlantNet | il nome, oppure la foto scelta | Pl@ntNet |
+| Cerca con AI | nome e caratteri botanici (mai foto, GPS o note) | il servizio scelto |
+| Proposte AI dal catalogo | la slide e la nota del corso | il servizio scelto |
+
+Le chiavi AI stanno in `open.env`, che **non va mai** messo nello ZIP, in Drive o su GitHub: `.gitignore` lo esclude e `scripts/check_public_secrets.py` blocca la pubblicazione se trova un file `.env`.
+
+## Struttura del repository
 
 ```
-├── index.html               Struttura della pagina
-├── css/app.css              Stili e layout responsive
-├── app.js                   Logica, archivio, GPS, backup e importazioni
-├── js/                      Configurazione, utilità, database, ricerche e moduli:
-│   ├── guida.js             guida delle 144 specie, catalogo, AI, ricerche web
-│   ├── mappa.js             mappa, tile offline, traccia GPS
-│   ├── stampa-qr.js         QR, scansione etichette, stampa A4
-│   └── backup.js            backup ZIP, ripristino, unione, Excel/CSV, esportazioni
-├── icone.js                 Disegni dei campi botanici
-├── data/                    Guida locale alle 144 specie
-├── slides/                  Slide del corso (scaricate anche per l'uso offline)
-├── lib/                     Librerie incluse per mappa, QR, ZIP ed Excel
-├── manifest.json            Manifest PWA (nome, icone, colori)
-├── service-worker.js        Cache offline dell'app, delle slide e della mappa
+├── index.html               Struttura della pagina principale
+├── pinaceae.html            Chiave delle Pinaceae (pagina autonoma, offline)
+├── css/app.css              Stili e layout adattivo
+├── app.js                   Avvio, archivio, scheda, GPS, configurazione, aiuto
+├── js/
+│   ├── config.js            Campi della scheda, dipendenze, versione
+│   ├── utils.js             Funzioni di supporto e preferenze
+│   ├── database.js          Archivio IndexedDB
+│   ├── guida.js             Catalogo delle 144 specie, ricerche, AI
+│   ├── ricerca-servizi.js   Servizi esterni (GBIF, PlantNet, AI) ed errori
+│   ├── mappa.js             Mappa, tile offline, traccia GPS
+│   ├── mappa-export.js      Stampa della mappa e pagina HTML mappa + schede
+│   ├── stampa-qr.js         QR, scansione, stampa A4 ed etichette
+│   ├── backup.js            Backup ZIP, ripristino, unione, Excel/CSV, esportazioni
+│   └── altezza.js           Misura dell’altezza
+├── icone.js                 Disegni dei campi illustrati
+├── data/guida-specie.js     Dati delle 144 specie del corso
+├── slides/                  Slide del corso (cache offline separata)
+├── img/                     Immagini delle pagine (schema delle Pinaceae)
+├── lib/                     Leaflet, JSZip, xlsx-populate, generatore QR
+├── icons/                   Icone dell’app
+├── manifest.json            Manifest PWA
+├── service-worker.js        Cache offline dell’app, delle slide e della mappa
 ├── versione.json            Versione pubblicata, letta da «Controlla aggiornamenti»
-├── icons/                   Icone dell'app in varie dimensioni
 ├── manuali/                 Manuale utente e guida rapida (PDF + Word)
-├── screenshot/              Immagini per questo README
-├── scripts/versione.py      Cambia la versione in tutti i file in un colpo solo
-├── scripts/check_public_secrets.py  Controlla che nessun file .env venga pubblicato
+├── screenshot/              Immagini di questo README
+├── scripts/versione.py      Cambia la versione in tutti i file insieme
+├── scripts/check_public_secrets.py  Blocca la pubblicazione di file .env
 ├── tests/                   Prove automatiche (npm test)
 └── CHANGELOG.md             Novità di ogni versione
 ```
 
-## 🔢 Pubblicare una nuova versione
+JavaScript nativo, senza framework e senza build: i file del repository sono esattamente quelli pubblicati.
 
-Il numero di versione compare in più file e deve essere uguale ovunque, altrimenti il pulsante «Controlla aggiornamenti» non trova la versione nuova. Uno script lo cambia in tutti i file insieme.
+## Sviluppo e test
 
-1. Apri Termux ed entra nella cartella del progetto, per esempio: `cd ~/Scheda-botanica-pro`
-2. Scrivi `python scripts/versione.py` e premi Invio: vedi la versione attuale in ogni file.
-3. Scrivi `python scripts/versione.py 3.28.1` (con il numero nuovo) e premi Invio. Lo script aggiorna `js/config.js`, `versione.json`, `package.json`, questo README e alza di uno il numero della cache del service worker, così i telefoni scaricano i file nuovi.
-4. Aggiungi in cima a `CHANGELOG.md` cosa è cambiato.
-5. Pubblica come al solito con `pubblica`.
+Servono Node.js e Chromium.
 
-**Test (facoltativi, servono Node.js e Chromium):** `npm install`, poi `npx playwright install chromium`, poi `npm test`. Il solo controllo della versione si lancia con `node tests/versione.cjs` e non richiede il browser.
+```bash
+npm install
+npx playwright install chromium     # oppure CHROMIUM_PATH=/percorso/chromium
+npm test
+```
 
-## 🚀 Pubblicare / aggiornare su GitHub Pages
+`npm test` esegue sette gruppi di prove:
+
+| File | Che cosa verifica |
+|---|---|
+| `tests/versione.cjs` | stessa versione in config.js, versione.json, package.json e README |
+| `tests/search-services.cjs` | ricerche e servizi esterni simulati, senza contattare Internet |
+| `tests/browser.cjs` | flussi principali dell’app nel browser |
+| `tests/resilience.cjs` | note vocali con permesso negato; aggiornamento della PWA senza perdere le schede offline |
+| `tests/altezza-mappa.cjs` | misura dell’altezza, foglia composta, stampa della mappa e pagina HTML |
+| `tests/pinaceae.cjs` | Chiave delle Pinaceae, slide e collegamenti con il catalogo |
+| `tests/interfaccia.cjs` | configurazione a gruppi e Aiuto con indice e ricerca |
+
+## Pubblicare una nuova versione
+
+Il numero di versione compare in più file e deve essere uguale ovunque, altrimenti «Controlla aggiornamenti» non trova la versione nuova.
+
+1. Nella cartella del progetto: `python scripts/versione.py` mostra la versione attuale in ogni file.
+2. `python scripts/versione.py 3.45.0` (con il numero nuovo) aggiorna `js/config.js`, `versione.json`, `package.json`, questo README e alza il numero della cache del service worker, così i dispositivi scaricano i file nuovi.
+3. Aggiungi in cima a `CHANGELOG.md` cosa è cambiato.
+4. Pubblica. Con lo script Termux `pubblica` (opzione 1) partendo dallo ZIP del progetto nella cartella di Google Drive; oppure a mano:
 
 ```bash
 git add .
-git commit -m "Aggiornamento app"
+git commit -m "Versione 3.45.0"
 git push
 ```
 
-Con **Settings → Pages → Deploy from branch → main / (root)** attivato, GitHub pubblica automaticamente il contenuto del repository all'indirizzo `https://<utente>.github.io/<nome-repo>/` a ogni push.
+GitHub Pages pubblica il contenuto del branch principale all’indirizzo `https://baudinolorenzo73.github.io/Scheda-botanica-pro/`. Attendi che il deploy su GitHub Actions sia verde, poi tocca la versione nell’app per aggiornarla.
 
-## 🔒 Privacy e dati
+## Tecnologie
 
-L'app non ha un server: i dati (schede, foto, audio) restano **solo sul dispositivo**, in un archivio locale del browser (IndexedDB). La mappa contatta OpenStreetMap; l’identificazione richiesta invia una foto a PlantNet. La ricerca web consulta Wikipedia/Wikidata. Il collegamento tassonomico può consultare GBIF automaticamente dopo l’inserimento o l’apertura del nome di una specie. Questi servizi richiedono internet; l’archivio locale resta utilizzabile offline.
+JavaScript nativo · IndexedDB · Service Worker e Cache API · [Leaflet](https://leafletjs.com) con tile OpenStreetMap · Geolocation, MediaRecorder, DeviceOrientation e File System Access API · JSZip · xlsx-populate · [GBIF](https://www.gbif.org) · [Pl@ntNet](https://my.plantnet.org) · Playwright per i test.
 
-## 🧑‍💻 Tecnologie
+## Licenza
 
-JavaScript nativo senza framework né build, [Leaflet](https://leafletjs.com) per la mappa, IndexedDB per il salvataggio, MediaRecorder per l'audio e Geolocation API per il GPS.
-
-## ⚖️ Licenza
-
-Progetto personale — **by Lollo ®2026**.
+Progetto personale — **by Lollo ®2026**. Le slide e i dati delle 144 specie provengono dal materiale del corso «Gli alberi — Riconoscimento vegetale».
 
 ---
 
-<sub>Manuali e struttura PWA generati con l'aiuto di Claude.</sub>
+<sub>Manuali, test e parte del codice realizzati con l’aiuto di Claude.</sub>
