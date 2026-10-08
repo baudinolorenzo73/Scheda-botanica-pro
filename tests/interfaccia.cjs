@@ -70,6 +70,21 @@ const server = http.createServer((req, res) => {
     await page.click('#aiuto-x');
     assert.ok(!(await page.locator('#dlg-aiuto').evaluate(d => d.open)));
     console.log('OK Aiuto: pulsante, indice e ricerca');
+    // Testata leggibile a ogni larghezza (bug 3.44.0: tra 701 e 760 px il titolo andava in colonna)
+    for (const w of [320, 360, 390, 600, 700, 701, 720, 740, 760, 761, 800, 1024, 1280, 1600]) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(80);
+      const m = await page.evaluate(() => {
+        const h = document.querySelector('header.testata').getBoundingClientRect();
+        const t = document.querySelector('.marchio-app h1').getBoundingClientRect();
+        const a = document.querySelector('#btn-aiuto-testa').getBoundingClientRect();
+        return { h: h.height, tw: t.width, th: t.height, ax: a.right, sx: document.documentElement.scrollWidth - innerWidth };
+      });
+      assert.ok(m.h < 140, `${w}px: testata alta ${m.h}px`);
+      assert.ok(m.tw > 150 && m.th < 60, `${w}px: titolo ${m.tw}×${m.th}`);
+      assert.ok(m.ax <= w && m.sx <= 0, `${w}px: contenuto oltre il bordo`);
+    }
+    console.log('OK Testata leggibile da 320 a 1600 px');
     assert.ok(fs.existsSync(path.join(root, 'manuali/manuale-utente.pdf')), 'manuale PDF mancante');
     assert.deepEqual(errori, [], errori.join('; '));
   } finally { await browser.close(); server.close(); }

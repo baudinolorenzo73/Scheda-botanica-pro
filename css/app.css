@@ -856,11 +856,12 @@ body[data-interfaccia="125"]{zoom:1.25}
 @media (prefers-reduced-motion:reduce){.menu-gruppo>summary::after{transition:none}}
 
 /* ---------- Aiuto (3.44): pulsante in testata, indice, ricerca, sezioni ---------- */
-.testata-destra{display:flex;align-items:center;gap:8px;flex:none}
+.testata-destra{display:flex;align-items:center;gap:8px;flex:none;min-width:0}
 .aiuto-testa-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.5);border-radius:999px;background:#fff;color:var(--bosco-scuro);padding:4px 13px 4px 5px;font:700 13px/1.2 system-ui,sans-serif;min-height:36px;cursor:pointer;box-shadow:0 2px 8px #0002}
 .aiuto-testa-btn:hover,.aiuto-testa-btn:focus-visible{background:var(--focus)}
 .aiuto-q{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--bosco);color:#fff;font:700 15px/1 Georgia,serif}
-@media (max-width:760px){
+/* Stessa soglia della testata a una colonna (700px): sopra, la testata è su una riga e il titolo deve restare largo. */
+@media (max-width:700px){
   .testata-destra{display:grid;grid-template-columns:auto 1fr;width:100%}
   .testata-destra .versione-app{width:100%}
 }

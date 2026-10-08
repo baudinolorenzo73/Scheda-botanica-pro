@@ -2,6 +2,13 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.44.1 · correzione: testata su tablet in verticale
+
+- **Errore corretto**: con la 3.44.0, sugli schermi larghi tra 701 e 760 pixel (molti tablet in verticale) la testata si schiacciava: il titolo «Scheda Botanica» andava in colonna, una lettera per riga, e copriva la sezione «Sul campo». Il gruppo «Aiuto + versione» ora si allarga a tutta riga solo quando anche la testata va su due righe (fino a 700 pixel).
+- Nuovo test: la testata viene controllata a 14 larghezze, da 320 a 1600 pixel.
+
+---
+
 ## 3.44.0 · configurazione ordinata, nuovo Aiuto, manuale e README
 
 - **Configurazione e backup riordinata in sei gruppi** che si aprono e si chiudono: 💾 Backup e ripristino · 📤 Importa ed esporta dati · 🖥 Schermo e modifica delle schede · 🌳 Catalogo delle 144 piante e riconoscimento · 🤖 Assistente AI · 🛠 Aggiornamenti e manutenzione. Ogni gruppo ha una riga che spiega cosa contiene. All’apertura è aperto solo Backup; l’app ricorda quali gruppi hai lasciato aperti. Toccando la versione in alto si apre direttamente il gruppo degli aggiornamenti. Nessuna funzione è stata tolta o rinominata.
