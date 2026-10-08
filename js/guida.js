@@ -1118,6 +1118,7 @@ async function cercaAIDaScheda() {
 }
 
 function usaRisultatoAuto(c) {
+  if (avvisaBloccata(S.aperta)) return;
   const r = S.aperta;
   if (!r) return;
   if (r.nome.trim() && r.nome.trim().toLowerCase() !== c.nome.toLowerCase() &&
@@ -1396,6 +1397,7 @@ function disegnaRisultatoWeb(dati) {
 }
 
 function usaRisultatoWeb(nomeSci) {
+  if (avvisaBloccata(S.aperta)) return;
   if (!S.aperta) { $('#dlg-guida-specie').close(); return; }
   const r = S.aperta;
   r.nome = nomeSci;
@@ -1419,6 +1421,7 @@ function usaRisultatoWeb(nomeSci) {
 }
 
 function usaNomeDaGuidaSpecie(v) {
+  if (avvisaBloccata(S.aperta)) return;
   const chiudiRicerca = () => {
     for (const id of ['#dlg-guida-specie', '#dlg-zona-habitat']) {
       const dialogo = $(id);

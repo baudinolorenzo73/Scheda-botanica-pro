@@ -901,3 +901,15 @@ body[data-interfaccia="125"]{zoom:1.25}
 .aiuto-glossario dd{margin:0}
 @media (max-width:520px){.aiuto-glossario{grid-template-columns:1fr;gap:0}.aiuto-glossario dd{margin-bottom:8px}}
 @media (min-width:700px){.aiuto-indice{flex-wrap:wrap;overflow:visible}}
+
+/* ---------- Scheda bloccata (3.45) ---------- */
+.btn-blocca{font-size:19px}
+.btn-blocca[aria-pressed="true"]{background:#fff;color:var(--bosco-scuro);box-shadow:0 0 0 2px var(--lichene)}
+.avviso-blocco{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:12px 14px;border-radius:var(--r-piccolo);border:1.5px solid var(--lichene);background:var(--focus);font-size:14px;line-height:1.45}
+.avviso-blocco span{flex:1 1 260px}
+.avviso-blocco.nascosto{display:none}
+#editor.bloccata #sezioni summary{pointer-events:none;opacity:.5}
+#editor.bloccata #sezioni input:disabled,#editor.bloccata #sezioni select:disabled,#editor.bloccata #sezioni textarea:disabled{opacity:1;color:var(--inchiostro);-webkit-text-fill-color:var(--inchiostro);background:var(--carta)}
+#editor.bloccata .ed-media button:disabled,#editor.bloccata .azioni-rapide button:disabled,#editor.bloccata #btn-elimina:disabled{opacity:.4}
+.lucchetto{font-style:normal}
+.btn-elimina-riga:disabled{opacity:.3;cursor:not-allowed}

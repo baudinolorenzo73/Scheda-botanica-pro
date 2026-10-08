@@ -36,7 +36,7 @@ function flussoApplicazione() {
     trovaSpecieGuida: nome => nome === guida.nomeSci ? guida : null, nomeCatalogo: v => v.nomeSci,
     punteggioCaratteristiche: () => ({ punti: 1, totale: 1 }),
     el: (tipo, attrs, ...figli) => elemento(tipo, attrs, figli),
-    confirm: () => true, salvaPresto() {}, disegnaLinkGbif() {}, usaNomeDaGuidaSpecie: v => { r.nome = v.nomeSci; }, usaRisultatoWeb: nome => { r.nome = nome; },
+    confirm: () => true, salvaPresto() {}, disegnaLinkGbif() {}, avvisaBloccata: () => false, usaNomeDaGuidaSpecie: v => { r.nome = v.nomeSci; }, usaRisultatoWeb: nome => { r.nome = nome; },
     fetch: async (url, opzioni) => { richieste.push(String(url)); return invii(String(url), opzioni); } });
   $('#f-nome').value = r.nome;
   $('#cg-ai-fornitore').value = 'gemini';

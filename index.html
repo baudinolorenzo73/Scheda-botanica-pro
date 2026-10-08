@@ -173,6 +173,7 @@
   <header class="testata">
     <button class="btn-icona" id="btn-chiudi" aria-label="Torna all'elenco"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-back"></use></svg></button>
     <h1 id="ed-titolo">Scheda <small id="ed-stato">—</small></h1>
+    <button class="btn-icona btn-blocca" id="btn-blocca" type="button" title="Blocca la scheda" aria-label="Blocca la scheda: nessuno potrà modificarla" aria-pressed="false">🔓</button>
     <button class="btn-icona" id="btn-salva-scheda" title="Salva la scheda" aria-label="Salva la scheda">✓</button>
     <button class="btn-icona" id="btn-stampa-una" title="Stampa questa scheda" aria-label="Stampa questa scheda"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-print"></use></svg></button>
   </header>
@@ -187,6 +188,10 @@
     <nav class="nav-editor" aria-label="Sezioni scheda">
       <a href="#sez-oss">Dati</a><a href="#sez-veg">Foglie</a><a href="#sez-ped">Terreno</a><a href="#sez-fit">Salute</a><a href="#sez-not">Note</a>
     </nav>
+    <div id="avviso-blocco" class="avviso-blocco nascosto" role="status">
+      <span><b>🔒 Scheda bloccata.</b> Puoi consultarla, guardare foto e slide, ascoltare le note, stampare e scaricare QR e report, ma non modificarla né eliminarla.</span>
+      <button type="button" class="btn" id="btn-sblocca">🔓 Sblocca</button>
+    </div>
     <div id="sezioni"></div>
 
     <!-- In orizzontale su schermi larghi questa colonna (GPS, foto, note vocali) sta a destra dei campi. -->
@@ -740,6 +745,9 @@
     </ul>
     <p>I campi non pertinenti spariscono da soli: con foglie <b>a squame</b> spariscono lamina e margine; con lamina <b>aghiforme</b> sparisce il margine. Le schede salvate con le vecchie diciture si adeguano da sole.</p>
     <p>Se il nome corrisponde a una pianta del catalogo, i campi diversi dal catalogo vengono segnalati con «⚠ il catalogo per questa specie indica…». È un avviso: la tua osservazione resta com’è.</p>
+    <h3>Bloccare una scheda</h3>
+    <p>Quando una scheda è completa e controllata, tocca il lucchetto <b>🔓</b> in alto nella scheda: diventa <b>🔒 bloccata</b>. Si può consultare, guardare foto e slide, ascoltare le note, stampare e scaricare QR e report, ma non modificare né eliminare, neanche per un tocco sbagliato. Nell’elenco ha il lucchetto accanto al nome.</p>
+    <p>Per modificarla di nuovo tocca <b>🔓 Sblocca</b> e conferma. Il blocco è salvato nella scheda e nel backup; importando con «Unisci», una scheda bloccata sul dispositivo resta com’era.</p>
   </details>
 
   <details class="aiuto-sez" data-sez="altezza">

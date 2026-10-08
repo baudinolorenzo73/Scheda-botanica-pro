@@ -2,6 +2,18 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.45.0 · bloccare una scheda
+
+- Nuovo **lucchetto 🔓** in alto nella scheda, accanto a ✓. Toccandolo la scheda diventa **🔒 bloccata**: si consulta (campi, foto, slide, note vocali), si stampa e se ne scaricano QR e report, ma **non si modifica né si elimina**. In cima compare l’avviso «Scheda bloccata» con il pulsante **🔓 Sblocca**; lo sblocco chiede conferma.
+- Con la scheda bloccata sono spenti: tutti i campi, Cerca e Cerca intelligente, misura dell’altezza, Foto/GPS/Nota vocale nella barra, Scatta, Dalla galleria, Rileva, Scegli dalla mappa, Rimuovi, didascalie, Identifica, Elimina foto e note, Elimina scheda. «+ Nuova scheda» resta attivo.
+- Oltre ai pulsanti spenti, ogni funzione che modifica la scheda controlla il blocco: nessun percorso secondario la cambia.
+- Nell’elenco la scheda bloccata ha il lucchetto accanto al nome e il cestino spento.
+- Il blocco è salvato nella scheda, resta dopo la chiusura dell’app e viaggia nel backup. Con **Ripristina → Unisci**, una scheda bloccata sul dispositivo resta com’era e il riepilogo lo segnala. «Rinumera le schede» e «Nuovo elenco» agiscono invece su tutte le schede, bloccate comprese.
+- Aggiornati Aiuto (sezione «La scheda»), manuale (paragrafo 4.6, 49 pagine), guida rapida e README.
+- Nuovo test `tests/blocco.cjs`.
+
+---
+
 ## 3.44.1 · correzione: testata su tablet in verticale
 
 - **Errore corretto**: con la 3.44.0, sugli schermi larghi tra 701 e 760 pixel (molti tablet in verticale) la testata si schiacciava: il titolo «Scheda Botanica» andava in colonna, una lettera per riga, e copriva la sezione «Sul campo». Il gruppo «Aiuto + versione» ora si allarga a tutta riga solo quando anche la testata va su due righe (fino a 700 pixel).

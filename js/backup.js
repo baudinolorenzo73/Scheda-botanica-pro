@@ -164,7 +164,7 @@ function applicaSceltaConflitti(unione) {
 }
 
 function schedeEquivalenti(a, b) {
-  const campi = ['cancellata', 'gbifId', 'plantnetNome', ...CAMPI.map((c) => c.k)];
+  const campi = ['cancellata', 'bloccata', 'gbifId', 'plantnetNome', ...CAMPI.map((c) => c.k)];
   if (campi.some((k) => String(a[k] ?? '') !== String(b[k] ?? ''))) return false;
   if (!stessoGPS(a.gps, b.gps)) return false;
   const ids = (r) => [...r.foto, ...r.audio].map((m) => `${m.id}|${m.didascalia || ''}`).sort().join(',');
@@ -248,7 +248,7 @@ async function importaDati(voci, modo) {
     mostraEsitoImportazione(voci.length, 0, 0, 0);
     return;
   }
-  let nuove = 0, aggiornate = 0, invariate = 0;
+  let nuove = 0, aggiornate = 0, invariate = 0, protette = 0;
   // Unione campo per campo: foto e audio si sommano, i campi diversi li sceglie l'utente.
   const media = await preparaMediaImportazione(voci);
   const locali = new Map([...S.schede, ...S.cestino].map((s) => [s.uid, s]));
@@ -269,6 +269,8 @@ async function importaDati(voci, modo) {
       }
     }
     const locale = locali.get(arr.uid);
+    // Una scheda bloccata su questo dispositivo non viene toccata dall'unione.
+    if (locale && schedaBloccata(locale)) { protette++; invariate++; continue; }
     if (!locale) { unioni.push({ arrivata: arr, record: arr, conflitti: [], nuova: true }); continue; }
     unioni.push({ arrivata: arr, ...unisciScheda(locale, arr) });
   }
@@ -319,10 +321,10 @@ async function importaDati(voci, modo) {
   await disegnaElenco();
   aggiornaBadgeCestino();
   await pulisciMediaOrfani().catch(() => 0);
-  mostraEsitoImportazione(nuove, aggiornate, invariate, 0);
+  mostraEsitoImportazione(nuove, aggiornate, invariate, 0, protette);
 }
 
-function mostraEsitoImportazione(nuove, aggiornate, invariate, mediaErr) {
+function mostraEsitoImportazione(nuove, aggiornate, invariate, mediaErr, protette = 0) {
   const dup = progDuplicati().size;
 
   const dlg = el('dialog', {},
@@ -333,6 +335,7 @@ function mostraEsitoImportazione(nuove, aggiornate, invariate, mediaErr) {
       el('div', {}, el('div', { class: 'esito-numero esito-neutro', testo: String(invariate) }), el('div', { class: 'testo-nota', testo: 'Già attuali' })),
       el('div', {}, el('div', { class: 'esito-numero', testo: String(S.schede.length) }), el('div', { class: 'testo-nota', testo: 'Totale attive ora' }))),
     mediaErr ? el('p', { class: 'avviso-rosso', testo: `⚠ ${mediaErr} file media non importati` }) : null,
+    protette ? el('p', { testo: `🔒 ${protette === 1 ? '1 scheda bloccata è rimasta' : protette + ' schede bloccate sono rimaste'} com’era su questo dispositivo: sbloccala prima, se vuoi unire i dati arrivati.` }) : null,
     dup ? el('p', { class: 'avviso-rosso', testo: `⚠ ${dup} numeri progressivi duplicati (segnalati nell'elenco)` }) : null,
     el('div', { class: 'azioni' }, el('button', { type: 'button', class: 'btn primario', onclick: () => dlg.close() }, 'OK')));
   document.body.append(dlg);

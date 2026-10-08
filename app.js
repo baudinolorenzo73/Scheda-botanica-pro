@@ -75,6 +75,7 @@ function normalizza(v) {
   r.gbifId = /^\d+$/.test(String(v.gbifId ?? '')) ? String(v.gbifId) : '';             // ID GBIF della specie, se identificata con PlantNet
   r.plantnetNome = typeof v.plantnetNome === 'string' ? v.plantnetNome.slice(0, 180) : '';
   r.bozzaVuota = v.bozzaVuota === true;
+  r.bloccata = v.bloccata === true;      // scheda bloccata: si consulta ma non si modifica
   v = migraClassificazioneFoglie(v);
   for (const c of CAMPI) {
     let val = v[c.k] === undefined || v[c.k] === null ? '' : String(v[c.k]).trim();
@@ -159,7 +160,64 @@ function schedaSenzaContenuto(r) {
     !String(r.gbifId || '').trim() && !String(r.plantnetNome || '').trim();
 }
 
+/* ---------- Blocco della scheda ----------
+   Una scheda bloccata (r.bloccata = true) si consulta ma non si modifica: campi
+   inerti, comandi di modifica disattivati e un controllo in ogni funzione che
+   cambia i dati, così nessun percorso secondario la altera per errore. */
+function schedaBloccata(r) { return !!r?.bloccata; }
+function avvisaBloccata(r) {
+  if (!schedaBloccata(r)) return false;
+  stato('🔒 Scheda bloccata: tocca «🔓 Sblocca» per modificarla', true);
+  return true;
+}
+// Disattiva (o riattiva) i controlli indicati. Si riattivano solo quelli spenti dal
+// blocco, non quelli disattivati per altri motivi.
+function disattivaPerBlocco(elementi, b) {
+  for (const x of elementi) {
+    if (b && !x.disabled) { x.disabled = true; x.dataset.bloccato = '1'; }
+    else if (!b && x.dataset.bloccato) { x.disabled = false; delete x.dataset.bloccato; }
+  }
+}
+const SEL_MODIFICA_MEDIA = '#gps-box button, #foto-griglia input, #foto-griglia button, #audio-lista input, #audio-lista button';
+function applicaBloccoMedia() {
+  disattivaPerBlocco(document.querySelectorAll(SEL_MODIFICA_MEDIA), schedaBloccata(S.aperta));
+}
+function applicaBlocco() {
+  const r = S.aperta;
+  const b = schedaBloccata(r);
+  $('#editor').classList.toggle('bloccata', b);
+  // Campi della scheda: tutti spenti tranne la miniatura della slide, che si può ancora aprire.
+  disattivaPerBlocco([...document.querySelectorAll('#sezioni input, #sezioni select, #sezioni textarea, #sezioni button')].filter((x) => !x.closest('#scheda-slide')), b);
+  disattivaPerBlocco(['#ar-foto', '#ar-gps', '#ar-audio', '#btn-scatta', '#btn-galleria', '#btn-audio-rec', '#btn-elimina'].map((id) => $(id)).filter(Boolean), b);
+  applicaBloccoMedia();
+  $('#avviso-blocco').classList.toggle('nascosto', !b);
+  const btn = $('#btn-blocca');
+  btn.textContent = b ? '🔒' : '🔓';
+  btn.setAttribute('aria-pressed', String(b));
+  btn.title = b ? 'Scheda bloccata: tocca per sbloccarla' : 'Blocca la scheda';
+  btn.setAttribute('aria-label', b ? 'Scheda bloccata: tocca per sbloccarla' : 'Blocca la scheda: nessuno potrà modificarla');
+}
+async function cambiaBlocco(blocca) {
+  const r = S.aperta;
+  if (!r || schedaBloccata(r) === blocca) return;
+  if (blocca) {
+    if (GPSR.watch !== null && GPSR.riga === r) fermaGPS(true);
+    if (REG.attiva && REG.riga === r) { fermaRegistrazione(); await REG.fine; }
+    const nonValido = $('#modulo').querySelector(':invalid');
+    if (nonValido) { nonValido.reportValidity(); return; }
+    if (schedaSenzaContenuto(r)) { stato('Scheda vuota: inserisci almeno un dato prima di bloccarla', true); return; }
+  } else if (!confirm(`Sbloccare la scheda N° ${r.prog || '?'}${r.nome ? ' · ' + r.nome : ''}? Potrai di nuovo modificarla ed eliminarla.`)) return;
+  r.bloccata = blocca;
+  r.modificato = oraISO();
+  applicaBlocco();   // subito: lo stato visibile coincide sempre con quello della scheda
+  if (!(await salvaOra(r))) return;
+  stato(blocca ? '🔒 Scheda bloccata' : '🔓 Scheda sbloccata: ora puoi modificarla');
+  disegnaElenco();
+}
+
 function salvaPresto(r) {
+  // Rete di sicurezza: una scheda bloccata non si salva con modifiche.
+  if (avvisaBloccata(r)) return;
   r.modificato = oraISO();
   nonSalvate.set(r.uid, r);
   stato('Salvataggio in corso…');
@@ -253,6 +311,7 @@ function liberaUrlFoto(id) {
 }
 
 async function aggiungiFoto(r, files) {
+  if (avvisaBloccata(r)) return;
   const avanz = $('#foto-avanz');
   let fatte = 0;
   for (const f of files) {
@@ -275,6 +334,7 @@ async function aggiungiFoto(r, files) {
 }
 
 async function eliminaFoto(r, id) {
+  if (avvisaBloccata(r)) return;
   if (!confirm('Eliminare questa foto?')) return;
   const foto = r.foto;
   r.foto = r.foto.filter((p) => p.id !== id);
@@ -311,6 +371,7 @@ function estensioneAudio(mime) {
 }
 
 async function avviaRegistrazione(r) {
+  if (avvisaBloccata(r)) return;
   if (REG.attiva) return alert('C’è già una registrazione in corso.');
   if (!navigator.mediaDevices?.getUserMedia || !('MediaRecorder' in window)) return alert('Registrazione audio non disponibile su questo dispositivo/browser.');
   if (!r || REG.inAttesa) return;
@@ -399,10 +460,11 @@ async function disegnaAudio() {
       el('span', { style: 'color:var(--tenue);font-size:12px;white-space:nowrap', testo: `${mmss(a.durata)} · ${dataIT(a.quando)}` }),
       el('button', { type: 'button', class: 'btn pericolo', onclick: () => eliminaAudio(r, a.id) }, 'Elimina'));
   }));
-  if (S.aperta === r) lista.replaceChildren(...blocchi);
+  if (S.aperta === r) { lista.replaceChildren(...blocchi); applicaBloccoMedia(); }
 }
 
 async function eliminaAudio(r, id) {
+  if (avvisaBloccata(r)) return;
   if (!confirm('Eliminare questa nota vocale?')) return;
   const audio = r.audio;
   r.audio = r.audio.filter((a) => a.id !== id);
@@ -602,7 +664,7 @@ async function disegnaElenco() {
     },
       el('div', { class: 'voce-foto' }, foto, el('span', { class: 'voce-num', testo: r.prog || '?' })),
       el('div', { style: 'min-width:0' },
-        el('div', { class: 'titolo specie', testo: etichettaScheda(r) }),
+        el('div', { class: 'titolo specie' }, schedaBloccata(r) ? el('span', { class: 'lucchetto', title: 'Scheda bloccata', 'aria-label': 'Scheda bloccata' }, '🔒 ') : null, etichettaScheda(r)),
         el('div', { class: 'sotto', testo: r.data ? dataBreveIT(r.data) : 'Data non indicata' }),
         dati ? el('div', { class: 'dati-riassunto', testo: dati }) : null,
         el('div', { class: 'segni' },
@@ -618,7 +680,7 @@ async function disegnaElenco() {
             onchange: (e) => { e.target.checked ? S.selezionate.add(r.uid) : S.selezionate.delete(r.uid); aggiornaBottoneSelezionaTutte(schedeVisibili()); },
           }), 'Seleziona'),
         el('button', {
-          type: 'button', class: 'btn-elimina-riga', 'aria-label': `Elimina scheda ${r.prog}`,
+          type: 'button', class: 'btn-elimina-riga', 'aria-label': schedaBloccata(r) ? `Scheda ${r.prog} bloccata: non si può eliminare` : `Elimina scheda ${r.prog}`, disabled: schedaBloccata(r),
           onclick: (e) => { e.stopPropagation(); eliminaSchedaDaElenco(r.uid); },
         }, iconaSvg('trash'))));
   }));
@@ -928,6 +990,7 @@ function apriPicker(k) {
 }
 
 function sceglIllustrata(k, v) {
+  if (avvisaBloccata(S.aperta)) return;
   const r = S.aperta;
   r[k] = v;
   r.modificato = oraISO();
@@ -1023,6 +1086,7 @@ function apriEditor(uid, sostituisciCronologia = false) {
   aggiornaSuggerimentiFito(r.problemi);
   aggiornaUIRegistrazione();
   aggiornaBarraRapida();
+  applicaBlocco();
   const ed = $('#editor');
   ed.classList.remove('nascosto');
   ed.scrollTop = 0;
@@ -1319,7 +1383,7 @@ function disegnaCestino() {
 
 async function eliminaScheda() {
   const r = S.aperta;
-  if (!r) return;
+  if (!r || avvisaBloccata(r)) return;
   await spostaNelCestino(r);
   nascondiEditor();
   if (history.state?.editor) history.back();
@@ -1328,6 +1392,7 @@ async function eliminaScheda() {
 async function eliminaSchedaDaElenco(uid) {
   const r = S.schede.find((s) => s.uid === uid);
   if (!r) return;
+  if (schedaBloccata(r)) { stato(`🔒 La scheda N° ${r.prog || '?'} è bloccata: aprila e sbloccala per eliminarla`, true); return; }
   await spostaNelCestino(r);
 }
 
@@ -1376,6 +1441,7 @@ const GPSR = { watch: null, timer: null, migliore: null, riga: null };
 function rilevaGPS() {
   if (GPSR.watch !== null) return fermaGPS(true);   // secondo tocco: ferma e usa il punto migliore
   const r = S.aperta;
+  if (avvisaBloccata(r)) return;
   if (!navigator.geolocation) return alert('Geolocalizzazione non disponibile su questo dispositivo.');
   GPSR.riga = r; GPSR.migliore = null;
   mostraRicercaGPS('⏳ Cerco i satelliti… all’aperto è più preciso');
@@ -1445,6 +1511,7 @@ function mostraCoordScelta(lat, lng) {
 }
 
 function sceglierePosizioneDaMappa(r) {
+  if (avvisaBloccata(r)) return;
   sceltaGPSPer = r;
   const dlg = $('#dlg-mappa-scegli');
   dlg.showModal();
@@ -1502,7 +1569,7 @@ async function disegnaFoto() {
           el('button', { type: 'button', onclick: () => eliminaFoto(r, p.id) }, 'Elimina')),
         el('span', { class: 'testo-tenue', testo: dataIT(p.quando) })));
   }));
-  if (S.aperta === r) griglia.replaceChildren(...blocchi);
+  if (S.aperta === r) { griglia.replaceChildren(...blocchi); applicaBloccoMedia(); }
 }
 
 /* =====================================================================
@@ -1533,6 +1600,7 @@ async function verificaChiavePlantNet() {
 }
 
 async function apriIdentificazione(r, p) {
+  if (avvisaBloccata(r)) return;
   if (!chiavePlantNet()) {
     if (confirm('Per identificare le foto serve una chiave PlantNet gratuita, non ancora configurata.\nVuoi inserirla ora?')) apriImpostazioniPlantNet();
     return;
@@ -1686,7 +1754,7 @@ async function disegnaLinkGbif() {
   const id = await trovaGbifId(nomeCercato);
   // un ID arrivato nel frattempo da una ricerca confermata (GBIF/PlantNet/AI) ha la precedenza
   if (S.aperta !== r || r.nome !== nomeCercato || r.gbifId) return;
-  if (id) { r.gbifId = id; salvaPresto(r); cont.replaceChildren(bottone(id)); }
+  if (id && !schedaBloccata(r)) { r.gbifId = id; salvaPresto(r); cont.replaceChildren(bottone(id)); }
   else cont.replaceChildren(el('button', {
     type: 'button', class: 'btn', onclick: cercaGbifDaScheda,
   }, 'Cerca su GBIF'));
@@ -1800,6 +1868,7 @@ function aggiornaAttivoNome() {
 }
 
 function selezionaRisultatoNome(voce) {
+  if (avvisaBloccata(S.aperta)) return;
   const r = S.aperta;
   if (!r) return;
   r.nome = voce.nome;
@@ -2101,6 +2170,8 @@ function collegaEventi() {
   $('#btn-chiudi').onclick = () => chiudiEditor();
   $('#btn-salva-scheda').onclick = salvaSchedaVisibile;
   $('#btn-elimina').onclick = eliminaScheda;
+  $('#btn-blocca').onclick = () => cambiaBlocco(!schedaBloccata(S.aperta));
+  $('#btn-sblocca').onclick = () => cambiaBlocco(false);
   $('#btn-stampa-una').onclick = async () => { await salvaOra(S.aperta); apriStampa(S.aperta); };
   $('#btn-scatta').onclick = () => $('#in-scatta').click();
   $('#btn-galleria').onclick = () => $('#in-galleria').click();

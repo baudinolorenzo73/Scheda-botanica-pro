@@ -2,7 +2,7 @@
 
 **App offline per il rilievo degli alberi sul campo**: schede con foto, GPS, note vocali, misura dell’altezza e stima ambientale; catalogo delle 144 piante del corso con le slide originali; Chiave delle Pinaceae; stampa, etichette QR, mappa e backup. Niente server, niente account: i dati restano sul dispositivo.
 
-**by Lollo ®2026 — versione 3.44.1**
+**by Lollo ®2026 — versione 3.45.0**
 
 👉 **[Apri l’app](https://baudinolorenzo73.github.io/Scheda-botanica-pro/)** · [📘 Manuale utente (PDF)](manuali/manuale-utente.pdf) · [Guida rapida (PDF)](manuali/guida-rapida.pdf) · [Novità (CHANGELOG)](CHANGELOG.md) · [Assistente AI e chiavi](ASSISTENTE-AI.md)
 
@@ -50,6 +50,7 @@ Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento 
 
 ### Sul campo
 - **Schede albero** con dati dendrometrici, botanici, pedologici e fitopatologici. Salvataggio automatico, senza pulsante «Salva».
+- **Blocco della scheda** 🔒: una scheda completata si consulta, si stampa e si esporta, ma non si modifica né si elimina finché non la sblocchi. Il blocco resta nel backup e protegge la scheda anche durante l’unione dei dati.
 - **Campi illustrati**: persistenza, chioma, rami, crescita, gemme, foglia, lamina e margine si scelgono da disegni con spiegazione. Le foglie seguono la tabella «Caratteristiche distintive» del corso; i campi non pertinenti (per esempio il margine di un ago) spariscono da soli.
 - **GPS** con affinamento della precisione sotto la chioma, valutazione del segnale e scelta manuale sulla mappa.
 - **Foto** compresse automaticamente e **note vocali**.
@@ -81,7 +82,7 @@ Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento 
 
 Nella cartella [`manuali/`](manuali/):
 
-- **[Manuale utente](manuali/manuale-utente.pdf)** ([.docx](manuali/manuale-utente.docx)) — 48 pagine in cinque parti (Iniziare · Sul campo · Riconoscere le piante · Organizzare e condividere · Impostazioni), con 27 schermate, esempi pratici, problemi frequenti, riferimento rapido, glossario e indice analitico.
+- **[Manuale utente](manuali/manuale-utente.pdf)** ([.docx](manuali/manuale-utente.docx)) — 49 pagine in cinque parti (Iniziare · Sul campo · Riconoscere le piante · Organizzare e condividere · Impostazioni), con 28 schermate, esempi pratici, problemi frequenti, riferimento rapido, glossario e indice analitico.
 - **[Guida rapida](manuali/guida-rapida.pdf)** ([.docx](manuali/guida-rapida.docx)) — tutto l’essenziale in una pagina.
 - **[ASSISTENTE-AI.md](ASSISTENTE-AI.md)** — chiavi, servizi, modelli ed errori dell’assistente AI.
 - **[CHANGELOG.md](CHANGELOG.md)** — le novità di ogni versione.
@@ -149,7 +150,7 @@ npx playwright install chromium     # oppure CHROMIUM_PATH=/percorso/chromium
 npm test
 ```
 
-`npm test` esegue sette gruppi di prove:
+`npm test` esegue otto gruppi di prove:
 
 | File | Che cosa verifica |
 |---|---|
@@ -159,7 +160,8 @@ npm test
 | `tests/resilience.cjs` | note vocali con permesso negato; aggiornamento della PWA senza perdere le schede offline |
 | `tests/altezza-mappa.cjs` | misura dell’altezza, foglia composta, stampa della mappa e pagina HTML |
 | `tests/pinaceae.cjs` | Chiave delle Pinaceae, slide e collegamenti con il catalogo |
-| `tests/interfaccia.cjs` | configurazione a gruppi e Aiuto con indice e ricerca |
+| `tests/interfaccia.cjs` | configurazione a gruppi, Aiuto con indice e ricerca, testata da 320 a 1600 px |
+| `tests/blocco.cjs` | blocco della scheda: campi spenti, niente eliminazione, sblocco con conferma, unione dei backup |
 
 ## Pubblicare una nuova versione
 

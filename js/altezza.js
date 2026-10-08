@@ -47,7 +47,7 @@ const ALT_SVG_TELEFONO = `<svg viewBox="0 0 240 132" class="alt-disegno" aria-hi
 
 function apriMisuraAltezza() {
   const r = S.aperta;
-  if (!r) return;
+  if (!r || avvisaBloccata(r)) return;
   const st = {
     D: null, cima: null, base: null, senzaBase: false,
     flusso: null, ascolto: false, campioni: [], angolo: null,
