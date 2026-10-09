@@ -148,6 +148,7 @@ function unisciScheda(mio, suo) {
     record[tipo] = [...perId.values()].sort((x, y) => String(x.quando).localeCompare(String(y.quando)));
   }
   for (const k of ['gbifId', 'plantnetNome']) record[k] = recente[k] || mio[k] || suo[k] || '';
+  record.infoGbif = [recente, mio, suo].map((x) => x.infoGbif).find((i) => i && i.gbifId === record.gbifId) || null;
   record.bozzaVuota = false;
   record.modificato = suoPiuRecente ? suo.modificato : mio.modificato;
   return { record, conflitti, suoPiuRecente };

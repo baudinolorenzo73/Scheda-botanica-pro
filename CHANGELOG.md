@@ -2,6 +2,20 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.46.0 · dati aperti: IUCN, nomi comuni, quota, località, meteo e pollini
+
+Quattro servizi gratuiti e senza chiave, chiamati solo quando tocchi il pulsante (servono Internet; i risultati salvati restano anche offline):
+
+- **🌍 Stato IUCN e nomi comuni** (GBIF): sotto il nome, quando la scheda ha il riferimento GBIF della specie. Mostra la categoria della Lista rossa IUCN con il suo colore (LC, NT, VU, EN, CR…) e i nomi comuni italiani (per *Quercus robur*: «Farnia, Quercia comune»). Restano salvati nella scheda e valgono solo per quella specie: cambiando nome non vengono più mostrati.
+- **⛰ Quota del terreno** (Open-Meteo, Copernicus DEM GLO-90, 90 m): nella Posizione GPS, accanto alla quota del GPS, che può sbagliare di decine di metri. Salvata nella scheda; con una nuova posizione va ricalcolata.
+- **Località** (OpenStreetMap Nominatim): nuovo campo «Località» sotto il nome, da scrivere a mano o con **📍 Dalle coordinate GPS** («Parco del Valentino, Viale Virgilio, Torino (TO)»). Chiede conferma prima di sostituire un testo già scritto. Le richieste partono una alla volta, almeno 1,1 secondi l’una dall’altra, e non si ripetono per le stesse coordinate, come chiede il regolamento del servizio. Il campo esce in stampa, report ed esportazioni.
+- **🌤 Meteo e pollini** (Open-Meteo, CAMS): il vecchio «Meteo · 3B Meteo» diventa una finestra con previsione di 4 giorni (temperature, pioggia, vento e raffiche, alba e tramonto) e pollini di sei specie per l’Europa, per la posizione attuale («📍 Qui») o una località cercata; l’ultima località resta come pulsante. Il collegamento a 3B Meteo è ancora in fondo.
+- Una scheda bloccata non chiede né salva nessuno di questi dati.
+- Aggiornati Aiuto, manuale (paragrafi 6.3, 6.4, 11.2, 20.1 e tabella della privacy, 53 pagine), guida rapida e README.
+- Nuovo modulo `js/dati-aperti.js` e nuovo test `tests/dati-aperti.cjs` con risposte simulate (nessun servizio reale contattato dai test).
+
+---
+
 ## 3.45.0 · bloccare una scheda
 
 - Nuovo **lucchetto 🔓** in alto nella scheda, accanto a ✓. Toccandolo la scheda diventa **🔒 bloccata**: si consulta (campi, foto, slide, note vocali), si stampa e se ne scaricano QR e report, ma **non si modifica né si elimina**. In cima compare l’avviso «Scheda bloccata» con il pulsante **🔓 Sblocca**; lo sblocco chiede conferma.

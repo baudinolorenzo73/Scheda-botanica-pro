@@ -710,6 +710,7 @@ const server = http.createServer((req, res) => {
       assert(n>=1);
       await page.evaluate(()=>{window.aperturaMeteo=window.open;window.open=(url)=>{window.meteoUrl=url;return null;};});
       await apriOpzioni();await page.click('#home-meteo');
+      await page.evaluate(()=>{document.querySelector('#dlg-meteo .meteo-3b').open=true;});
       await page.fill('#meteo-luogo','Roletto');
       await page.click('#meteo-form button');
       assert.equal(await page.evaluate(()=>window.meteoUrl),'https://www.3bmeteo.com/meteo/roletto');

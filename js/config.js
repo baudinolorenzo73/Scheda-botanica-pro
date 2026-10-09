@@ -23,6 +23,8 @@ const CAMPI = [
   { k: 'numeroZona',    sez: 'oss', label: 'N° nel giorno',              tipo: 'numero', passo: 1, min: 1, intero: true, etichettaStampa: 'N° nel giorno',
     aiuto: 'Numerazione che riparte da 1 a ogni nuova data: si calcola da sola quando scegli la Data qui sopra. Utile per contare gli alberi rilevati in una stessa giornata.' },
   { k: 'nome',          sez: 'oss', label: 'Nome esemplare (genere, specie, varietà)', tipo: 'lista', largo: true },
+  { k: 'localita',      sez: 'oss', label: 'Località',                    tipo: 'lista', largo: true, valori: [],
+    aiuto: 'Dove si trova l’albero (parco, via, comune). Scrivila a mano oppure tocca «Dalle coordinate GPS»: la propone OpenStreetMap e puoi correggerla.' },
   { k: 'numero',        sez: 'oss', label: 'N° medesimo esemplare',         tipo: 'numero', passo: 1, min: 1, intero: true, etichettaStampa: 'Esemplari vicini',
     aiuto: 'Quanti alberi uguali a questo si trovano nelle vicinanze (per esempio un filare). Di default è 1, cioè "esemplare isolato, nessun altro uguale intorno".' },
   { k: 'grandezza',     sez: 'oss', label: 'Classe di grandezza',         tipo: 'scelta', etichettaStampa: 'Grandezza',
@@ -70,7 +72,7 @@ function campoPertinente(r, k) {
 }
 
 const DB_NOME = 'scheda-botanica';
-const APP_VERSIONE = '3.45.0';
+const APP_VERSIONE = '3.46.0';
 const DB_VERSIONE = 5;        // v5: integrazioni personali della guida specie
 const FOTO_LATO_MAX = 1600;   // px, lato lungo
 const FOTO_QUALITA = 0.82;    // qualità JPEG

@@ -76,6 +76,12 @@ function normalizza(v) {
   r.plantnetNome = typeof v.plantnetNome === 'string' ? v.plantnetNome.slice(0, 180) : '';
   r.bozzaVuota = v.bozzaVuota === true;
   r.bloccata = v.bloccata === true;      // scheda bloccata: si consulta ma non si modifica
+  // Dati GBIF (Lista rossa IUCN, nomi comuni) validi solo per l'ID GBIF con cui sono stati chiesti.
+  r.infoGbif = v.infoGbif && /^\d+$/.test(String(v.infoGbif.gbifId)) && /^[A-Z]{2}$/.test(String(v.infoGbif.iucn)) ? {
+    gbifId: String(v.infoGbif.gbifId), iucn: String(v.infoGbif.iucn),
+    nomi: Array.isArray(v.infoGbif.nomi) ? v.infoGbif.nomi.filter((x) => typeof x === 'string').slice(0, 6).map((x) => x.slice(0, 60)) : [],
+    quando: typeof v.infoGbif.quando === 'string' ? v.infoGbif.quando : oraISO(),
+  } : null;
   v = migraClassificazioneFoglie(v);
   for (const c of CAMPI) {
     let val = v[c.k] === undefined || v[c.k] === null ? '' : String(v[c.k]).trim();
@@ -108,6 +114,7 @@ function normalizza(v) {
       quando: v.gps.quando || oraISO(),
       manuale: v.gps.manuale === true,
       ...(typeof v.gps.online === 'boolean' ? { online: v.gps.online } : {}),
+      ...(numeroFinito(v.gps.quotaTerreno) ? { quotaTerreno: Math.round(Number(v.gps.quotaTerreno)) } : {}),
     };
   }
   const fotoDaSalvare = [];
@@ -196,6 +203,7 @@ function applicaBlocco() {
   btn.setAttribute('aria-pressed', String(b));
   btn.title = b ? 'Scheda bloccata: tocca per sbloccarla' : 'Blocca la scheda';
   btn.setAttribute('aria-label', b ? 'Scheda bloccata: tocca per sbloccarla' : 'Blocca la scheda: nessuno potrà modificarla');
+  disegnaInfoGbif();
 }
 async function cambiaBlocco(blocca) {
   const r = S.aperta;
@@ -867,11 +875,16 @@ function costruisciModulo() {
                 el('button', { type: 'button', class: 'btn nome-cerca-ai', id: 'nome-cerca-ai', onclick: cercaAIDaScheda }, '✨ Cerca con AI'))),
             el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-auto', onclick: cercaAutoDaScheda }, '✨ Cerca intelligente')),
           el('p', { class: 'nome-auto-nota' }, 'La ricerca intelligente confronta guida, Wikipedia, GBIF, foto PlantNet e, se hai caricato una chiave, anche l’AI. Le proposte non modificano la scheda finché non le confermi.'),
-          el('p', { id: 'nome-conflitti', class: 'nome-conflitti nascosto', role: 'status' })));
+          el('p', { id: 'nome-conflitti', class: 'nome-conflitti nascosto', role: 'status' }),
+          el('div', { id: 'gbif-info', class: 'gbif-info', 'aria-live': 'polite' })));
       } else if (c.k === 'data') {
         griglia.append(el('div', { class: 'campo' },
           el('label', { class: 'campo', for: id }, c.label, campoInput),
           el('div', { id: 'scheda-slide', class: 'scheda-slide nascosto' })));
+      } else if (c.k === 'localita') {
+        griglia.append(el('div', { class: 'campo largo campo-localita' },
+          el('label', { class: 'campo', for: id }, c.label, campoInput, el('span', { class: 'campo-aiuto', testo: c.aiuto })),
+          el('button', { type: 'button', class: 'btn', id: 'localita-da-gps', onclick: compilaLocalitaDaGPS, title: 'Chiede a OpenStreetMap la località delle coordinate GPS di questa scheda' }, '📍 Dalle coordinate GPS')));
       } else if (c.k === 'altezza') {
         // Il pulsante sta fuori dall'etichetta: un tocco non porta il cursore nel campo.
         griglia.append(el('div', { class: 'campo' },
@@ -1421,12 +1434,15 @@ function disegnaGPS() {
     el('strong', { testo: `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}` }),
     g.manuale ? el('span', { class: 'testo-tenue' }, 'posizione scelta a mano') : (g.acc != null ? el('span', { testo: `±${Math.round(g.acc)} m` }) : null),
     qualita ? el('span', { style: `color:${qualita.colore};font-weight:600`, testo: `segnale ${qualita.testo}` }) : null,
-    g.alt != null ? el('span', { testo: `${Math.round(g.alt)} m s.l.m.` }) : null,
+    g.alt != null ? el('span', { testo: `${Math.round(g.alt)} m s.l.m. (GPS)` }) : null,
+    g.quotaTerreno != null ? el('span', { class: 'quota-terreno', title: 'Copernicus DEM GLO-90, via Open-Meteo', testo: `⛰ terreno ${g.quotaTerreno} m s.l.m.` }, el('small', { class: 'testo-tenue' }, ' · Copernicus DEM, Open-Meteo')) : null,
     el('span', { style: 'color:var(--tenue);font-size:13px', testo: dataIT(g.quando) }),
     g.online !== undefined ? el('span', { style: 'font-size:13px;color:var(--tenue)', testo: g.online ? '🌐 online' : '📴 offline' }) : null,
     el('a', { href: `https://www.openstreetmap.org/?mlat=${g.lat}&mlon=${g.lng}#map=19/${g.lat}/${g.lng}`, target: '_blank', rel: 'noopener' }, 'Apri mappa'),
     el('button', { type: 'button', class: 'btn', onclick: rilevaGPS }, '↻ Rileva di nuovo'),
     el('button', { type: 'button', class: 'btn', onclick: () => sceglierePosizioneDaMappa(r) }, '🗺 Scegli dalla mappa'),
+    el('button', { type: 'button', class: 'btn', id: 'gps-quota-dem', onclick: calcolaQuotaTerreno,
+      title: 'Quota del terreno dal modello digitale Copernicus (90 m), via Open-Meteo: più affidabile della quota del GPS' }, g.quotaTerreno != null ? '⛰ Ricalcola quota' : '⛰ Quota del terreno'),
     el('button', {
       type: 'button', class: 'btn pericolo', onclick: () => {
         if (!confirm('Rimuovere le coordinate?')) return;
@@ -1434,6 +1450,7 @@ function disegnaGPS() {
       },
     }, 'Rimuovi'),
   ].filter(Boolean)); // replaceChildren scriverebbe "null" come testo
+  applicaBloccoMedia();
 }
 
 const GPSR = { watch: null, timer: null, migliore: null, riga: null };
@@ -1738,6 +1755,7 @@ async function disegnaLinkGbif() {
   const r = S.aperta;
   if (!cont || !r) return;
   aggiornaLinkPlantNet(r);
+  disegnaInfoGbif();
   const bottone = (id) => el('a', {
     href: `https://www.gbif.org/species/${id}`, target: '_blank', rel: 'noopener',
     class: 'btn',
@@ -1754,7 +1772,7 @@ async function disegnaLinkGbif() {
   const id = await trovaGbifId(nomeCercato);
   // un ID arrivato nel frattempo da una ricerca confermata (GBIF/PlantNet/AI) ha la precedenza
   if (S.aperta !== r || r.nome !== nomeCercato || r.gbifId) return;
-  if (id && !schedaBloccata(r)) { r.gbifId = id; salvaPresto(r); cont.replaceChildren(bottone(id)); }
+  if (id && !schedaBloccata(r)) { r.gbifId = id; salvaPresto(r); cont.replaceChildren(bottone(id)); disegnaInfoGbif(); }
   else cont.replaceChildren(el('button', {
     type: 'button', class: 'btn', onclick: cercaGbifDaScheda,
   }, 'Cerca su GBIF'));
@@ -2159,7 +2177,10 @@ function collegaEventi() {
   $('#home-traccia-avvia').onclick = avviaTraccia;
   $('#home-traccia-pausa').onclick = pausaTraccia;
   $('#home-traccia-ferma').onclick = fermaTraccia;
-  $('#home-meteo').onclick = () => $('#dlg-meteo').showModal();
+  $('#home-meteo').onclick = () => { aggiornaUltimoMeteo(); $('#dlg-meteo').showModal(); };
+  $('#meteo-qui').onclick = meteoQui;
+  $('#meteo-om-form').onsubmit = cercaLuogoMeteo;
+  $('#meteo-ultimo').onclick = () => { const u = ultimoLuogoMeteo(); if (u) mostraMeteo(u); };
   $('#meteo-form').onsubmit = cercaMeteo3B;
   $('#meteo-gps').onclick = () => apriMeteo3B('https://www.3bmeteo.com/');
   $('#meteo-chiudi').onclick = () => $('#dlg-meteo').close();

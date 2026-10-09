@@ -2,7 +2,7 @@
 
 **App offline per il rilievo degli alberi sul campo**: schede con foto, GPS, note vocali, misura dell’altezza e stima ambientale; catalogo delle 144 piante del corso con le slide originali; Chiave delle Pinaceae; stampa, etichette QR, mappa e backup. Niente server, niente account: i dati restano sul dispositivo.
 
-**by Lollo ®2026 — versione 3.45.0**
+**by Lollo ®2026 — versione 3.46.0**
 
 👉 **[Apri l’app](https://baudinolorenzo73.github.io/Scheda-botanica-pro/)** · [📘 Manuale utente (PDF)](manuali/manuale-utente.pdf) · [Guida rapida (PDF)](manuali/guida-rapida.pdf) · [Novità (CHANGELOG)](CHANGELOG.md) · [Assistente AI e chiavi](ASSISTENTE-AI.md)
 
@@ -53,6 +53,7 @@ Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento 
 - **Blocco della scheda** 🔒: una scheda completata si consulta, si stampa e si esporta, ma non si modifica né si elimina finché non la sblocchi. Il blocco resta nel backup e protegge la scheda anche durante l’unione dei dati.
 - **Campi illustrati**: persistenza, chioma, rami, crescita, gemme, foglia, lamina e margine si scelgono da disegni con spiegazione. Le foglie seguono la tabella «Caratteristiche distintive» del corso; i campi non pertinenti (per esempio il margine di un ago) spariscono da soli.
 - **GPS** con affinamento della precisione sotto la chioma, valutazione del segnale e scelta manuale sulla mappa.
+- **Quota del terreno** dal modello Copernicus DEM (90 m) via Open-Meteo, più affidabile della quota del GPS, e **località** proposta da OpenStreetMap (parco, via, comune) a partire dalle coordinate.
 - **Foto** compresse automaticamente e **note vocali**.
 - **Misura dell’altezza** con il telefono (inclinometro), da una foto o con l’ombra.
 - **Stima ambientale** indicativa: volume della chioma, ombra proiettata, CO₂ stoccata.
@@ -61,9 +62,11 @@ Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento 
 ### Riconoscere le piante
 - **Catalogo delle 144 piante** del corso con slide originali, consultabile e integrabile offline; ricerca per nome, per caratteristiche e per zona d’origine.
 - **Chiave delle Pinaceae**: chiave guidata dei 7 generi (*Abies, Picea, Pinus, Cedrus, Larix, Tsuga, Pseudotsuga*), schede con illustrazioni, slide del corso per genere, ripasso a domande e glossario. Collegata in entrambe le direzioni con il catalogo.
+- **Stato di conservazione e nomi comuni**: categoria della Lista rossa IUCN e nomi comuni italiani dalla specie GBIF, salvati nella scheda.
 - **Ricerche online**: Wikipedia/Wikidata e GBIF per verificare i nomi; **PlantNet** per nome e da foto (chiave gratuita); **assistente AI facoltativo** (Gemini, Groq, OpenRouter) con le chiavi in `open.env`. Le proposte vengono verificate su GBIF e richiedono conferma.
 
 ### Organizzare e condividere
+- **Meteo e pollini** nell’app: previsione di 4 giorni con alba e tramonto e pollini di sei specie per l’Europa (Open-Meteo, CAMS), per la posizione attuale o una località cercata; resta il collegamento a 3B Meteo.
 - **Ricerca, filtri** (specie, date, senza foto, senza GPS, con problemi), **Nuovo elenco** e **cestino** con svuotamento automatico.
 - **Mappa** offline delle schede, stampa A4 della mappa e **pagina HTML mappa + schede** da aprire su qualsiasi dispositivo.
 - **Stampa** di schede A4 (con prima pagina della mappa, QR, stima ambientale, foto e testo libero), **etichette QR 5×5 cm** e registro Excel.
@@ -82,7 +85,7 @@ Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento 
 
 Nella cartella [`manuali/`](manuali/):
 
-- **[Manuale utente](manuali/manuale-utente.pdf)** ([.docx](manuali/manuale-utente.docx)) — 49 pagine in cinque parti (Iniziare · Sul campo · Riconoscere le piante · Organizzare e condividere · Impostazioni), con 28 schermate, esempi pratici, problemi frequenti, riferimento rapido, glossario e indice analitico.
+- **[Manuale utente](manuali/manuale-utente.pdf)** ([.docx](manuali/manuale-utente.docx)) — 53 pagine in cinque parti (Iniziare · Sul campo · Riconoscere le piante · Organizzare e condividere · Impostazioni), con 31 schermate, esempi pratici, problemi frequenti, riferimento rapido, glossario e indice analitico.
 - **[Guida rapida](manuali/guida-rapida.pdf)** ([.docx](manuali/guida-rapida.docx)) — tutto l’essenziale in una pagina.
 - **[ASSISTENTE-AI.md](ASSISTENTE-AI.md)** — chiavi, servizi, modelli ed errori dell’assistente AI.
 - **[CHANGELOG.md](CHANGELOG.md)** — le novità di ogni versione.
@@ -97,6 +100,10 @@ L’app non ha un server: schede, foto, note vocali e coordinate restano **solo 
 |---|---|---|
 | Sfondo della mappa | la zona visualizzata | OpenStreetMap |
 | Wikipedia, GBIF | il nome cercato | Wikimedia, GBIF |
+| Stato IUCN e nomi comuni | l’ID GBIF della specie | GBIF |
+| Quota del terreno | le coordinate della scheda | Open-Meteo |
+| Località dalle coordinate | le coordinate della scheda (max 1 richiesta/s) | OpenStreetMap Nominatim |
+| Meteo e pollini | la posizione attuale o il nome della località cercata | Open-Meteo |
 | PlantNet | il nome, oppure la foto scelta | Pl@ntNet |
 | Cerca con AI | nome e caratteri botanici (mai foto, GPS o note) | il servizio scelto |
 | Proposte AI dal catalogo | la slide e la nota del corso | il servizio scelto |
@@ -120,6 +127,7 @@ Le chiavi AI stanno in `open.env`, che **non va mai** messo nello ZIP, in Drive 
 │   ├── mappa-export.js      Stampa della mappa e pagina HTML mappa + schede
 │   ├── stampa-qr.js         QR, scansione, stampa A4 ed etichette
 │   ├── backup.js            Backup ZIP, ripristino, unione, Excel/CSV, esportazioni
+│   ├── dati-aperti.js       GBIF (IUCN, nomi comuni), quota, località, meteo e pollini
 │   └── altezza.js           Misura dell’altezza
 ├── icone.js                 Disegni dei campi illustrati
 ├── data/guida-specie.js     Dati delle 144 specie del corso
@@ -150,7 +158,7 @@ npx playwright install chromium     # oppure CHROMIUM_PATH=/percorso/chromium
 npm test
 ```
 
-`npm test` esegue otto gruppi di prove:
+`npm test` esegue nove gruppi di prove:
 
 | File | Che cosa verifica |
 |---|---|
@@ -162,6 +170,7 @@ npm test
 | `tests/pinaceae.cjs` | Chiave delle Pinaceae, slide e collegamenti con il catalogo |
 | `tests/interfaccia.cjs` | configurazione a gruppi, Aiuto con indice e ricerca, testata da 320 a 1600 px |
 | `tests/blocco.cjs` | blocco della scheda: campi spenti, niente eliminazione, sblocco con conferma, unione dei backup |
+| `tests/dati-aperti.cjs` | GBIF (IUCN, nomi comuni), quota del terreno, località con limite di 1 richiesta/s, meteo e pollini, con risposte simulate |
 
 ## Pubblicare una nuova versione
 
@@ -182,7 +191,7 @@ GitHub Pages pubblica il contenuto del branch principale all’indirizzo `https:
 
 ## Tecnologie
 
-JavaScript nativo · IndexedDB · Service Worker e Cache API · [Leaflet](https://leafletjs.com) con tile OpenStreetMap · Geolocation, MediaRecorder, DeviceOrientation e File System Access API · JSZip · xlsx-populate · [GBIF](https://www.gbif.org) · [Pl@ntNet](https://my.plantnet.org) · Playwright per i test.
+JavaScript nativo · IndexedDB · Service Worker e Cache API · [Leaflet](https://leafletjs.com) con tile OpenStreetMap · Geolocation, MediaRecorder, DeviceOrientation e File System Access API · JSZip · xlsx-populate · [GBIF](https://www.gbif.org) · [Pl@ntNet](https://my.plantnet.org) · [Open-Meteo](https://open-meteo.com) (meteo, pollini CAMS, quota Copernicus DEM GLO-90, [doi:10.5270/ESA-c5d3d65](https://doi.org/10.5270/ESA-c5d3d65)) · [Nominatim](https://nominatim.org) di OpenStreetMap · Playwright per i test.
 
 ## Licenza
 

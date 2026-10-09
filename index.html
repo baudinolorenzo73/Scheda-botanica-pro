@@ -68,7 +68,7 @@
     <summary>+ Opzioni</summary>
     <div class="opzioni-griglia">
       <button type="button" class="btn" id="btn-scansiona" aria-label="Trova scheda con QR"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-qr"></use></svg><span>Scansiona QR</span></button>
-      <button type="button" class="btn" id="home-meteo">Meteo · 3B Meteo</button>
+      <button type="button" class="btn" id="home-meteo">🌤 Meteo e pollini</button>
       <button type="button" class="btn" id="btn-menu"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg><span>Backup e configurazione</span></button>
       <button type="button" class="btn" id="btn-cestino" title="Cestino" aria-label="Cestino"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-trash"></use></svg><span>Cestino</span><span id="cestino-badge" class="badge-cestino nascosto"></span></button>
       <button type="button" class="btn" id="btn-aiuto"><svg class="icona" aria-hidden="true" focusable="false"><use href="#i-help"></use></svg><span>Aiuto</span></button>
@@ -255,15 +255,29 @@
   <div class="azioni"><button type="button" class="btn" id="auto-chiudi">Chiudi</button></div>
 </dialog>
 <dialog id="dlg-meteo" aria-labelledby="meteo-titolo">
-  <h2 id="meteo-titolo">Meteo · 3B Meteo</h2>
-  <p class="meteo-spiega">Per cercare una località, scrivi il nome qui sotto. La previsione si apre su 3B Meteo e richiede Internet.</p>
-  <form id="meteo-form">
-    <label for="meteo-luogo">Località</label>
-    <input type="search" id="meteo-luogo" class="campo-base" placeholder="Es. Roletto o Pian della Mussa" autocomplete="off" required maxlength="90">
-    <button type="submit" class="btn primario">Cerca su 3B Meteo ↗</button>
-  </form>
-  <button type="button" class="btn" id="meteo-gps">Apri 3B Meteo e usa la posizione</button>
-  <p class="meteo-spiega">Se hai il GPS attivo, autorizza la posizione anche su 3B Meteo: il permesso dato a questa app non passa automaticamente al loro sito. Verifica la località proposta, soprattutto in montagna.</p>
+  <h2 id="meteo-titolo">Meteo e pollini</h2>
+  <p class="meteo-spiega">Previsione dei prossimi 4 giorni, alba e tramonto, pollini. Richiede Internet; la posizione si usa solo se tocchi «Qui».</p>
+  <div class="meteo-comandi">
+    <button type="button" class="btn primario" id="meteo-qui">📍 Qui</button>
+    <form id="meteo-om-form" class="meteo-om-form">
+      <label for="meteo-om-luogo" class="visually-hidden">Località per la previsione</label>
+      <input type="search" id="meteo-om-luogo" class="campo-base" placeholder="Località, es. Pinerolo" autocomplete="off" maxlength="90">
+      <button type="submit" class="btn" id="meteo-om-cerca">Cerca</button>
+    </form>
+    <button type="button" class="btn nascosto" id="meteo-ultimo"></button>
+  </div>
+  <div id="meteo-risultato" class="meteo-risultato" aria-live="polite"></div>
+  <details class="meteo-3b">
+    <summary>Apri su 3B Meteo ↗</summary>
+    <p class="meteo-spiega">Per cercare una località, scrivi il nome qui sotto. La previsione si apre su 3B Meteo.</p>
+    <form id="meteo-form">
+      <label for="meteo-luogo">Località</label>
+      <input type="search" id="meteo-luogo" class="campo-base" placeholder="Es. Roletto o Pian della Mussa" autocomplete="off" required maxlength="90">
+      <button type="submit" class="btn primario">Cerca su 3B Meteo ↗</button>
+    </form>
+    <button type="button" class="btn" id="meteo-gps">Apri 3B Meteo e usa la posizione</button>
+    <p class="meteo-spiega">Se hai il GPS attivo, autorizza la posizione anche su 3B Meteo: il permesso dato a questa app non passa automaticamente al loro sito. Verifica la località proposta, soprattutto in montagna.</p>
+  </details>
   <div class="azioni"><button type="button" class="btn" id="meteo-chiudi">Chiudi</button></div>
 </dialog>
 
@@ -722,12 +736,14 @@
       <li><b>Salvataggio automatico</b>: ogni modifica si salva da sola pochi istanti dopo. Se esci da una scheda senza aver inserito nulla, la bozza vuota non viene tenuta.</li>
       <li><b>GPS preciso</b>: sotto le chiome il segnale è debole. L’app ascolta i satelliti per qualche secondo, tiene la posizione migliore e mostra la precisione mentre migliora. Tocca di nuovo 📍 per fermarla prima. Accanto alle coordinate vedi la valutazione (ottimo, buono, scarso).</li>
       <li><b>Scegli dalla mappa</b>: se il GPS non va o vuoi correggerlo, nella sezione «Posizione GPS» tocchi il punto giusto sulla cartina.</li>
+      <li><b>⛰ Quota del terreno</b> (in «Posizione GPS»): chiede a Open-Meteo la quota del punto secondo il modello del terreno Copernicus (90 m). È più affidabile della quota del GPS, che può sbagliare di decine di metri.</li>
+      <li><b>Località</b>: scrivila a mano oppure tocca <b>📍 Dalle coordinate GPS</b>: OpenStreetMap propone parco, via e comune, che puoi correggere. Se il campo è già compilato, l’app chiede prima di sostituirlo.</li>
       <li><b>Foto</b>: «Scatta» apre la fotocamera, «Dalla galleria» permette di sceglierne più di una. Le foto vengono ridotte da sole per occupare meno spazio.</li>
       <li><b>Note vocali</b>: per dettare le osservazioni quando hai le mani occupate. Registri, fermi, e la nota compare con la sua durata; puoi riascoltarla e darle un titolo.</li>
       <li><b>Due numerazioni</b>: «N° progressivo» identifica la scheda nell’elenco corrente; «N° nel giorno» riparte da 1 a ogni nuova data. Il QR usa un identificativo interno permanente.</li>
       <li><b>Nuovo elenco</b> (in «Sul campo»): salva le schede attuali in un backup con data e ora nel nome, le sposta nel cestino e riparte dal numero 1.</li>
       <li><b>Cestino</b> (in «+ Opzioni»): una scheda eliminata va prima nel cestino. Da lì la ripristini o la elimini per sempre; dopo i giorni scelti (di base 30) si svuota da solo.</li>
-      <li><b>Meteo</b> (in «+ Opzioni»): apre 3B Meteo, un servizio esterno. Verifica sempre località e orario della previsione, soprattutto in montagna.</li>
+      <li><b>🌤 Meteo e pollini</b> (in «+ Opzioni»): previsione dei prossimi 4 giorni con temperatura, pioggia, vento, alba e tramonto, e i pollini di sei specie (solo Europa). Tocca <b>📍 Qui</b> per la tua posizione o cerca una località; l’ultima resta a portata di tocco. Dati Open-Meteo; in fondo c’è ancora il collegamento a 3B Meteo. In montagna confronta sempre più fonti.</li>
     </ul>
   </details>
 
@@ -775,6 +791,7 @@
       <li><b>Cerca con AI</b> (facoltativo): invia solo nome e caratteri botanici al servizio scelto, mai foto, GPS o note personali. I nomi proposti vengono verificati su GBIF. Le percentuali sono stime del modello.</li>
       <li><b>Cerca intelligente</b>: combina guida, Wikipedia, GBIF e, se configurati, AI e PlantNet. Un servizio in errore non cancella i risultati degli altri.</li>
     </ul>
+    <p><b>🌍 Stato IUCN e nomi comuni</b>: sotto il nome, quando la scheda ha il riferimento GBIF della specie, il pulsante chiede a GBIF la categoria della <b>Lista rossa IUCN</b> (per esempio LC, minor preoccupazione) e i <b>nomi comuni italiani</b>. Restano salvati nella scheda e si vedono anche offline.</p>
     <p>Il nome cambia solo quando premi «Usa questo nome». Ogni specie confermata entra in un piccolo catalogo sul dispositivo e viene proposta anche offline; il suo ID GBIF compare come link «Apri la specie su GBIF» e nelle esportazioni.</p>
     <h3>Il catalogo delle 144 piante</h3>
     <p>È separato dalle schede rilevate. In «Configurazione → Catalogo delle 144 piante e riconoscimento → Completa catalogo» apri ogni pagina, aggiungi le caratteristiche mancanti, indichi la fonte e salvi. I dati originali restano distinti; si può correggere solo il nome scientifico. Le integrazioni sono comprese nel backup.</p>
@@ -866,11 +883,13 @@
       <dt>Catalogo delle 144 piante</dt><dd>Le specie del corso con slide e caratteristiche; si può integrare ma resta separato dalle schede.</dd>
       <dt>Circonferenza a 1,30 m</dt><dd>Misura del tronco all’altezza del petto, in centimetri.</dd>
       <dt>Classe di grandezza</dt><dd>Dimensione dell’albero adulto, dalla 1ª (alberi più grandi) alla 4ª (più piccoli), come nelle slide del corso.</dd>
-      <dt>GBIF</dt><dd>Database internazionale della biodiversità usato per verificare i nomi scientifici.</dd>
+      <dt>GBIF</dt><dd>Database internazionale della biodiversità usato per verificare i nomi scientifici e chiedere stato IUCN e nomi comuni.</dd>
+      <dt>IUCN, Lista rossa</dt><dd>Classificazione del rischio di estinzione: LC minor preoccupazione, NT quasi minacciata, VU vulnerabile, EN in pericolo, CR in pericolo critico, NE non valutata.</dd>
       <dt>GeoJSON, KML, GPX</dt><dd>Formati di dati geografici per QGIS, Google Earth e navigatori.</dd>
       <dt>Lamina</dt><dd>La parte espansa della foglia; nelle conifere è «aghiforme».</dd>
       <dt>N° progressivo</dt><dd>Numero della scheda nell’elenco corrente; riparte da 1 con «Nuovo elenco».</dd>
       <dt>open.env</dt><dd>File di testo con le tue chiavi AI; resta sul dispositivo e non va mai pubblicato.</dd>
+      <dt>Quota del terreno</dt><dd>Altitudine del punto secondo il modello digitale del terreno Copernicus, più affidabile della quota del GPS.</dd>
       <dt>Persistenza</dt><dd>Se l’albero tiene le foglie tutto l’anno (sempreverde) o le perde (caduca).</dd>
       <dt>PlantNet</dt><dd>Servizio di identificazione delle piante da foto; richiede una chiave gratuita.</dd>
       <dt>PWA</dt><dd>App web installabile sulla schermata Home, che funziona anche offline.</dd>
@@ -971,6 +990,7 @@
 <script src="./js/backup.js"></script>
 <script src="./js/altezza.js"></script>
 <script src="./js/mappa-export.js"></script>
+<script src="./js/dati-aperti.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

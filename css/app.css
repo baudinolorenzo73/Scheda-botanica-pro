@@ -913,3 +913,40 @@ body[data-interfaccia="125"]{zoom:1.25}
 #editor.bloccata .ed-media button:disabled,#editor.bloccata .azioni-rapide button:disabled,#editor.bloccata #btn-elimina:disabled{opacity:.4}
 .lucchetto{font-style:normal}
 .btn-elimina-riga:disabled{opacity:.3;cursor:not-allowed}
+
+/* ---------- Dati aperti (3.46): GBIF, quota, località, meteo ---------- */
+.gbif-info{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:8px;font-size:13.5px;line-height:1.4}
+.gbif-info.gbif-info-piena{padding:10px 12px;border:1px solid var(--linea);border-radius:var(--r-piccolo);background:var(--foglio)}
+.gbif-info .btn{min-height:40px;padding:6px 12px;font-size:13.5px}
+.iucn{display:inline-grid;place-items:center;min-width:38px;height:28px;padding:0 6px;border-radius:6px;font:700 13px system-ui,sans-serif;color:#fff;background:#6b6b6b}
+.iucn-lc{background:#5b8c3e}.iucn-nt{background:#8aa53a}.iucn-vu{background:#d9a21b;color:#1e1e1e}.iucn-en{background:#d4651f}.iucn-cr{background:#c0392b}
+.iucn-ew,.iucn-ex,.iucn-re{background:#222}.iucn-dd,.iucn-ne{background:#9aa29c;color:#1e1e1e}
+.campo-localita{display:grid;gap:6px}
+.campo-localita #localita-da-gps{justify-self:start;min-height:40px;padding:6px 12px;font-size:13.5px}
+.quota-terreno{font-weight:600}
+.meteo-comandi{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;margin:4px 0 10px}
+.meteo-om-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:0;min-width:0}
+.meteo-om-form input{min-width:0;width:100%}
+#meteo-ultimo{grid-column:1/-1;justify-self:start;min-height:38px;font-size:13.5px}
+.meteo-risultato:empty{display:none}
+.meteo-risultato{border-top:1px solid var(--linea);padding-top:10px}
+.meteo-luogo{margin:0 0 6px;font:600 17px Georgia,serif;color:var(--bosco)}
+.meteo-adesso{display:flex;gap:12px;align-items:center;font-size:14px;line-height:1.45;margin:0 0 10px}
+.meteo-icona-grande{font-size:38px;line-height:1}
+.meteo-giorni{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.meteo-giorni{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.meteo-giorno{display:grid;gap:3px;padding:9px;border:1px solid var(--linea);border-radius:var(--r-piccolo);background:var(--foglio);font-size:12.5px;line-height:1.35}
+.meteo-giorno-nome{text-transform:capitalize;font-size:13px}
+.meteo-icona{font-size:26px;line-height:1.1}
+.meteo-temp{font-size:15px}.meteo-min{color:var(--tenue)}
+.meteo-desc{font-weight:600}
+.meteo-sotto{margin:14px 0 6px;font:600 15px Georgia,serif;color:var(--bosco)}
+.meteo-pollini{width:100%;border-collapse:collapse;font-size:13px}
+.meteo-pollini th,.meteo-pollini td{border:1px solid var(--linea);padding:5px 7px;text-align:center}
+.meteo-pollini td:first-child,.meteo-pollini th:first-child{text-align:left}
+.meteo-pollini th{background:var(--focus)}
+.meteo-pollini th:not(:first-child){text-transform:capitalize}
+.meteo-fonte{font-size:12px;color:var(--tenue);margin:10px 0 0;line-height:1.45}
+.meteo-scelta{display:block;width:100%;text-align:left;margin:4px 0;min-height:42px}
+.meteo-3b{margin-top:12px;border-top:1px solid var(--linea);padding-top:8px}
+.meteo-3b>summary{cursor:pointer;font-weight:600;color:var(--bosco);padding:6px 0}
