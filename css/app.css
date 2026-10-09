@@ -950,3 +950,28 @@ body[data-interfaccia="125"]{zoom:1.25}
 .meteo-scelta{display:block;width:100%;text-align:left;margin:4px 0;min-height:42px}
 .meteo-3b{margin-top:12px;border-top:1px solid var(--linea);padding-top:8px}
 .meteo-3b>summary{cursor:pointer;font-weight:600;color:var(--bosco);padding:6px 0}
+
+/* ---------- Super ricerca (3.47) ---------- */
+.auto-foto:empty,.auto-fonti:empty{display:none}
+.auto-foto{display:grid;gap:6px;margin:6px 0 8px}
+.auto-foto-titolo{font-size:12.5px;font-weight:600;color:var(--tenue)}
+.auto-foto-riga{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.auto-foto-mini{flex:none;padding:0;border:2px solid var(--linea);border-radius:8px;background:none;cursor:pointer;width:64px;height:64px;overflow:hidden}
+.auto-foto-mini img{width:100%;height:100%;object-fit:cover;display:block}
+.auto-foto-mini.scelta{border-color:var(--bosco);box-shadow:0 0 0 2px var(--lichene)}
+#auto-lens{justify-self:start;min-height:40px;font-size:13.5px}
+.auto-fonti{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}
+.auto-fonte{font-size:12px;line-height:1.3;padding:4px 9px;border-radius:14px;border:1px solid var(--linea);background:var(--foglio);max-width:100%;overflow-wrap:anywhere}
+.auto-fonte-ok{border-color:var(--lichene)}
+.auto-fonte-errore{border-color:var(--ruggine);color:var(--ruggine);white-space:normal}
+.auto-fonte-attesa{background:var(--focus)}
+.auto-fonte-saltata{opacity:.7}
+.auto-pastiglie{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 6px}
+.auto-pastiglia{font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--focus);border:1px solid var(--linea)}
+.auto-wiki{font-style:italic;color:var(--tenue)}
+.auto-confronto{display:flex;gap:6px;overflow-x:auto;margin:8px 0 2px;padding-bottom:2px}
+.auto-confronto-img{flex:none;display:grid;gap:2px;padding:0;border:1px solid var(--linea);border-radius:8px;background:var(--foglio);cursor:zoom-in;width:96px;overflow:hidden;text-align:center}
+.auto-confronto-img img{width:96px;height:72px;object-fit:cover;display:block}
+.auto-confronto-img small{font-size:10.5px;color:var(--tenue);padding:0 2px 3px}
+.auto-collegamenti{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.auto-carta .auto-collegamenti .btn{margin-top:0;min-height:38px;padding:6px 10px;font-size:13px}

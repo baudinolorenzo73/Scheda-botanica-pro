@@ -873,8 +873,8 @@ function costruisciModulo() {
                 el('button', { type: 'button', class: 'btn', id: 'nome-cerca-caratteristiche', onclick: cercaCaratteristicheDaScheda }, 'Caratteristiche · guida locale'),
                 el('button', { type: 'button', class: 'btn', id: 'nome-cerca-zona', onclick: apriRicercaZonaHabitat }, 'Zona d’origine'),
                 el('button', { type: 'button', class: 'btn nome-cerca-ai', id: 'nome-cerca-ai', onclick: cercaAIDaScheda }, '✨ Cerca con AI'))),
-            el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-auto', onclick: cercaAutoDaScheda }, '✨ Cerca intelligente')),
-          el('p', { class: 'nome-auto-nota' }, 'La ricerca intelligente confronta guida, Wikipedia, GBIF, foto PlantNet e, se hai caricato una chiave, anche l’AI. Le proposte non modificano la scheda finché non le confermi.'),
+            el('button', { type: 'button', class: 'btn primario', id: 'nome-cerca-auto', onclick: cercaAutoDaScheda }, '🔎 Super ricerca')),
+          el('p', { class: 'nome-auto-nota' }, 'La Super ricerca interroga insieme guida, Wikipedia, GBIF, PlantNet con tutte le foto e ogni AI con chiave (con foto, nome e caratteri), poi controlla la presenza nei dintorni. Le proposte non modificano la scheda finché non le confermi.'),
           el('p', { id: 'nome-conflitti', class: 'nome-conflitti nascosto', role: 'status' }),
           el('div', { id: 'gbif-info', class: 'gbif-info', 'aria-live': 'polite' })));
       } else if (c.k === 'data') {

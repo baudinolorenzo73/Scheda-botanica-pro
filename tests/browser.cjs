@@ -679,7 +679,7 @@ const server = http.createServer((req, res) => {
       assert.match(await page.locator('#auto-risultati').textContent(),/Catalogo PlantNet: Basilico/);
       assert.equal(await page.inputValue('#f-nome'),prima);
       assert.match(await page.evaluate(()=>window.richiestePlantNet[0]),/projects\/k-world-flora\/species\?prefix=Ocimum%20basilicum/);
-      assert.match(await page.locator('#auto-risultati a').getAttribute('href'),/Ocimum%20basilicum%20L\./);
+      assert.match(await page.locator('#auto-risultati a', { hasText: 'PlantNet' }).getAttribute('href'),/Ocimum%20basilicum%20L\./);
       await page.click('#auto-chiudi');
       await page.evaluate(()=>localStorage.removeItem('sb-plantnet-key'));
       await page.click('#nome-cerca-plantnet');

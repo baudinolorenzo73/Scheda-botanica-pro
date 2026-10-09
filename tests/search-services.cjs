@@ -28,7 +28,7 @@ function flussoApplicazione() {
   const r = { uid: 'riga-test', nome: 'Fagus sylvatica', foto: [], persistenza: 'caduca', note: 'Nota personale da NON inviare', gps: { lat: 45, lng: 7 } };
   const guida = { nomeSci: 'Fagus sylvatica', famiglia: 'Fagaceae' };
   let chiave = 'chiave-simulata', invii = async () => ok([]);
-  const c = vm.createContext({ AbortController, setTimeout: timerTest, clearTimeout, TypeError, FormData, Blob,
+  const c = vm.createContext({ AbortController, setTimeout: timerTest, clearTimeout, TypeError, FormData, Blob, File, btoa,
     DB: { leggi: async () => new Blob(['immagine-finta'], { type: 'image/jpeg' }) }, navigator: { onLine: true }, $, S: { aperta: r },
     GS_CAMPI_SCHEDA: ['persistenza', 'formaChioma', 'rami', 'tipoFoglia', 'lamina', 'margine'],
     CAMPI: [{ k: 'persistenza', label: 'Persistenza foglie' }, { k: 'altezza', label: 'Altezza' }],
@@ -277,9 +277,10 @@ function flussoApplicazione() {
     assert.match(f.$('#auto-risultati').textContent, /Faggio/);
     assert.equal(f.r.plantnetNome, undefined);
     const carta = f.$('#auto-risultati').figli[0];
-    const link = carta.figli.find(n => n?.tipo === 'a');
+    const tutti = n => !n || typeof n !== 'object' ? [] : [n, ...(n.figli || []).flat(Infinity).flatMap(tutti)];
+    const link = tutti(carta).find(n => n.tipo === 'a' && /plantnet/i.test(n.href || ''));
     assert.match(link.href, /Fagus%20sylvatica%20L\./);
-    carta.figli.find(n => n?.tipo === 'button').onclick();
+    tutti(carta).find(n => n.tipo === 'button' && /Usa/.test(n.textContent)).onclick();
     assert.equal(f.r.plantnetNome, 'Fagus sylvatica L.');
     assert.equal(f.r.persistenza, 'caduca');
   });
@@ -386,6 +387,100 @@ function flussoApplicazione() {
     const f = flussoApplicazione();
     f.invia(async () => errore(404));
     await assert.rejects(f.esegui("fotoPlantNetAuto({id:'foto-test'})"), /PlantNet: nessuna pianta riconosciuta.*404/);
+  });
+  await prova('Super ricerca: tutte le foto a PlantNet, ogni AI con foto e caratteri, poi presenza e fonti italiane', async () => {
+    const f = flussoApplicazione();
+    f.r.foto = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+    f.c.chiaviAI = { GOOGLE_API_KEY: 'chiave-g', GROQ_API_KEY: 'chiave-q' };
+    const visti = { plantnet: 0, gemini: 0, groq: 0, presenza: [] };
+    f.invia(async (url, opzioni) => {
+      if (url.includes('/v2/identify/')) {
+        visti.plantnet++;
+        assert.match(url, /include-related-images=true/);
+        assert.equal(opzioni.body.getAll('images').length, 4);
+        assert.equal(opzioni.body.getAll('organs').length, 4);
+        return ok({ remainingIdentificationRequests: 487, results: [{ score: .91, gbif: { id: 123 },
+          species: { scientificNameWithoutAuthor: 'Fagus sylvatica', scientificName: 'Fagus sylvatica L.' },
+          images: [{ url: { s: 'https://bs.plantnet.org/s.jpg', m: 'https://bs.plantnet.org/m.jpg' }, citation: 'Autore / CC BY-SA' }] }] });
+      }
+      if (url.includes('generativelanguage')) {
+        visti.gemini++;
+        const corpo = JSON.parse(opzioni.body);
+        assert.equal(corpo.contents[0].parts.filter(p => p.inline_data).length, 3);
+        assert.doesNotMatch(opzioni.body, /Nota personale|"gps"|"lat"/);
+        assert.match(opzioni.body, /caduca/);
+        return gemini({ candidati: [{ nomeScientifico: 'Fagus sylvatica', percentuale: 80, motivazione: 'Corteccia liscia grigia' }] });
+      }
+      if (url.includes('api.groq.com')) {
+        visti.groq++;
+        const corpo = JSON.parse(opzioni.body);
+        assert.equal(corpo.messages.at(-1).content.filter(p => p.type === 'image_url').length, 3);
+        assert.doesNotMatch(opzioni.body, /Nota personale/);
+        return chat({ candidati: [{ nomeScientifico: 'Fagus sylvatica', percentuale: 70, motivazione: 'Foglie ovate' },
+          { nomeScientifico: 'Carpinus betulus', percentuale: 30, motivazione: 'Simile' }] });
+      }
+      if (url.includes('occurrence/search')) { visti.presenza.push(url); return ok({ count: url.includes('Carpinus') ? 0 : 19 }); }
+      if (url.includes('rest_v1/page/summary')) return ok({ type: 'standard', title: 'Fagus sylvatica', extract: 'Il faggio è un albero deciduo.',
+        thumbnail: { source: 'https://upload.wikimedia.org/faggio.jpg' }, content_urls: { mobile: { page: 'https://it.m.wikipedia.org/wiki/Fagus_sylvatica' } } });
+      if (url.includes('wbsearchentities')) return ok({ search: url.includes('Acta') ? [{ id: 'P5001' }] : [{ id: 'P6114' }] });
+      if (url.includes('wbgetentities')) return ok({ entities: {
+        P5001: { labels: { en: { value: 'Acta Plantarum ID' } }, claims: { P1630: [{ mainsnak: { datavalue: { value: 'https://www.actaplantarum.org/flora/flora_info.php?id=$1' } } }] } },
+        P6114: { labels: { en: { value: 'Portal to the Flora of Italy ID' } }, claims: { P1630: [{ mainsnak: { datavalue: { value: 'https://dryades.units.it/floritaly/index.php?procedure=taxon_page&tipo=all&id=$1' } } }] } } } });
+      if (url.includes('haswbstatement')) return ok({ query: { search: [{ title: 'Q1' }] } });
+      if (url.includes('EntityData')) return ok({ entities: { Q1: { claims: { P5001: [{ mainsnak: { datavalue: { value: '3088' } } }], P6114: [{ mainsnak: { datavalue: { value: '1946' } } }] } } } });
+      if (url.includes('list=search')) return ok({ query: { search: [] } });
+      return ok({ kingdom: 'Plantae', rank: 'SPECIES', matchType: 'EXACT', confidence: 98, usageKey: url.includes('Carpinus') ? 456 : 123 });
+    });
+    await f.esegui('cercaAutoDaScheda()');
+    assert.deepEqual([visti.plantnet, visti.gemini, visti.groq], [1, 1, 1]);
+    const testo = f.$('#auto-risultati').textContent;
+    assert.match(testo, /Foto PlantNet: 91%/);
+    assert.match(testo, /AI Gemini \(con foto\): 80%/);
+    assert.match(testo, /AI Groq \(con foto\): 70%/);
+    assert.match(testo, /AI 2\/2/);
+    assert.match(testo, /Presenza: 19 osservazioni GBIF entro 10 km/);
+    assert.match(testo, /Il faggio è un albero deciduo/);
+    // Coordinate arrotondate a circa 1 km: mai la posizione esatta.
+    assert.ok(visti.presenza.length && visti.presenza.every(u => /geoDistance=45\.00,7\.00,/.test(u)));
+    const tutti = n => !n || typeof n !== 'object' ? [] : [n, ...(n.figli || []).flat(Infinity).flatMap(tutti)];
+    const carta = f.$('#auto-risultati').figli[0];
+    assert.match(carta.figli[0].testo, /Fagus sylvatica/);
+    const hrefs = tutti(carta).filter(n => n.tipo === 'a').map(n => n.href);
+    assert.ok(hrefs.includes('https://www.actaplantarum.org/flora/flora_info.php?id=3088'));
+    assert.ok(hrefs.some(h => h.includes('floritaly') && h.endsWith('id=1946')));
+    assert.ok(hrefs.includes('https://www.gbif.org/species/123'));
+    assert.ok(tutti(carta).some(n => n.tipo === 'img' && n.src === 'https://bs.plantnet.org/s.jpg'));
+    const fonti = f.$('#auto-fonti').textContent;
+    assert.match(fonti, /PlantNet · 4 foto insieme/);
+    assert.match(fonti, /487 identificazioni rimaste/);
+    assert.match(fonti, /Gemini.*3 foto/);
+    assert.match(f.$('#auto-stato').textContent, /Verifica completata/);
+    assert.equal(f.r.nome, 'Fagus sylvatica');
+    assert.equal(f.r.gbifId, undefined);
+  });
+  await prova('Super ricerca: un’AI che rifiuta le foto riprova con una sola, le altre fonti restano', async () => {
+    const f = flussoApplicazione();
+    f.r.foto = [{ id: 'a' }, { id: 'b' }];
+    f.c.chiaviAI = { GOOGLE_API_KEY: 'chiave-g' };
+    f.senzaChiave();
+    const foto = [];
+    f.invia(async (url, opzioni) => {
+      if (url.includes('generativelanguage')) {
+        const n = JSON.parse(opzioni.body).contents[0].parts.filter(p => p.inline_data).length;
+        foto.push(n);
+        return n > 1 ? errore(400) : gemini({ candidati: [{ nomeScientifico: 'Fagus sylvatica', percentuale: 60, motivazione: 'ok' }] });
+      }
+      if (url.includes('list=search') || url.includes('wbsearchentities')) return ok({ query: { search: [] }, search: [] });
+      if (url.includes('rest_v1')) return errore(404);
+      if (url.includes('occurrence/search')) return errore(503);
+      return ok({ kingdom: 'Plantae', rank: 'SPECIES', matchType: 'EXACT', confidence: 98, usageKey: 123 });
+    });
+    await f.esegui('cercaAutoDaScheda()');
+    assert.deepEqual(foto.slice(0, 1), [2]);
+    assert.equal(foto.at(-1), 1);
+    assert.match(f.$('#auto-risultati').textContent, /AI Gemini \(con foto\): 60%/);
+    assert.match(f.$('#auto-stato').textContent, /manca la chiave PlantNet/);
+    assert.match(f.$('#auto-fonti').textContent, /PlantNet · manca la chiave/);
   });
   await prova('Completamento dalla guida: una dipendenza non cancella osservazioni esistenti', async () => {
     const app = ['app.js', 'js/guida.js', 'js/mappa.js', 'js/stampa-qr.js', 'js/backup.js'].map(f => fs.readFileSync(path.join(root, f), 'utf8')).join('\n');

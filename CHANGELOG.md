@@ -2,6 +2,24 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.47.0 · 🔎 Super ricerca
+
+Il pulsante verde sotto il nome diventa **🔎 Super ricerca** e sostituisce «Cerca intelligente»: interroga tutte le fonti insieme, usa tutte le foto della scheda e mostra lo stato di ognuna. Niente cambia nella scheda finché non premi «Usa questo nome».
+
+- **PlantNet con tutte le foto**: fino a 5 foto della scheda in un’unica identificazione (organo «auto» per ciascuna), come foto dello stesso esemplare. L’etichetta mostra le identificazioni gratuite rimaste oggi.
+- **Tutte le AI con chiave**: Gemini, Groq e OpenRouter in parallelo, non più solo il servizio scelto. A ognuna vanno il nome, i caratteri botanici e **le prime 3 foto**, ridotte a 1024 px in JPEG; mai GPS, località, data o note. Se un servizio rifiuta più immagini, riprova una volta con una sola foto (non dopo 401/403/429 o se chiudi la ricerca). Ogni voto resta separato e indica «(con foto)».
+- **Stato delle fonti**: un’etichetta per ciascuna (Guida 144, Wikipedia, PlantNet, ogni AI, GBIF, controlli extra) con ⏳ in corso, ✅ fatto, ⚠️ errore, ➖ saltata e il motivo.
+- **Pastiglie** su ogni proposta: 📷 PlantNet %, 🤖 quante AI concordano («AI 2/2»), 📖 caratteri della guida, ✔ GBIF, 📍 presenza vicino. L’ordine premia le specie indicate da più fonti indipendenti; le percentuali non vengono mediate.
+- **Presenza vicino** (GBIF): osservazioni della specie entro 10 km, oppure entro 50 km; GBIF riceve le coordinate arrotondate a circa 1 km.
+- **Foto di confronto**: slide del corso, immagine di Wikipedia e foto di riferimento più simili di PlantNet, da ingrandire con un tocco. Con un breve estratto della voce di Wikipedia.
+- **Acta Plantarum e Flora d’Italia**: collegamenti diretti alla specie trovati tramite Wikidata; se mancano, ricerca limitata a quel sito. Restano i collegamenti a PlantNet, GBIF e Wikipedia.
+- **🔍 Apri in Google Lens**: scegli una delle tue foto e il pulsante la passa a Lens con il pannello «Condividi» del telefono (Lens non ha un collegamento diretto per le app).
+- I controlli extra riguardano le prime 4 proposte e arrivano dopo: un loro errore non tocca i risultati già mostrati.
+- Aggiornati Aiuto (sezione «Riconoscere la specie» e glossario), manuale (paragrafi 4.5, 11.3, 11.4 nuovi, tabella della privacy, glossario e indice, 55 pagine), guida rapida, README e ASSISTENTE-AI.md.
+- Due nuovi test in `tests/search-services.cjs` (più foto a PlantNet, più AI con foto, presenza con coordinate arrotondate, collegamenti italiani, ripiego a una foto), con risposte simulate.
+
+---
+
 ## 3.46.0 · dati aperti: IUCN, nomi comuni, quota, località, meteo e pollini
 
 Quattro servizi gratuiti e senza chiave, chiamati solo quando tocchi il pulsante (servono Internet; i risultati salvati restano anche offline):

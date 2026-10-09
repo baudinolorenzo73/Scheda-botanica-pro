@@ -250,6 +250,8 @@
 <dialog id="dlg-cerca-auto" aria-labelledby="auto-titolo">
   <h2 id="auto-titolo">Risultati della ricerca</h2>
   <p class="auto-spiega" id="auto-spiega">Le proposte non modificano la scheda finché non scegli un risultato. Le percentuali delle fonti hanno significati diversi e non sono una certezza d’identificazione.</p>
+  <div id="auto-foto" class="auto-foto"></div>
+  <div id="auto-fonti" class="auto-fonti" aria-live="polite"></div>
   <p id="auto-stato" role="status" aria-live="polite"></p>
   <div id="auto-risultati"></div>
   <div class="azioni"><button type="button" class="btn" id="auto-chiudi">Chiudi</button></div>
@@ -789,8 +791,22 @@
       <li><b>Wikipedia / Wikidata</b> e <b>GBIF</b>: verificano un nome scientifico nel regno delle piante; animali, funghi e pagine non botaniche vengono scartati.</li>
       <li><b>PlantNet</b>: «Cerca su PlantNet» per nome; «Cerca da foto» o «🔎 Identifica» su una foto della scheda. Serve la chiave PlantNet gratuita, impostata in Configurazione. Senza chiave l’app non invia mai foto.</li>
       <li><b>Cerca con AI</b> (facoltativo): invia solo nome e caratteri botanici al servizio scelto, mai foto, GPS o note personali. I nomi proposti vengono verificati su GBIF. Le percentuali sono stime del modello.</li>
-      <li><b>Cerca intelligente</b>: combina guida, Wikipedia, GBIF e, se configurati, AI e PlantNet. Un servizio in errore non cancella i risultati degli altri.</li>
     </ul>
+    <h3>🔎 Super ricerca</h3>
+    <p>Il pulsante verde accanto a «Cerca» interroga <b>tutto insieme</b> e mostra lo stato di ogni fonte con un’etichetta (⏳ in corso, ✅ fatto, ⚠️ errore, ➖ saltata):</p>
+    <ul>
+      <li><b>Guida delle 144 piante</b> (anche offline), <b>Wikipedia/Wikidata</b> e <b>GBIF</b> per i nomi.</li>
+      <li><b>PlantNet</b> con <b>tutte le foto della scheda</b> (fino a 5) in un’unica identificazione: più foto dello stesso albero (portamento, foglia, corteccia, frutto) danno un risultato più affidabile. Mostra anche quante identificazioni gratuite restano oggi.</li>
+      <li><b>Ogni servizio AI con chiave</b> in <code>open.env</code> (Gemini, Groq, OpenRouter), a cui vanno le prime 3 foto ridotte, il nome e i caratteri botanici. Mai GPS, località, data o note.</li>
+    </ul>
+    <p>Ogni proposta ha delle <b>pastiglie</b> riassuntive (📷 PlantNet, 🤖 quante AI concordano, 📖 guida, ✔ GBIF, 📍 presenza) e, per le prime 4:</p>
+    <ul>
+      <li><b>Presenza vicino</b>: quante osservazioni GBIF (comprese quelle di iNaturalist) ci sono entro 10 km, o entro 50 km. GBIF riceve le coordinate arrotondate a circa 1 km. Zero osservazioni non esclude la specie (può essere coltivata), ma invita a ricontrollare.</li>
+      <li><b>Foto di confronto</b>: la slide del corso, l’immagine di Wikipedia e le foto di riferimento più simili trovate da PlantNet. Toccale per ingrandirle.</li>
+      <li><b>Collegamenti</b>: PlantNet, GBIF, Wikipedia, <b>Acta Plantarum</b> e <b>Flora d’Italia</b> (Portale della Flora d’Italia), trovati tramite Wikidata; se manca il collegamento diretto si apre una ricerca limitata a quel sito.</li>
+    </ul>
+    <p><b>🔍 Apri in Google Lens</b>: scegli una delle tue foto in alto e il pulsante la passa a Google Lens con il pannello «Condividi» del telefono. Lens non ha un collegamento diretto: se il browser non può condividere file, apri Lens e scegli la foto dalla galleria.</p>
+    <p>Un servizio in errore non cancella i risultati degli altri. Le percentuali delle diverse fonti non sono confrontabili e non vengono mediate. Il nome cambia solo con «Usa questo nome».</p>
     <p><b>🌍 Stato IUCN e nomi comuni</b>: sotto il nome, quando la scheda ha il riferimento GBIF della specie, il pulsante chiede a GBIF la categoria della <b>Lista rossa IUCN</b> (per esempio LC, minor preoccupazione) e i <b>nomi comuni italiani</b>. Restano salvati nella scheda e si vedono anche offline.</p>
     <p>Il nome cambia solo quando premi «Usa questo nome». Ogni specie confermata entra in un piccolo catalogo sul dispositivo e viene proposta anche offline; il suo ID GBIF compare come link «Apri la specie su GBIF» e nelle esportazioni.</p>
     <h3>Il catalogo delle 144 piante</h3>
@@ -878,12 +894,15 @@
   <details class="aiuto-sez" data-sez="glossario">
     <summary><span aria-hidden="true">📚</span> Glossario rapido</summary>
     <dl class="aiuto-glossario">
+      <dt>Acta Plantarum</dt><dd>Sito italiano di botanica con schede, foto e distribuzione delle piante d’Italia; la Super ricerca lo collega alla specie.</dd>
       <dt>Backup completo</dt><dd>File .zip con tutto l’archivio: schede, foto, audio, catalogo, cestino e traccia.</dd>
       <dt>Brachiblasto</dt><dd>Rametto cortissimo che porta un mazzetto di aghi (Larix, Cedrus).</dd>
       <dt>Catalogo delle 144 piante</dt><dd>Le specie del corso con slide e caratteristiche; si può integrare ma resta separato dalle schede.</dd>
       <dt>Circonferenza a 1,30 m</dt><dd>Misura del tronco all’altezza del petto, in centimetri.</dd>
       <dt>Classe di grandezza</dt><dd>Dimensione dell’albero adulto, dalla 1ª (alberi più grandi) alla 4ª (più piccoli), come nelle slide del corso.</dd>
+      <dt>Flora d’Italia, Portale</dt><dd>Portale della Flora d’Italia (Università di Trieste): elenco ufficiale delle piante spontanee italiane, con nomi accettati e distribuzione per regione.</dd>
       <dt>GBIF</dt><dd>Database internazionale della biodiversità usato per verificare i nomi scientifici e chiedere stato IUCN e nomi comuni.</dd>
+      <dt>Google Lens</dt><dd>Riconoscimento per immagini di Google; la foto gli arriva solo dal pannello «Condividi», su tua scelta.</dd>
       <dt>IUCN, Lista rossa</dt><dd>Classificazione del rischio di estinzione: LC minor preoccupazione, NT quasi minacciata, VU vulnerabile, EN in pericolo, CR in pericolo critico, NE non valutata.</dd>
       <dt>GeoJSON, KML, GPX</dt><dd>Formati di dati geografici per QGIS, Google Earth e navigatori.</dd>
       <dt>Lamina</dt><dd>La parte espansa della foglia; nelle conifere è «aghiforme».</dd>
@@ -895,6 +914,7 @@
       <dt>PWA</dt><dd>App web installabile sulla schermata Home, che funziona anche offline.</dd>
       <dt>QR permanente</dt><dd>Codice che identifica una scheda per sempre, anche dopo un nuovo elenco.</dd>
       <dt>Strobilo</dt><dd>La pigna delle conifere.</dd>
+      <dt>Super ricerca</dt><dd>Ricerca del nome che interroga insieme guida, Wikipedia, GBIF, PlantNet con tutte le foto e ogni AI con chiave, poi aggiunge presenza vicino e foto di confronto.</dd>
     </dl>
     <p>Il glossario completo e l’indice analitico sono nel <a href="manuali/manuale-utente.pdf" target="_blank" rel="noopener">manuale utente (PDF)</a>.</p>
   </details>

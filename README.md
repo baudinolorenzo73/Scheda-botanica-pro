@@ -2,13 +2,13 @@
 
 **App offline per il rilievo degli alberi sul campo**: schede con foto, GPS, note vocali, misura dell’altezza e stima ambientale; catalogo delle 144 piante del corso con le slide originali; Chiave delle Pinaceae; stampa, etichette QR, mappa e backup. Niente server, niente account: i dati restano sul dispositivo.
 
-**by Lollo ®2026 — versione 3.46.0**
+**by Lollo ®2026 — versione 3.47.0**
 
 👉 **[Apri l’app](https://baudinolorenzo73.github.io/Scheda-botanica-pro/)** · [📘 Manuale utente (PDF)](manuali/manuale-utente.pdf) · [Guida rapida (PDF)](manuali/guida-rapida.pdf) · [Novità (CHANGELOG)](CHANGELOG.md) · [Assistente AI e chiavi](ASSISTENTE-AI.md)
 
-| Prima pagina | Scheda | Chiave delle Pinaceae | Configurazione |
-|---|---|---|---|
-| ![Prima pagina](screenshot/elenco.png) | ![Scheda compilata](screenshot/scheda.png) | ![Scheda del genere Larix](screenshot/pinaceae.png) | ![Configurazione a gruppi](screenshot/configurazione.png) |
+| Prima pagina | Scheda | Super ricerca | Chiave delle Pinaceae | Configurazione |
+|---|---|---|---|---|
+| ![Prima pagina](screenshot/elenco.png) | ![Scheda compilata](screenshot/scheda.png) | ![Super ricerca: pastiglie, presenza e foto di confronto](screenshot/super-ricerca.png) | ![Scheda del genere Larix](screenshot/pinaceae.png) | ![Configurazione a gruppi](screenshot/configurazione.png) |
 
 ---
 
@@ -63,6 +63,7 @@ Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento 
 - **Catalogo delle 144 piante** del corso con slide originali, consultabile e integrabile offline; ricerca per nome, per caratteristiche e per zona d’origine.
 - **Chiave delle Pinaceae**: chiave guidata dei 7 generi (*Abies, Picea, Pinus, Cedrus, Larix, Tsuga, Pseudotsuga*), schede con illustrazioni, slide del corso per genere, ripasso a domande e glossario. Collegata in entrambe le direzioni con il catalogo.
 - **Stato di conservazione e nomi comuni**: categoria della Lista rossa IUCN e nomi comuni italiani dalla specie GBIF, salvati nella scheda.
+- **🔎 Super ricerca** sotto il nome: guida locale, Wikipedia/Wikidata, GBIF, PlantNet con **tutte le foto** della scheda e **ogni AI con chiave** (foto, nome e caratteri) in un colpo solo, con lo stato di ogni fonte. Per le prime proposte aggiunge **presenza nei dintorni** (osservazioni GBIF entro 10 km), **foto di confronto** (slide, Wikipedia, foto simili PlantNet), collegamenti ad **Acta Plantarum** e **Flora d’Italia** e il pulsante **Apri in Google Lens**.
 - **Ricerche online**: Wikipedia/Wikidata e GBIF per verificare i nomi; **PlantNet** per nome e da foto (chiave gratuita); **assistente AI facoltativo** (Gemini, Groq, OpenRouter) con le chiavi in `open.env`. Le proposte vengono verificate su GBIF e richiedono conferma.
 
 ### Organizzare e condividere
@@ -85,7 +86,7 @@ Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento 
 
 Nella cartella [`manuali/`](manuali/):
 
-- **[Manuale utente](manuali/manuale-utente.pdf)** ([.docx](manuali/manuale-utente.docx)) — 53 pagine in cinque parti (Iniziare · Sul campo · Riconoscere le piante · Organizzare e condividere · Impostazioni), con 31 schermate, esempi pratici, problemi frequenti, riferimento rapido, glossario e indice analitico.
+- **[Manuale utente](manuali/manuale-utente.pdf)** ([.docx](manuali/manuale-utente.docx)) — 55 pagine in cinque parti (Iniziare · Sul campo · Riconoscere le piante · Organizzare e condividere · Impostazioni), con 33 schermate, esempi pratici, problemi frequenti, riferimento rapido, glossario e indice analitico.
 - **[Guida rapida](manuali/guida-rapida.pdf)** ([.docx](manuali/guida-rapida.docx)) — tutto l’essenziale in una pagina.
 - **[ASSISTENTE-AI.md](ASSISTENTE-AI.md)** — chiavi, servizi, modelli ed errori dell’assistente AI.
 - **[CHANGELOG.md](CHANGELOG.md)** — le novità di ogni versione.
@@ -106,6 +107,8 @@ L’app non ha un server: schede, foto, note vocali e coordinate restano **solo 
 | Meteo e pollini | la posizione attuale o il nome della località cercata | Open-Meteo |
 | PlantNet | il nome, oppure la foto scelta | Pl@ntNet |
 | Cerca con AI | nome e caratteri botanici (mai foto, GPS o note) | il servizio scelto |
+| Super ricerca | a PlantNet fino a 5 foto; a ogni AI con chiave nome, caratteri e le prime 3 foto ridotte (mai GPS, località o note); a GBIF le coordinate arrotondate a circa 1 km | Pl@ntNet, Gemini/Groq/OpenRouter, GBIF, Wikimedia |
+| Apri in Google Lens | la foto scelta, solo tramite il pannello «Condividi» | Google, su tua scelta |
 | Proposte AI dal catalogo | la slide e la nota del corso | il servizio scelto |
 
 Le chiavi AI stanno in `open.env`, che **non va mai** messo nello ZIP, in Drive o su GitHub: `.gitignore` lo esclude e `scripts/check_public_secrets.py` blocca la pubblicazione se trova un file `.env`.

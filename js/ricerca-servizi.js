@@ -97,14 +97,16 @@ const ServiziRicerca = (() => {
     if (inizio >= 0 && fine > inizio) return JSON.parse(pulito.slice(inizio, fine + 1));
     throw new SyntaxError('JSON assente');
   }
+  // Immagini: una sola (base64 + opzioni.mime, come le slide) oppure più foto in opzioni.immagini [{base64, mime}].
   async function ai(cfg, istruzioni, base64 = '', opzioni = {}) {
     const mime = opzioni.mime || 'image/webp';
+    const immagini = base64 ? [{ base64, mime }] : (opzioni.immagini || []).filter((i) => i && i.base64);
     const esegui = async modello => {
       let url, body, headers;
       if (cfg.nome === 'gemini') {
         url = `https://generativelanguage.googleapis.com/v1beta/models/${modello}:generateContent`;
         headers = { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.chiave };
-        body = { contents: [{ parts: [{ text: istruzioni }, ...(base64 ? [{ inline_data: { mime_type: mime, data: base64 } }] : [])] }],
+        body = { contents: [{ parts: [{ text: istruzioni }, ...immagini.map((i) => ({ inline_data: { mime_type: i.mime || 'image/jpeg', data: i.base64 } }))] }],
           generationConfig: { responseMimeType: 'application/json', temperature: 0 } };
       } else {
         url = cfg.nome === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
@@ -115,8 +117,8 @@ const ServiziRicerca = (() => {
           // resta nel testo; va nascosto. Per Qwen lo si spegne del tutto: più veloce, risposta più corta.
           ...(cfg.nome === 'groq' ? { response_format: { type: 'json_object' },
             ...(ragiona(modello) ? { reasoning_format: 'hidden', reasoning_effort: /qwen/i.test(modello) ? 'none' : 'low' } : {}) } : {}),
-          messages: [{ role: 'user', content: base64 ? [{ type: 'text', text: istruzioni },
-            { type: 'image_url', image_url: { url: `data:${mime};base64,${base64}` } }] : istruzioni }] };
+          messages: [{ role: 'user', content: immagini.length ? [{ type: 'text', text: istruzioni },
+            ...immagini.map((i) => ({ type: 'image_url', image_url: { url: `data:${i.mime || 'image/jpeg'};base64,${i.base64}` } }))] : istruzioni }] };
       }
       let dati;
       for (let tentativo = 1; tentativo <= 3; tentativo++) {
