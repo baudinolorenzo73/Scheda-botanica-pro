@@ -2,7 +2,7 @@
 
 **App offline per il rilievo degli alberi sul campo**: schede con foto, GPS, note vocali, misura dell’altezza e stima ambientale; catalogo delle 144 piante del corso con le slide originali; Chiave delle Pinaceae; stampa, etichette QR, mappa e backup. Niente server, niente account: i dati restano sul dispositivo.
 
-**by Lollo ®2026 — versione 3.48.0**
+**by Lollo ®2026 — versione 3.49.0**
 
 👉 **[Apri l’app](https://baudinolorenzo73.github.io/Scheda-botanica-pro/)** · [📘 Manuale utente (PDF)](manuali/manuale-utente.pdf) · [Guida rapida (PDF)](manuali/guida-rapida.pdf) · [Novità (CHANGELOG)](CHANGELOG.md) · [Assistente AI e chiavi](ASSISTENTE-AI.md)
 
@@ -70,7 +70,7 @@ Aspetta che sotto il titolo compaia **«✓ offline pronta»**: da quel momento 
 - **Meteo e pollini** nell’app: previsione di 4 giorni con alba e tramonto e pollini di sei specie per l’Europa (Open-Meteo, CAMS), per la posizione attuale o una località cercata; resta il collegamento a 3B Meteo.
 - **Ricerca, filtri** (specie, date, senza foto, senza GPS, con problemi), **Nuovo elenco** e **cestino** con svuotamento automatico.
 - **Mappa** offline delle schede, stampa A4 della mappa e **pagina HTML mappa + schede** da aprire su qualsiasi dispositivo.
-- **Stampa** di schede A4 (con prima pagina della mappa, QR, stima ambientale, foto e testo libero), **etichette QR 5×5 cm** e registro Excel, con le **coordinate GPS nel formato scelto**: gradi decimali, gradi-minuti-secondi, gradi e minuti, **UTM WGS84** (zona calcolata per ogni albero) oppure nessuna coordinata, nemmeno nei QR.
+- **Stampa** di schede A4 (con prima pagina della mappa, QR, stima ambientale, foto e testo libero), **etichette QR 5×5 cm** e registro Excel, con le **coordinate GPS nel formato scelto**: gradi decimali, gradi-minuti-secondi, gradi e minuti, **UTM WGS84** (zona calcolata per ogni albero) oppure nessuna coordinata, nemmeno nei QR. Nella mappa stampata il nome dell’esemplare sta accanto al numero.
 - **Codice QR permanente** per ogni scheda e scansione per ritrovarla; **report per il cliente**.
 - **Backup completo .zip** (schede, foto, audio, catalogo, cestino, traccia), backup automatico, cartella Download/Botanica, ripristino con **Sostituisci** o **Unisci** campo per campo per il lavoro in squadra; import Excel/CSV, export CSV, GeoJSON, KML, GPX.
 

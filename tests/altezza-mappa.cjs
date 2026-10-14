@@ -360,6 +360,13 @@ const nGpsM=await p.evaluate(()=>S.schede.filter(r=>r.gps).length), nSchedeM=awa
 assert.equal(await p.evaluate(()=>document.querySelector('#stampa').firstElementChild.classList.contains('p-mappa-prima')),true,'la mappa è la prima pagina');
 assert.equal(await p.locator('#stampa .p-mappa-box .leaflet-marker-icon').count(),nGpsM);
 assert.equal(await p.locator('#stampa .p-scheda').count(),nSchedeM);
+const nomiMappa=await p.locator('#stampa .p-mappa-box .p-mappa-nome').allTextContents();
+assert.equal(nomiMappa.length,await p.evaluate(()=>S.schede.filter(r=>r.gps&&nomeBreveMappa(r)).length),'nome accanto a ogni numero');
+assert.ok(nomiMappa.every(t=>t.length<=26&&!/['‘’]/.test(t)),'nomi brevi, senza varietà');
+// nessuna etichetta esce dal riquadro della mappa
+assert.equal(await p.evaluate(()=>{const b=document.querySelector('#stampa .p-mappa-box').getBoundingClientRect();return [...document.querySelectorAll('#stampa .p-mappa-nome')].every(e=>{const r=e.getBoundingClientRect();return r.left>=b.left-1&&r.right<=b.right+1&&r.top>=b.top-1&&r.bottom<=b.bottom+1;});}),true,'etichette dentro la mappa');
+// scelta dei lati: due punti vicini non sovrappongono le etichette
+assert.equal(await p.evaluate(()=>{const m=disponiNomiMappa([{uid:'a',x:100,y:100,nome:'Quercus robur'},{uid:'b',x:112,y:100,nome:'Tilia cordata'},{uid:'c',x:124,y:100,nome:'Acer campestre'}],600,400);return new Set([...m.values()]).size;}),3,'tre punti vicini: tre lati diversi');
 assert.equal(await p.locator('#stampa .p-altro').count(),1,'«Altro» stampato una sola volta');
 assert.equal((await p.textContent('#stampa .p-altro')).trim(),'Rilievo di prova: cancello nord','solo il testo, senza la parola «Altro»');
 assert.equal(await p.evaluate(()=>!!document.querySelector('#stampa .p-mappa-prima .p-altro')),true,'«Altro» sta nella pagina della mappa, non nelle schede');

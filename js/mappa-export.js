@@ -11,12 +11,51 @@
    ===================================================================== */
 
 
-function iconaNumero(r) {
+// Con «nome» il nome dell'esemplare esce accanto al numero, dal lato indicato da «lato».
+function iconaNumero(r, nome = '', lato = 'destra') {
   const colore = r.problemi ? '#b4452f' : '#2f5d3a';
+  const posizione = { destra: 'left:31px;top:50%;transform:translateY(-50%)', sinistra: 'right:31px;top:50%;transform:translateY(-50%)',
+    sopra: 'left:50%;bottom:31px;transform:translateX(-50%)', sotto: 'left:50%;top:31px;transform:translateX(-50%)' }[lato] || '';
+  const etichetta = nome ? `<span class="p-mappa-nome" style="position:absolute;${posizione}">${escHtml(nome)}</span>` : '';
   return L.divIcon({
     className: '', iconSize: [26, 26], iconAnchor: [13, 13],
-    html: `<div style="background:${colore};color:#fff;border:2px solid #fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.4);-webkit-print-color-adjust:exact;print-color-adjust:exact">${escHtml(r.prog)}</div>`,
+    html: `<div style="position:relative;background:${colore};color:#fff;border:2px solid #fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.4);-webkit-print-color-adjust:exact;print-color-adjust:exact">${escHtml(r.prog)}${etichetta}</div>`,
   });
+}
+
+// Nome breve per la mappa: senza varietà tra apici, al massimo 26 caratteri.
+function nomeBreveMappa(r) {
+  const n = String(r.nome || '').replace(/\s+['‘’"].*$/, '').trim();
+  return n.length > 26 ? n.slice(0, 25).trimEnd() + '…' : n;
+}
+
+// Sceglie per ogni etichetta il lato (destra, sinistra, sopra, sotto) che non copre cerchi o altre
+// etichette né esce dalla mappa. Misure in pixel dello schermo del riquadro della mappa.
+function disponiNomiMappa(punti, larghezza, altezza) {
+  const CH = 13, mezzaAltezza = 7, larghezzaTesto = (t) => t.length * 5.6 + 6;
+  const cerchi = punti.map((p) => ({ x0: p.x - CH, x1: p.x + CH, y0: p.y - CH, y1: p.y + CH }));
+  const occupati = [];
+  const sovrappone = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+  const esito = new Map();
+  for (const p of punti) {
+    const w = larghezzaTesto(p.nome);
+    const prove = {
+      destra: { x0: p.x + CH + 3, x1: p.x + CH + 3 + w, y0: p.y - mezzaAltezza, y1: p.y + mezzaAltezza },
+      sinistra: { x0: p.x - CH - 3 - w, x1: p.x - CH - 3, y0: p.y - mezzaAltezza, y1: p.y + mezzaAltezza },
+      sopra: { x0: p.x - w / 2, x1: p.x + w / 2, y0: p.y - CH - 3 - 2 * mezzaAltezza, y1: p.y - CH - 3 },
+      sotto: { x0: p.x - w / 2, x1: p.x + w / 2, y0: p.y + CH + 3, y1: p.y + CH + 3 + 2 * mezzaAltezza },
+    };
+    let migliore = 'destra', minimo = Infinity;
+    for (const [lato, r] of Object.entries(prove)) {
+      let costo = (r.x0 < 0 || r.x1 > larghezza || r.y0 < 0 || r.y1 > altezza) ? 100 : 0;
+      costo += cerchi.filter((c) => sovrappone(r, c)).length + occupati.filter((o) => sovrappone(r, o)).length * 3;
+      if (costo < minimo) { minimo = costo; migliore = lato; }
+      if (!costo) break;
+    }
+    occupati.push(prove[migliore]);
+    esito.set(p.uid, migliore);
+  }
+  return esito;
 }
 
 // Finestra di scelta costruita al volo; restituisce i valori o null se annullata.
@@ -67,6 +106,7 @@ async function stampaMappa() {
     sceltaRadio('area', 'Cosa stampare', [['vista', 'L’area che vedi adesso sullo schermo'], ['tutte', `Tutte le schede con GPS (${conGps.length})`]], 'vista'),
     sceltaRadio('verso', 'Foglio A4', [['orizzontale', 'Orizzontale'], ['verticale', 'Verticale']], 'orizzontale'),
     sceltaSpunta('legenda', 'Aggiungi l’elenco delle schede (numero, nome, data, altezza)', true),
+    sceltaSpunta('nomi', 'Scrivi il nome dell’esemplare accanto al numero', leggiPref('sb-mappa-nomi') !== '0'),
   ];
   if (haTraccia) opzioni.push(sceltaSpunta('traccia', 'Disegna anche la traccia del percorso', true));
   opzioni.push(sceltaTesto('titolo', 'Titolo', `Mappa dei rilievi ${dateRilievo(conGps)}`.trim()));
@@ -74,6 +114,7 @@ async function stampaMappa() {
     'Si apre la finestra di stampa del telefono: puoi stampare o scegliere «Salva come PDF». Lo sfondo usa le zone della mappa già scaricate o la rete.',
     opzioni, '🖨 Stampa');
   if (!scelta) return;
+  scriviPref('sb-mappa-nomi', scelta.nomi ? '1' : '0');
   if (scelta.area === 'tutte' && !conGps.length) return alert('Nessuna scheda visibile ha le coordinate GPS.');
 
   pulisciStampaMappa();
@@ -81,7 +122,7 @@ async function stampaMappa() {
   document.head.append(el('style', { id: 'stile-pagina-mappa' }, `@page{size:A4 ${orizzontale ? 'landscape' : 'portrait'};margin:15mm}`));
   const area = $('#stampa');
   area.replaceChildren();
-  const m2 = await preparaMappaStampa(area, conGps, { orizzontale, legenda: scelta.legenda, traccia: scelta.traccia,
+  const m2 = await preparaMappaStampa(area, conGps, { orizzontale, legenda: scelta.legenda, traccia: scelta.traccia, nomi: scelta.nomi,
     titolo: scelta.titolo, limiti: scelta.area === 'tutte' ? null : mappa.getBounds() });
   stato('Mappa pronta per la stampa');
   window.addEventListener('afterprint', () => { m2.remove(); pulisciStampaMappa(); }, { once: true });
@@ -91,7 +132,7 @@ async function stampaMappa() {
 // Pagina A4 con la mappa e i numeri delle schede, aggiunta in fondo a «area».
 // Usata da «Stampa mappa» e come prima pagina della stampa delle schede.
 // Restituisce la mappa Leaflet temporanea (da rimuovere dopo la stampa).
-async function preparaMappaStampa(area, conGps, { orizzontale = false, legenda = false, traccia = false, titolo = '', limiti = null, primaDelleSchede = false, altro = '' } = {}) {
+async function preparaMappaStampa(area, conGps, { orizzontale = false, legenda = false, traccia = false, titolo = '', limiti = null, primaDelleSchede = false, altro = '', nomi = false } = {}) {
   // il testo libero «Altro» toglie spazio alla mappa, che resta nella stessa pagina
   const righeAltro = altro ? altro.split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 90)), 0) : 0;
   const tolto = altro ? Math.min(righeAltro, 10) * 5 + 8 : 0;
@@ -101,7 +142,7 @@ async function preparaMappaStampa(area, conGps, { orizzontale = false, legenda =
     el('p', { class: 'p-mappa-sotto' }, `${conGps.length} schede con GPS · stampata il ${dataIT(oraISO())} · by Lollo ®2026`),
     altro ? blocco_altro(altro) : null,
     box,
-    el('p', { class: 'p-mappa-nota' }, 'Cerchio verde: scheda · cerchio rosso: problemi segnalati · il numero è il N° progressivo. Sfondo © OpenStreetMap.'));
+    el('p', { class: 'p-mappa-nota' }, `Cerchio verde: scheda · cerchio rosso: problemi segnalati · il numero è il N° progressivo${nomi ? ', accanto c’è il nome' : ''}. Sfondo © OpenStreetMap.`));
   const parti = [pagina];
   if (legenda && conGps.length) {
     parti.push(el('section', { class: 'p-mappa-legenda' },
@@ -122,7 +163,7 @@ async function preparaMappaStampa(area, conGps, { orizzontale = false, legenda =
   const m2 = L.map(box, { zoomControl: false, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false, inertia: false, zoomSnap: 0.25 });
   const sfondo = L.tileLayer(TILE_URL, { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m2);
   L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(m2);
-  for (const r of conGps) L.marker([r.gps.lat, r.gps.lng], { icon: iconaNumero(r) }).addTo(m2);
+  const segnaposti = conGps.map((r) => ({ r, marker: L.marker([r.gps.lat, r.gps.lng], { icon: iconaNumero(r) }).addTo(m2) }));
   if (traccia) {
     for (const g of segmentiTraccia()) {
       if (g.punti.length > 1) L.polyline(g.punti.map((p) => [p.lat, p.lng]), { color: '#d0402b', weight: 3, opacity: 0.85 }).addTo(m2);
@@ -131,6 +172,15 @@ async function preparaMappaStampa(area, conGps, { orizzontale = false, legenda =
   if (limiti) m2.fitBounds(limiti);
   else if (conGps.length) m2.fitBounds(conGps.map((r) => [r.gps.lat, r.gps.lng]), { padding: [30, 30], maxZoom: 18 });
   m2.getContainer().append(el('div', { class: 'p-mappa-nord', 'aria-hidden': 'true' }, 'N', el('br'), '▲'));
+  if (nomi) {
+    // I lati si scelgono dopo l'inquadratura, sulle posizioni reali in pixel.
+    const punti = segnaposti.filter(({ r }) => nomeBreveMappa(r)).map(({ r, marker }) => {
+      const q = m2.latLngToContainerPoint(marker.getLatLng());
+      return { uid: r.uid, x: q.x, y: q.y, nome: nomeBreveMappa(r) };
+    });
+    const lati = disponiNomiMappa(punti, box.clientWidth, box.clientHeight);
+    for (const { r, marker } of segnaposti) if (lati.has(r.uid)) marker.setIcon(iconaNumero(r, nomeBreveMappa(r), lati.get(r.uid)));
+  }
 
   stato('Preparo la mappa da stampare…');
   // Si aspetta lo sfondo, al massimo 12 secondi (offline le zone mancanti restano grigie).

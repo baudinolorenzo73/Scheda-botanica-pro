@@ -842,6 +842,7 @@
     <ul>
       <li><b>Stampa</b> (in «Sul campo»): schede selezionate, quelle visibili con il filtro attuale o tutte. Puoi aggiungere la <b>prima pagina con la mappa</b>, il <b>codice QR</b>, la <b>stima ambientale</b> e le foto, oppure stampare solo le <b>etichette QR</b> da ritagliare.</li>
       <li><b>Coordinate GPS</b>: nella finestra di stampa scegli come escono le coordinate nelle schede A4 e nel registro Excel: <b>gradi decimali</b> (45.053200, 7.686800), <b>gradi, minuti, secondi</b> (45°03′11.5″ N), <b>gradi e minuti</b> (45°03.192′ N), <b>UTM WGS84</b> (32T 396596 E 4989699 N, zona calcolata per ogni albero) oppure <b>non stamparle</b>: in quel caso anche i codici QR stampati non contengono la posizione. Nell’app restano salvate in gradi decimali; l’ultima scelta viene ricordata.</li>
+      <li><b>Nomi sulla mappa</b>: nella mappa stampata il nome dell’esemplare esce accanto al numero; si toglie con la casella «Scrivi il nome dell’esemplare accanto al numero».</li>
       <li>La casella <b>«Altro»</b> della finestra di stampa è un testo libero che esce solo nella prima pagina, senza etichetta.</li>
       <li>Una sola scheda: icona 🖨 in alto nella scheda aperta.</li>
       <li><b>QR</b>: ogni scheda ha un codice permanente. «Scarica QR» crea l’etichetta PNG; «Scansiona QR» (in «+ Opzioni») apre la fotocamera e porta alla scheda esatta.</li>
@@ -967,6 +968,7 @@
     <div id="st-opz-schede" class="scelte" style="margin-top:6px">
       <div id="st-opz-pdf">
         <label><input type="checkbox" id="st-mappa"> Prima pagina con la mappa e i numeri delle schede (quelle con GPS)</label>
+        <label><input type="checkbox" id="st-mappa-nomi" checked> Nella mappa, scrivi il nome dell’esemplare accanto al numero</label>
         <label for="st-altro">Altro (testo libero, stampato solo nella prima pagina)
           <textarea id="st-altro" class="campo-base" rows="3" maxlength="600" placeholder="Es. località, committente, condizioni del rilievo… Lascia vuoto per non stampare nulla."></textarea></label>
         <label><input type="checkbox" id="st-qr" checked> Codice QR</label>

@@ -2,6 +2,16 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.49.0 · nome dell'esemplare accanto al numero nella mappa stampata
+
+- Nella **mappa stampata** il nome dell'esemplare (in corsivo, senza la varietà tra apici, al massimo 26 caratteri) esce accanto al numero di ogni scheda. Vale per «Stampa mappa» e per la **prima pagina con la mappa** della stampa delle schede.
+- Le etichette scelgono da sole il lato (destra, sinistra, sopra o sotto) che non copre altri cerchi né altre etichette e non esce dalla mappa: anche con alberi vicini restano leggibili. Hanno un contorno bianco per leggersi su qualsiasi sfondo.
+- Si può togliere con la casella «Scrivi il nome dell'esemplare accanto al numero» (nella finestra «Stampa mappa» e in «Stampa»). L'app ricorda la scelta; è attiva di base.
+- La nota sotto la mappa lo dice («accanto c'è il nome»); l'elenco delle schede resta com'era.
+- Il test della stampa con la mappa controlla ora che ci sia un nome per ogni numero, che nessuna etichetta esca dal riquadro e che tre punti vicini ricevano lati diversi.
+
+---
+
 ## 3.48.0 · coordinate GPS in stampa: gradi, UTM o nessuna
 
 - Nella finestra **Stampa** c’è la nuova scelta **Coordinate GPS**, che vale per le schede A4 e per il registro Excel:

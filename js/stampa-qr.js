@@ -206,6 +206,7 @@ async function apriStampa(soloQuesta = null) {
   popolaCampiStampa();
   $('#st-stima').checked = leggiPref('sb-stampa-stima') !== '0';
   $('#st-mappa').checked = leggiPref('sb-stampa-mappa') === '1';
+  $('#st-mappa-nomi').checked = leggiPref('sb-mappa-nomi') !== '0';
   $('#st-altro').value = leggiPref('sb-stampa-altro') || '';
   $('#st-coord').value = formatoCoordinateValido(leggiPref('sb-stampa-coord'));
 
@@ -227,6 +228,7 @@ async function apriStampa(soloQuesta = null) {
   scriviPref('sb-stampa-campi', JSON.stringify(campiScelti));
   scriviPref('sb-stampa-stima', $('#st-stima').checked ? '1' : '0');
   scriviPref('sb-stampa-mappa', $('#st-mappa').checked ? '1' : '0');
+  scriviPref('sb-mappa-nomi', $('#st-mappa-nomi').checked ? '1' : '0');
   const testoAltro = $('#st-altro').value.trim();
   scriviPref('sb-stampa-altro', testoAltro);
   const coord = formatoCoordinateValido($('#st-coord').value);
@@ -253,7 +255,7 @@ async function apriStampa(soloQuesta = null) {
     // Prima pagina: mappa con i numeri delle schede stampate che hanno il GPS.
     const conGps = lista.filter((r) => r.gps);
     if ($('#st-mappa').checked && conGps.length) {
-      mappaTemp = await preparaMappaStampa(area, conGps, { primaDelleSchede: true, altro: testoAltro,
+      mappaTemp = await preparaMappaStampa(area, conGps, { primaDelleSchede: true, altro: testoAltro, nomi: $('#st-mappa-nomi').checked,
         titolo: (lista.length === 1 ? `Posizione della scheda N° ${lista[0].prog} rilevata ${dateRilievo(lista, 'il')}` : `Mappa delle schede rilevate ${dateRilievo(lista, 'il')}`).trim() });
     } else if ($('#st-mappa').checked) toast('Nessuna delle schede da stampare ha il GPS: stampo senza mappa.');
     // Senza la pagina della mappa, «Altro» sta in cima alla prima scheda.
