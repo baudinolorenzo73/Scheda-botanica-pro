@@ -975,3 +975,7 @@ body[data-interfaccia="125"]{zoom:1.25}
 .auto-confronto-img small{font-size:10.5px;color:var(--tenue);padding:0 2px 3px}
 .auto-collegamenti{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .auto-carta .auto-collegamenti .btn{margin-top:0;min-height:38px;padding:6px 10px;font-size:13px}
+
+/* Stampa: formato delle coordinate (3.48) */
+.scelte label.st-coord{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin-top:6px}
+#st-coord{width:100%;max-width:100%;min-width:0;min-height:40px;padding:4px 8px;text-overflow:ellipsis}

@@ -6,8 +6,9 @@
    9. QR CODE (SVG vettoriale, nitido in stampa)
    Usa l'uid permanente; lo scanner accetta anche il vecchio formato.
    ===================================================================== */
-function testoQR(r) {
-  const pos = r.gps ? `${r.gps.lat.toFixed(6)},${r.gps.lng.toFixed(6)}` : 'no-gps';
+function testoQR(r, conPosizione = true) {
+  // Con «Non stampare le coordinate» anche il QR stampato esce senza posizione (lo scanner usa solo l'uid).
+  const pos = r.gps && conPosizione ? `${r.gps.lat.toFixed(6)},${r.gps.lng.toFixed(6)}` : 'no-gps';
   // uid è stabile e non viene riutilizzato quando si apre un nuovo elenco.
   return `SCHEDA_UID:${r.uid}|${r.prog}|${r.nome || 'esemplare'}|${pos}`;
 }
@@ -206,6 +207,7 @@ async function apriStampa(soloQuesta = null) {
   $('#st-stima').checked = leggiPref('sb-stampa-stima') !== '0';
   $('#st-mappa').checked = leggiPref('sb-stampa-mappa') === '1';
   $('#st-altro').value = leggiPref('sb-stampa-altro') || '';
+  $('#st-coord').value = formatoCoordinateValido(leggiPref('sb-stampa-coord'));
 
   if ((await chiedi(dlg)) !== 'stampa') return;
 
@@ -227,10 +229,12 @@ async function apriStampa(soloQuesta = null) {
   scriviPref('sb-stampa-mappa', $('#st-mappa').checked ? '1' : '0');
   const testoAltro = $('#st-altro').value.trim();
   scriviPref('sb-stampa-altro', testoAltro);
+  const coord = formatoCoordinateValido($('#st-coord').value);
+  scriviPref('sb-stampa-coord', coord);
 
   if (tipo === 'excel') {
     stato('Preparo il registro Excel…');
-    await esportaRegistroExcel(lista, new Set(campiScelti));
+    await esportaRegistroExcel(lista, new Set(campiScelti), coord);
     stato(`Registro Excel scaricato: ${lista.length} schede`);
     return;
   }
@@ -241,9 +245,9 @@ async function apriStampa(soloQuesta = null) {
   let mappaTemp = null;
   if (tipo === 'etichette') {
     area.replaceChildren(el('div', { class: 'p-etichette' }, lista.map((r) =>
-      el('div', { class: 'p-etichetta' }, qrSVG(testoQR(r)), el('b', { testo: `N° ${r.prog}` }), el('i', { testo: r.nome || '' })))));
+      el('div', { class: 'p-etichetta' }, qrSVG(testoQR(r, coord !== 'no')), el('b', { testo: `N° ${r.prog}` }), el('i', { testo: r.nome || '' })))));
   } else {
-    const opz = { qr: $('#st-qr').checked, stima: $('#st-stima').checked, foto: $('#st-foto').checked, colonne: Number($('#st-colonne').value), fotoMax: Number($('#st-foto-max').value) || 0, campi: new Set(campiScelti) };
+    const opz = { qr: $('#st-qr').checked, stima: $('#st-stima').checked, foto: $('#st-foto').checked, colonne: Number($('#st-colonne').value), fotoMax: Number($('#st-foto-max').value) || 0, campi: new Set(campiScelti), coord };
     const pagine = await Promise.all(lista.map((r) => paginaScheda(r, opz)));
     area.replaceChildren();
     // Prima pagina: mappa con i numeri delle schede stampate che hanno il GPS.
@@ -266,10 +270,30 @@ async function apriStampa(soloQuesta = null) {
 // Registro Excel: una riga per scheda, con intestazioni raggruppate per
 // sezione (Osservazioni / Vegetazione / Pedologia / Fitopatologia / Note),
 // nello spirito del modello di registro cartaceo/Excel già in uso.
-async function esportaRegistroExcel(lista, campiScelti) {
+// Colonne della posizione nel registro Excel, secondo il formato scelto in stampa.
+function colonneGpsExcel(formato) {
+  const quota = { titolo: 'Quota (m s.l.m.)', valore: (g) => g.quotaTerreno ?? (g.alt != null ? Math.round(g.alt) : '') };
+  switch (formatoCoordinateValido(formato)) {
+    case 'no': return [];
+    case 'utm': return [
+      { titolo: 'Zona UTM', valore: (g) => { const u = utmDaLatLng(g.lat, g.lng); return u ? `${u.zona}${u.banda}` : ''; } },
+      { titolo: 'Est UTM (m)', valore: (g) => { const u = utmDaLatLng(g.lat, g.lng); return u ? Math.round(u.est) : ''; } },
+      { titolo: 'Nord UTM (m)', valore: (g) => { const u = utmDaLatLng(g.lat, g.lng); return u ? Math.round(u.nord) : ''; } }, quota];
+    case 'gms': case 'gm': {
+      const sec = formato === 'gms';
+      return [{ titolo: 'Latitudine', valore: (g) => gradiSessagesimali(g.lat, 'N', 'S', sec) },
+        { titolo: 'Longitudine', valore: (g) => gradiSessagesimali(g.lng, 'E', 'O', sec) }, quota];
+    }
+    default: return [{ titolo: 'Latitudine', valore: (g) => Number(Number(g.lat).toFixed(6)) },
+      { titolo: 'Longitudine', valore: (g) => Number(Number(g.lng).toFixed(6)) }, quota];
+  }
+}
+
+async function esportaRegistroExcel(lista, campiScelti, formatoCoord = 'dec') {
   const XlsxPopulate = await caricaLibreriaExcel();
   const campi = CAMPI.filter((c) => !CAMPI_TESTATA.includes(c.k) && (!campiScelti.size || campiScelti.has(c.k)));
-  const colonneTestata = ['N° progressivo', 'Nome esemplare', 'Data'];
+  const colonneGps = colonneGpsExcel(formatoCoord);
+  const colonneTestata = ['N° progressivo', 'Nome esemplare', 'Data', ...colonneGps.map((c) => c.titolo)];
   const gruppi = [];
   for (const sez of SEZIONI) {
     const delGruppo = campi.filter((c) => c.sez === sez.id);
@@ -314,7 +338,7 @@ async function esportaRegistroExcel(lista, campiScelti) {
   // Righe dati
   lista.forEach((r, indice) => {
     const riga = rigaTestata + 1 + indice;
-    const valori = [r.prog ?? '', r.nome || '', dataBreveIT(r.data) || ''];
+    const valori = [r.prog ?? '', r.nome || '', dataBreveIT(r.data) || '', ...colonneGps.map((c) => (r.gps ? c.valore(r.gps) : ''))];
     for (const c of campi) {
       // nel registro Excel i numeri restano numeri; solo le «scelte» diventano etichette
       valori.push(c.tipo === 'scelta' ? valoreLeggibile(c, r[c.k]) : r[c.k] ?? '');
@@ -330,6 +354,7 @@ async function esportaRegistroExcel(lista, campiScelti) {
   ws.column(1).width(9);
   ws.column(2).width(22);
   ws.column(3).width(11);
+  colonneGps.forEach((c, i) => ws.column(4 + i).width(/Quota|Zona/.test(c.titolo) ? 10 : 16));
   for (let i = 0; i < campi.length; i++) ws.column(colonneTestata.length + 1 + i).width(15);
   ws.freezePanes(colonneTestata.length + 1, rigaTestata + 1);
 
@@ -371,11 +396,18 @@ function blocco_altro(testo) {
   return el('div', { class: 'p-altro', testo });
 }
 
+// Riga della posizione sotto il nome: coordinate nel formato scelto, precisione e quota
+// (quella del terreno quando è stata calcolata). Con «no» la riga non c'è.
+function rigaGpsStampa(g, formato = 'dec') {
+  if (formatoCoordinateValido(formato) === 'no') return '';
+  const testo = testoCoordinate(g, formato);
+  if (!testo) return 'GPS non rilevato';
+  const quota = g.quotaTerreno != null ? ` – ${Math.round(g.quotaTerreno)} m s.l.m. (terreno)` : g.alt != null ? ` – ${Math.round(g.alt)} m s.l.m.` : '';
+  return `${formato === 'utm' ? '' : 'GPS '}${testo}${g.acc != null ? ` (±${Math.round(g.acc)} m)` : ''}${quota}`;
+}
+
 async function paginaScheda(r, opz) {
-  const g = r.gps;
-  const riga = g
-    ? `GPS ${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}${g.acc != null ? ` (±${Math.round(g.acc)} m)` : ''}${g.alt != null ? ` – ${Math.round(g.alt)} m s.l.m.` : ''}`
-    : 'GPS non rilevato';
+  const riga = rigaGpsStampa(r.gps, opz.coord);
 
   const pagina = el('article', { class: 'p-scheda' },
     el('div', { class: 'p-testa' },
@@ -383,8 +415,8 @@ async function paginaScheda(r, opz) {
       el('div', { class: 'p-nomi' },
         el('h2', { testo: r.nome || 'Esemplare senza nome' }),
         el('p', { testo: dataBreveIT(r.data) || '' }),
-        el('p', { testo: riga })),
-      opz.qr ? el('div', { class: 'p-qr' }, qrSVG(testoQR(r))) : null));
+        riga ? el('p', { class: 'p-gps', testo: riga }) : null),
+      opz.qr ? el('div', { class: 'p-qr' }, qrSVG(testoQR(r, opz.coord !== 'no'))) : null));
 
   for (const sez of SEZIONI) {
     const campi = CAMPI.filter((c) => c.sez === sez.id && !CAMPI_TESTATA.includes(c.k) && (!opz.campi || opz.campi.has(c.k)) && campoPertinente(r, c.k));

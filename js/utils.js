@@ -308,3 +308,72 @@ function barraSpazio(st, aggiunta = 0, etichettaAggiunta = 'dopo lo scaricamento
       (aggiunta > 0 ? ` · ${etichettaAggiunta} (+${testoByte(aggiunta)}): ${pct(fDopo)}` : '') }),
     dettagli ? el('p', { class: 'spazio-nota', testo: dettagli }) : null);
 }
+
+/* Coordinate GPS in più formati (3.48): per la stampa e il registro Excel.
+   Le coordinate salvate restano sempre in gradi decimali WGS84. */
+const FORMATI_COORDINATE = {
+  dec: 'Gradi decimali (45.053200, 7.686800)',
+  gms: 'Gradi, minuti, secondi (45°03′11.5″ N)',
+  gm: 'Gradi e minuti (45°03.192′ N)',
+  utm: 'UTM WGS84 (32T 396596 E 4989699 N)',
+  no: 'Non stampare le coordinate',
+};
+const formatoCoordinateValido = (f) => Object.hasOwn(FORMATI_COORDINATE, f) ? f : 'dec';
+
+// Un valore in gradi sessagesimali; arrotonda prima di dividere, così non esce mai «60″».
+function gradiSessagesimali(v, pos, neg, conSecondi = true) {
+  const emisfero = v < 0 ? neg : pos;
+  const x = Math.abs(v);
+  if (conSecondi) {
+    let decimi = Math.round(x * 36000);
+    const g = Math.floor(decimi / 36000); decimi -= g * 36000;
+    const m = Math.floor(decimi / 600);
+    const s = (decimi - m * 600) / 10;
+    return `${g}°${String(m).padStart(2, '0')}′${s.toFixed(1).padStart(4, '0')}″ ${emisfero}`;
+  }
+  const millesimi = Math.round(x * 60000);
+  const g = Math.floor(millesimi / 60000);
+  const m = (millesimi - g * 60000) / 1000;
+  return `${g}°${m.toFixed(3).padStart(6, '0')}′ ${emisfero}`;
+}
+
+// Da latitudine e longitudine WGS84 a UTM (proiezione di Mercatore trasversa, serie di Snyder:
+// errore ben sotto il metro). Zona calcolata dal punto, con le eccezioni di Norvegia e Svalbard.
+function utmDaLatLng(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -80 || lat > 84) return null;
+  let zona = Math.min(60, Math.floor((((lng + 180) % 360) + 360) % 360 / 6) + 1);
+  if (lat >= 56 && lat < 64 && lng >= 3 && lng < 12) zona = 32;
+  if (lat >= 72 && lng >= 0 && lng < 42) zona = lng < 9 ? 31 : lng < 21 ? 33 : lng < 33 ? 35 : 37;
+  const a = 6378137, f = 1 / 298.257223563, k0 = 0.9996;
+  const e2 = f * (2 - f), ep2 = e2 / (1 - e2);
+  const fi = lat * Math.PI / 180;
+  const dl = ((lng - ((zona - 1) * 6 - 180 + 3) + 540) % 360 - 180) * Math.PI / 180;
+  const sen = Math.sin(fi), cos = Math.cos(fi), tan = Math.tan(fi);
+  const N = a / Math.sqrt(1 - e2 * sen * sen);
+  const T = tan * tan, C = ep2 * cos * cos, A = cos * dl;
+  const M = a * ((1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256) * fi
+    - (3 * e2 / 8 + 3 * e2 ** 2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * fi)
+    + (15 * e2 ** 2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * fi)
+    - (35 * e2 ** 3 / 3072) * Math.sin(6 * fi));
+  const est = 500000 + k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5 / 120);
+  let nord = k0 * (M + N * tan * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6 / 720));
+  if (lat < 0) nord += 10000000;
+  const banda = 'CDEFGHJKLMNPQRSTUVWX'[Math.min(19, Math.floor((lat + 80) / 8))];
+  return { zona, banda, est, nord };
+}
+
+// Testo delle coordinate nel formato scelto; '' con «no» o senza GPS.
+function testoCoordinate(gps, formato = 'dec') {
+  const lat = Number(gps?.lat), lng = Number(gps?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  switch (formatoCoordinateValido(formato)) {
+    case 'no': return '';
+    case 'gms': return `${gradiSessagesimali(lat, 'N', 'S')}  ${gradiSessagesimali(lng, 'E', 'O')}`;
+    case 'gm': return `${gradiSessagesimali(lat, 'N', 'S', false)}  ${gradiSessagesimali(lng, 'E', 'O', false)}`;
+    case 'utm': {
+      const u = utmDaLatLng(lat, lng);
+      return u ? `UTM ${u.zona}${u.banda} ${Math.round(u.est)} E  ${Math.round(u.nord)} N (WGS84)` : `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+    default: return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }
+}

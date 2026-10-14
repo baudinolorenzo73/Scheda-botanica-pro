@@ -841,6 +841,7 @@
     <summary><span aria-hidden="true">🖨</span> Stampa, QR e report</summary>
     <ul>
       <li><b>Stampa</b> (in «Sul campo»): schede selezionate, quelle visibili con il filtro attuale o tutte. Puoi aggiungere la <b>prima pagina con la mappa</b>, il <b>codice QR</b>, la <b>stima ambientale</b> e le foto, oppure stampare solo le <b>etichette QR</b> da ritagliare.</li>
+      <li><b>Coordinate GPS</b>: nella finestra di stampa scegli come escono le coordinate nelle schede A4 e nel registro Excel: <b>gradi decimali</b> (45.053200, 7.686800), <b>gradi, minuti, secondi</b> (45°03′11.5″ N), <b>gradi e minuti</b> (45°03.192′ N), <b>UTM WGS84</b> (32T 396596 E 4989699 N, zona calcolata per ogni albero) oppure <b>non stamparle</b>: in quel caso anche i codici QR stampati non contengono la posizione. Nell’app restano salvate in gradi decimali; l’ultima scelta viene ricordata.</li>
       <li>La casella <b>«Altro»</b> della finestra di stampa è un testo libero che esce solo nella prima pagina, senza etichetta.</li>
       <li>Una sola scheda: icona 🖨 in alto nella scheda aperta.</li>
       <li><b>QR</b>: ogni scheda ha un codice permanente. «Scarica QR» crea l’etichetta PNG; «Scansiona QR» (in «+ Opzioni») apre la fotocamera e porta alla scheda esatta.</li>
@@ -915,6 +916,7 @@
       <dt>QR permanente</dt><dd>Codice che identifica una scheda per sempre, anche dopo un nuovo elenco.</dd>
       <dt>Strobilo</dt><dd>La pigna delle conifere.</dd>
       <dt>Super ricerca</dt><dd>Ricerca del nome che interroga insieme guida, Wikipedia, GBIF, PlantNet con tutte le foto e ogni AI con chiave, poi aggiunge presenza vicino e foto di confronto.</dd>
+      <dt>UTM</dt><dd>Coordinate in metri (Est, Nord) per zone larghe 6°; l’Italia sta nelle zone 32 e 33. Si sceglie in Stampa → Coordinate GPS.</dd>
     </dl>
     <p>Il glossario completo e l’indice analitico sono nel <a href="manuali/manuale-utente.pdf" target="_blank" rel="noopener">manuale utente (PDF)</a>.</p>
   </details>
@@ -953,6 +955,15 @@
     <label><input type="radio" name="st-tipo" value="schede" checked> Schede A4 (una per pagina)</label>
     <label><input type="radio" name="st-tipo" value="etichette"> Etichette QR 5×5 cm (15 per foglio)</label>
     <label><input type="radio" name="st-tipo" value="excel"> 📊 Registro Excel (una riga per scheda)</label>
+    <label for="st-coord" class="st-coord"><strong>Coordinate GPS</strong>
+      <select id="st-coord" class="campo-base">
+        <option value="dec">Gradi decimali (45.053200, 7.686800)</option>
+        <option value="gms">Gradi, minuti, secondi (45°03′11.5″ N)</option>
+        <option value="gm">Gradi e minuti (45°03.192′ N)</option>
+        <option value="utm">UTM WGS84 (32T 396596 E 4989699 N)</option>
+        <option value="no">Non stampare le coordinate</option>
+      </select></label>
+    <p id="st-coord-nota" class="testo-tenue" style="font-size:12.5px;margin:2px 0 0">Vale per le schede A4 e il registro Excel; con «Non stampare» anche i codici QR escono senza posizione. Nell’app le coordinate restano salvate in gradi decimali.</p>
     <div id="st-opz-schede" class="scelte" style="margin-top:6px">
       <div id="st-opz-pdf">
         <label><input type="checkbox" id="st-mappa"> Prima pagina con la mappa e i numeri delle schede (quelle con GPS)</label>

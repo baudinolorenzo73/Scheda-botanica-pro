@@ -2,6 +2,23 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.48.0 · coordinate GPS in stampa: gradi, UTM o nessuna
+
+- Nella finestra **Stampa** c’è la nuova scelta **Coordinate GPS**, che vale per le schede A4 e per il registro Excel:
+  - **Gradi decimali** (45.053200, 7.686800), come finora e predefinito;
+  - **Gradi, minuti, secondi** (45°03′11.5″ N  7°41′12.5″ E);
+  - **Gradi e minuti** (45°03.192′ N  7°41.208′ E);
+  - **UTM WGS84** (UTM 32T 396596 E  4989699 N): zona e banda calcolate per ogni albero (l’Italia sta tra le zone 32 e 33);
+  - **Non stampare le coordinate**: niente riga GPS, niente colonne della posizione e **QR stampati senza posizione**, anche sulle etichette 5×5 cm. Lo scanner ritrova comunque la scheda, perché usa solo l’identificativo.
+- La scelta viene ricordata per la stampa successiva. Nell’app le coordinate restano salvate in gradi decimali WGS84: cambia solo come vengono scritte.
+- Sulla scheda A4, accanto alle coordinate, la quota del terreno (se calcolata) ha la precedenza su quella del GPS.
+- Il **registro Excel** ha ora le colonne della posizione dopo la data: Latitudine e Longitudine (numeri in gradi decimali, testo negli altri formati) oppure Zona UTM, Est UTM e Nord UTM in metri, più la Quota.
+- La conversione UTM è fatta nell’app, senza Internet, con un errore inferiore al metro: il test la confronta con PROJ in cinque punti (Torino, Roma, Catania, Bolzano ed emisfero sud).
+- Aggiornati Aiuto (sezione Stampa e glossario), manuale (nuovo paragrafo 16.2, glossario e indice, 56 pagine), guida rapida e README.
+- Nuovo test `tests/coordinate.cjs`.
+
+---
+
 ## 3.47.0 · 🔎 Super ricerca
 
 Il pulsante verde sotto il nome diventa **🔎 Super ricerca** e sostituisce «Cerca intelligente»: interroga tutte le fonti insieme, usa tutte le foto della scheda e mostra lo stato di ognuna. Niente cambia nella scheda finché non premi «Usa questo nome».
