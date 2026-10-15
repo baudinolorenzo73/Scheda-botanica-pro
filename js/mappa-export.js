@@ -275,7 +275,7 @@ async function datiPaginaMappa(lista, modoFoto, misuraFoto, contenuto = 'complet
       problemi: !!r.problemi,
       gps: r.gps ? { lat: r.gps.lat, lng: r.gps.lng, acc: r.gps.acc ?? null } : null,
       gbif: r.gbifId || '', sezioni, foto,
-      modifica: contenuto === 'compilati' ? '' : `Creata il ${dataIT(r.creato)} – ultima modifica ${dataIT(r.modificato)}`,
+      modifica: '',
     });
   }
   return schede;

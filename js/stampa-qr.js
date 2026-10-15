@@ -452,6 +452,6 @@ async function paginaScheda(r, opz) {
       el('div', { class: 'p-foto' }, Array.from({ length: Math.ceil(figure.length / opz.colonne) }, (_, i) =>
         el('div', { class: 'p-foto-riga', style: `grid-template-columns:repeat(${opz.colonne},1fr)` }, figure.slice(i * opz.colonne, (i + 1) * opz.colonne))))));
   }
-  pagina.append(el('p', { class: 'p-piede', testo: `Creata il ${dataIT(r.creato)} – ultima modifica ${dataIT(r.modificato)} – stampata il ${dataIT(oraISO())} · by Lollo ®2026` }));
+  pagina.append(el('p', { class: 'p-piede', testo: 'by Lollo ®2026' }));
   return pagina;
 }

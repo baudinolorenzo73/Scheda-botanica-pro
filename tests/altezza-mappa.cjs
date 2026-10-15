@@ -213,7 +213,7 @@ const attesi=await p.evaluate(()=>{const r=[...S.schede].sort(perProg)[0];return
 const dtPrimi=await p2.locator('article.scheda').first().locator('dt').count();
 assert(dtPrimi>=attesi,'tutti i campi della scheda: '+dtPrimi+' su '+attesi);
 assert.match(await p2.locator('article.scheda').first().locator('dl').first().textContent(),/—/);
-assert.match(await p2.locator('article.scheda .modifica').first().textContent(),/^Creata il .* – ultima modifica /);
+assert.equal(await p2.locator('article.scheda .modifica').count(),0,'niente riga «Creata il»');
 assert.equal(await p2.locator('.leaflet-marker-icon').first().textContent()!=='',true);
 assert.match(await p2.locator('.stato-rete').textContent(),/Online/);
 // online, sfondo non salvato nel file (topografica): le tile arrivano dalla rete

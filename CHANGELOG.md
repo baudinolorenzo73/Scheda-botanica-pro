@@ -2,6 +2,12 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.50.0 · tolta la riga «Creata il…» dalle stampe
+
+- In fondo a ogni scheda stampata (e nella pagina HTML esportata) non c'è più la riga «Creata il … – ultima modifica … – stampata il …». Resta solo il marchio «by Lollo ®2026». Le date restano salvate nella scheda e nei backup.
+
+---
+
 ## 3.49.0 · nome dell'esemplare accanto al numero nella mappa stampata
 
 - Nella **mappa stampata** il nome dell'esemplare (in corsivo, senza la varietà tra apici, al massimo 26 caratteri) esce accanto al numero di ogni scheda. Vale per «Stampa mappa» e per la **prima pagina con la mappa** della stampa delle schede.
