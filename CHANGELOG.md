@@ -2,6 +2,15 @@
 
 Le versioni più recenti sono in alto.
 
+## 3.51.0 · nomi accanto ai numeri anche nella pagina HTML esportata
+
+- Nella mappa della **pagina HTML** esportata dalle schede il nome dell'esemplare esce accanto al numero (corsivo, senza varietà, al massimo 26 caratteri), come nella mappa stampata.
+- I nomi si ricalcolano a ogni zoom e spostamento: scelgono il lato (destra, sinistra, sopra, sotto) che non copre altri numeri o nomi e non esce dalla mappa. Sotto lo zoom 15 i cerchi sono troppo vicini e i nomi si nascondono: ingrandisci per vederli.
+- Con la ricerca nella pagina i nomi seguono i numeri visibili. Toccare il numero apre la scheda come prima (il nome non intralcia il tocco).
+- Il test controlla un nome per numero, nessuna etichetta fuori dalla mappa e il comportamento con il filtro.
+
+---
+
 ## 3.50.0 · tolta la riga «Creata il…» dalle stampe
 
 - In fondo a ogni scheda stampata (e nella pagina HTML esportata) non c'è più la riga «Creata il … – ultima modifica … – stampata il …». Resta solo il marchio «by Lollo ®2026». Le date restano salvate nella scheda e nei backup.

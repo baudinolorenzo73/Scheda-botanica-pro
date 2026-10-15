@@ -422,6 +422,7 @@ main{max-width:1000px;margin:0 auto;padding:12px 16px 40px}
 .leaflet-control-layers-toggle::before{content:"🗺️"}
 .leaflet-control-layers label{padding:4px 2px}
 .nota{color:var(--tenue);font-size:12.5px;margin:6px 2px 14px}
+.nome-etic{font:italic 600 11px/14px Georgia,serif;color:#000;white-space:nowrap;pointer-events:none;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 3px #fff,0 0 3px #fff}
 #cerca{width:100%;padding:12px;border:1px solid var(--linea);border-radius:10px;background:var(--foglio);color:var(--ink);font-size:16px;margin-bottom:12px}
 .scheda{background:var(--foglio);border:1px solid var(--linea);border-radius:14px;padding:14px;margin-bottom:12px;scroll-margin-top:12px}
 .scheda.evidenza{outline:3px solid #9bb35a}
@@ -633,7 +634,7 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
 
     if (s.gps) {
       var icona = L.divIcon({ className: '', iconSize: [28, 28], iconAnchor: [14, 14],
-        html: '<div style="background:' + (s.problemi ? '#b4452f' : '#2f5d3a') + ';color:#fff;border:2px solid #fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>' });
+        html: '<div style="position:relative;background:' + (s.problemi ? '#b4452f' : '#2f5d3a') + ';color:#fff;border:2px solid #fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>' });
       var m = L.marker([s.gps.lat, s.gps.lng], { icon: icona, title: (s.prog ? 'N° ' + s.prog + ' ' : '') + (s.nome || '') }).addTo(mappa);
       m.on('add', function () { var d = m.getElement() && m.getElement().firstChild; if (d) d.textContent = s.prog || '?'; });
       var d0 = m.getElement() && m.getElement().firstChild; if (d0) d0.textContent = s.prog || '?';
@@ -648,7 +649,31 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
       marcatori[s.id] = m; punti.push([s.gps.lat, s.gps.lng]);
     }
   });
-  if (punti.length) mappa.fitBounds(punti, { padding: [30, 30], maxZoom: 17 });
+  /* Il nome accanto al numero: stesso calcolo della stampa, rifatto a ogni zoom e spostamento.
+     Sotto lo zoom 15 i cerchi sono troppo vicini e i nomi si nascondono. */
+  var disponiNomiMappa = (${sicuroInScript(disponiNomiMappa.toString())});
+  var POS = { destra: 'left:31px;top:50%;transform:translateY(-50%)', sinistra: 'right:31px;top:50%;transform:translateY(-50%)',
+    sopra: 'left:50%;bottom:31px;transform:translateX(-50%)', sotto: 'left:50%;top:31px;transform:translateX(-50%)' };
+  function nomeBreve(n) { n = String(n || '').replace(/\\s+['‘’"].*$/, '').trim(); return n.length > 26 ? n.slice(0, 25).replace(/\\s+$/, '') + '…' : n; }
+  function aggiornaNomi() {
+    var pt = [], dim = mappa.getSize(), mostra = mappa.getZoom() >= 15;
+    Object.keys(marcatori).forEach(function (id) {
+      var m = marcatori[id], d = m.getElement() && m.getElement().firstChild, v = d && d.querySelector('.nome-etic');
+      if (v) d.removeChild(v);
+      var nome = nomeBreve(schede[id].s.nome);
+      if (!mostra || !d || !nome || !mappa.hasLayer(m)) return;
+      var q = mappa.latLngToContainerPoint(m.getLatLng());
+      pt.push({ uid: id, x: q.x, y: q.y, nome: nome });
+    });
+    var lati = disponiNomiMappa(pt, dim.x, dim.y);
+    pt.forEach(function (p) {
+      var d = marcatori[p.uid].getElement().firstChild, e = el('span', 'nome-etic', p.nome);
+      e.style.cssText = 'position:absolute;' + POS[lati.get(p.uid)];
+      d.appendChild(e);
+    });
+  }
+  mappa.on('zoomend moveend resize', aggiornaNomi);
+  if (punti.length) { mappa.fitBounds(punti, { padding: [30, 30], maxZoom: 17 }); aggiornaNomi(); }
   else document.getElementById('mappa').style.display = 'none';
   if (!D.schede.length) document.getElementById('elenco').appendChild(el('p', 'vuoto', 'Nessuna scheda.'));
 
@@ -659,6 +684,7 @@ footer{text-align:center;color:var(--tenue);font-size:12px;padding:16px}
       x.art.style.display = vede ? '' : 'none';
       if (marcatori[id]) { if (vede) marcatori[id].addTo(mappa); else mappa.removeLayer(marcatori[id]); }
     });
+    aggiornaNomi();
   });
   document.getElementById('zoom').onclick = function () { this.classList.remove('aperto'); };
   document.getElementById('b-mappa').onclick = function () { if (viaMappa) { viaMappa = false; history.back(); } else location.hash = ''; };

@@ -215,6 +215,18 @@ assert(dtPrimi>=attesi,'tutti i campi della scheda: '+dtPrimi+' su '+attesi);
 assert.match(await p2.locator('article.scheda').first().locator('dl').first().textContent(),/—/);
 assert.equal(await p2.locator('article.scheda .modifica').count(),0,'niente riga «Creata il»');
 assert.equal(await p2.locator('.leaflet-marker-icon').first().textContent()!=='',true);
+{ // nome accanto al numero nella pagina esportata
+  await p2.waitForTimeout(300);
+  const att=await p.evaluate(()=>[...S.schede].filter(r=>r.gps&&r.nome).length);
+  const n=await p2.locator('.nome-etic').count();
+  assert.equal(n,att,'nomi sulla mappa esportata: '+n+' su '+att);
+  const fuori=await p2.evaluate(()=>{const b=document.getElementById('mappa').getBoundingClientRect();return [...document.querySelectorAll('.nome-etic')].filter(e=>{const r=e.getBoundingClientRect();return r.left<b.left-1||r.right>b.right+1||r.top<b.top-1||r.bottom>b.bottom+1;}).length;});
+  assert.equal(fuori,0,'etichette fuori dalla mappa esportata');
+  await p2.fill('#cerca','zzzzzz'); await p2.waitForTimeout(200);
+  assert.equal(await p2.locator('.nome-etic').count(),0,'filtro: nessun nome se nessun marcatore');
+  await p2.fill('#cerca',''); await p2.waitForTimeout(300);
+  assert.equal(await p2.locator('.nome-etic').count(),att,'tolto il filtro i nomi tornano');
+}
 assert.match(await p2.locator('.stato-rete').textContent(),/Online/);
 // online, sfondo non salvato nel file (topografica): le tile arrivano dalla rete
 const prima=richiesteSfondo;await p2.locator('.leaflet-control-layers').hover();await p2.getByLabel(/Topografica · solo online/).check();await p2.waitForTimeout(800);
